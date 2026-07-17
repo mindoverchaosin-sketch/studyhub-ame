@@ -1,4 +1,4 @@
-import { getServerSession } from 'next-auth'
+import { getServerSession, type NextAuthOptions } from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import bcrypt from 'bcrypt'
 import { getUserByEmail } from '@/server/services/user.service'
@@ -9,22 +9,35 @@ import type { JWT } from 'next-auth/jwt'
 type AuthUser = User & { role?: UserRole }
 type AuthSessionUser = Session['user'] & { id?: string; role?: UserRole }
 
-export const authOptions = {
+export const authOptions: NextAuthOptions = {
   session: {
-    strategy: 'jwt' as const,
+    strategy: 'jwt',
   },
+
   pages: {
     signIn: '/login',
   },
+
   secret: process.env.AUTH_SECRET || 'development-secret',
+
   trustHost: true,
+
   providers: [
     Credentials({
       name: 'Credentials',
+
       credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' },
+        email: {
+          label: 'Email',
+          type: 'email',
+        },
+
+        password: {
+          label: 'Password',
+          type: 'password',
+        },
       },
+
       async authorize(credentials) {
         const email = credentials?.email?.toString().trim().toLowerCase()
         const password = credentials?.password?.toString()
@@ -39,7 +52,10 @@ export const authOptions = {
           return null
         }
 
-        const isValidPassword = await bcrypt.compare(password, user.passwordHash)
+        const isValidPassword = await bcrypt.compare(
+          password,
+          user.passwordHash
+        )
 
         if (!isValidPassword) {
           return null
@@ -54,6 +70,7 @@ export const authOptions = {
       },
     }),
   ],
+
   callbacks: {
     async jwt({ token, user }: { token: JWT; user?: AuthUser }) {
       if (user) {
@@ -63,9 +80,17 @@ export const authOptions = {
 
       return token
     },
-    async session({ session, token }: { session: Session; token: JWT }) {
+
+    async session({
+      session,
+      token,
+    }: {
+      session: Session
+      token: JWT
+    }) {
       if (session.user) {
         const sessionUser = session.user as AuthSessionUser
+
         sessionUser.id = token.id as string
         sessionUser.role = token.role as UserRole
       }
