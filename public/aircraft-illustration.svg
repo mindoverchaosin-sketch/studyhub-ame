@@ -1,0 +1,21 @@
+<svg width="640" height="480" viewBox="0 0 640 480" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="480" rx="40" fill="url(#bg)"/>
+  <circle cx="320" cy="240" r="152" fill="white" fill-opacity="0.12"/>
+  <path d="M170 248L266 214L320 160L384 196L456 214L518 230L470 258L390 274L330 302L270 292L198 306L144 284L170 248Z" fill="url(#wing)"/>
+  <path d="M216 232L310 194L366 210L380 240L304 262L226 252Z" fill="#F8FBFF" fill-opacity="0.94"/>
+  <path d="M180 247L208 236L264 228L296 220L324 218L336 228L268 262L220 266Z" fill="#DBEAFE" fill-opacity="0.86"/>
+  <path d="M336 205L408 188L468 212L430 224L372 224Z" fill="#EFF6FF" fill-opacity="0.95"/>
+  <path d="M450 210L494 200L532 220L492 234L466 232Z" fill="#DBEAFE" fill-opacity="0.92"/>
+  <circle cx="320" cy="240" r="10" fill="#0F172A"/>
+  <defs>
+    <linearGradient id="bg" x1="92" y1="42" x2="553" y2="435" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1E3A8A"/>
+      <stop offset="0.45" stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#0891B2"/>
+    </linearGradient>
+    <linearGradient id="wing" x1="160" y1="180" x2="530" y2="300" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.98"/>
+      <stop offset="1" stop-color="#BFDBFE" stop-opacity="0.8"/>
+    </linearGradient>
+  </defs>
+</svg>
