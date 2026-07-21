@@ -1,5 +1,4 @@
 import { FiBookOpen, FiHelpCircle, FiLayers, FiPieChart, FiUsers } from "react-icons/fi"
-import { UserRole } from "@prisma/client"
 import PageHeader from "@/features/admin/components/PageHeader"
 import StatsCard from "@/features/admin/components/StatsCard"
 import Container from "@/components/ui/Container"
@@ -14,7 +13,7 @@ import { getQuizAttemptCount } from "@/server/services/progress.service"
 async function getDashboardStats() {
   const [courses, students, topics, resources, questions, quizAttempts] = await Promise.all([
     getAdminCourses(),
-    getUserCountByRole(UserRole.STUDENT),
+    getUserCountByRole("STUDENT"),
     getTopicCount(),
     getResourceCount(),
     getQuestionCount(),
@@ -24,7 +23,7 @@ async function getDashboardStats() {
   return {
     totalStudents: students,
     totalCourses: courses.length,
-    totalModules: courses.reduce((sum, course) => sum + course._count.modules, 0),
+    totalModules: courses.reduce((sum, course) => sum + (course._count?.modules ?? 0), 0),
     totalTopics: topics,
     totalResources: resources,
     totalQuestions: questions,

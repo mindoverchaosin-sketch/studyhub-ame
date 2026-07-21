@@ -3,48 +3,45 @@ import type { Prisma } from '@prisma/client'
 
 export class TopicRepository {
   async findBySection(sectionId: string) {
-    return prisma.topic.findMany({
-      where: { sectionId },
-      orderBy: { order: 'asc' },
+    return prisma.lesson.findMany({
+      where: { moduleId: sectionId },
+      include: { module: true },
+      orderBy: { displayOrder: 'asc' },
     })
   }
 
   async findBySlug(slug: string) {
-    return prisma.topic.findUnique({ where: { slug } })
+    return prisma.lesson.findUnique({
+      where: { slug },
+      include: { module: true },
+    })
   }
 
   async findById(id: string) {
-    return prisma.topic.findUnique({ where: { id } })
+    return prisma.lesson.findUnique({
+      where: { id },
+      include: { module: true },
+    })
   }
 
-  async create(input: Prisma.TopicCreateInput) {
-    return prisma.topic.create({ data: input })
+  async countAll() {
+    return prisma.lesson.count()
   }
 
-  async update(id: string, data: Prisma.TopicUpdateInput) {
-    return prisma.topic.update({ where: { id }, data })
+  async create(input: Prisma.LessonCreateInput) {
+    return prisma.lesson.create({ data: input })
+  }
+
+  async update(id: string, data: Prisma.LessonUpdateInput) {
+    return prisma.lesson.update({ where: { id }, data })
   }
 
   async delete(id: string) {
-    return prisma.topic.delete({ where: { id } })
+    return prisma.lesson.delete({ where: { id } })
   }
 
-  async setPublishState(id: string, isPublished: boolean) {
-    return prisma.topic.update({ where: { id }, data: { isPublished } })
-  }
-
-  async findPrevious(sectionId: string, order: number) {
-    return prisma.topic.findFirst({
-      where: { sectionId, isPublished: true, order: { lt: order } },
-      orderBy: { order: 'desc' },
-    })
-  }
-
-  async findNext(sectionId: string, order: number) {
-    return prisma.topic.findFirst({
-      where: { sectionId, isPublished: true, order: { gt: order } },
-      orderBy: { order: 'asc' },
-    })
+  async setPublishState(id: string, status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED') {
+    return prisma.lesson.update({ where: { id }, data: { status } })
   }
 }
 

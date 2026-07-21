@@ -1,17 +1,31 @@
 import prisma from '@/lib/prisma'
-import type { Course, ExamType, Prisma } from '@prisma/client'
+import type { Prisma } from '@prisma/client'
 
 export class CourseRepository {
   async findAll() {
     return prisma.course.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { modules: true },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        description: true,
+        categoryId: true,
+        status: true,
+        publishedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        deletedAt: true,
+        _count: {
+          select: { modules: true },
+        },
+      },
     })
   }
 
   async findAllPublished() {
     return prisma.course.findMany({
-      where: { isPublished: true },
+      where: { status: 'PUBLISHED' },
       orderBy: { createdAt: 'desc' },
     })
   }
@@ -36,13 +50,13 @@ export class CourseRepository {
     return prisma.course.delete({ where: { id } })
   }
 
-  async setPublishState(id: string, isPublished: boolean) {
-    return prisma.course.update({ where: { id }, data: { isPublished } })
+  async setPublishState(id: string, status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED') {
+    return prisma.course.update({ where: { id }, data: { status } })
   }
 
-  async findByExamType(examType: string) {
+  async findByCategory(categoryId: string) {
     return prisma.course.findMany({
-      where: { examType: examType as ExamType, isPublished: true },
+      where: { categoryId, status: 'PUBLISHED' },
       orderBy: { createdAt: 'desc' },
     })
   }

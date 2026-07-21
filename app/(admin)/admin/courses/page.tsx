@@ -26,9 +26,9 @@ export default async function AdminCoursesPage() {
                 id: course.id,
                 title: course.title,
                 slug: course.slug,
-                examType: course.examType,
-                isPublished: course.isPublished,
-                moduleCount: course._count.modules,
+                examType: course.categoryId ?? "General",
+                isPublished: course.status === "PUBLISHED",
+                moduleCount: course._count?.modules ?? 0,
                 createdAt: course.createdAt.toISOString(),
               }))}
             />

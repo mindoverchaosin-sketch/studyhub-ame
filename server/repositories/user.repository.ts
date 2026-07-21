@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma'
-import type { Prisma, User } from '@prisma/client'
+import type { Prisma } from '@prisma/client'
 
 export class UserRepository {
   async findByEmail(email: string) {
@@ -19,15 +19,26 @@ export class UserRepository {
   }
 
   async findByRole(role: string) {
-    return prisma.user.findMany({ where: { role: role as User['role'], isActive: true }, include: { studentProfile: true, adminProfile: true }, orderBy: { createdAt: 'desc' } })
+    return prisma.user.findMany({
+      where: {
+        role: {
+          is: {
+            name: role as 'STUDENT' | 'ADMIN' | 'INSTRUCTOR',
+          },
+        },
+        isActive: true,
+      },
+      include: { studentProfile: true, adminProfile: true },
+      orderBy: { createdAt: 'desc' },
+    })
   }
 
   async countStudents() {
-    return prisma.user.count({ where: { role: 'STUDENT' } })
+    return prisma.user.count({ where: { role: { is: { name: 'STUDENT' } } } })
   }
 
   async countAdmins() {
-    return prisma.user.count({ where: { role: 'ADMIN' } })
+    return prisma.user.count({ where: { role: { is: { name: 'ADMIN' } } } })
   }
 }
 

@@ -1,8 +1,10 @@
 'use server'
 
+import { requireAuth } from '@/auth'
 import { getUserByEmail } from '@/server/services/user.service'
 
 export async function loginWithCredentials(formData: FormData) {
+  await requireAuth().catch(() => undefined)
   const email = formData.get('email')?.toString().trim().toLowerCase() ?? ''
   const password = formData.get('password')?.toString() ?? ''
 

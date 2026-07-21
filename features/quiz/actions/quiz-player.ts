@@ -27,7 +27,7 @@ export async function getQuizPlayerPageData(quizId: string): Promise<QuizPlayerP
   }
 
   const topic = await getTopicById(quiz.topicId);
-  const topicProgress = await getTopicProgress(studentId, quiz.topicId);
+  const topicProgress = await getTopicProgress(studentId, quiz.lessonId ?? quiz.topicId);
 
   return {
     quiz: {
@@ -39,9 +39,7 @@ export async function getQuizPlayerPageData(quizId: string): Promise<QuizPlayerP
       topicId: quiz.topicId,
       topicTitle: topic?.title ?? "Topic",
     },
-    questions: (quiz.quizQuestions ?? [])
-      .map((entry) => entry.question)
-      .filter(Boolean)
+    questions: (quiz.questions ?? [])
       .map((question) => ({
         id: question.id,
         question: question.question,
@@ -49,7 +47,7 @@ export async function getQuizPlayerPageData(quizId: string): Promise<QuizPlayerP
         optionB: question.optionB,
         optionC: question.optionC,
         optionD: question.optionD,
-        correctAnswer: question.correctAnswer,
+        correctAnswer: question.correctAnswer ?? "",
         explanation: question.explanation,
       })),
     topicProgress: {
@@ -68,44 +66,40 @@ export async function submitQuizAction(quizId: string, answers: Record<string, s
     return null;
   }
 
-  const questions = (quiz.quizQuestions ?? []).map((entry) => entry.question);
+  const lessonId = quiz.lessonId ?? quiz.topicId;
+  const questions = (quiz.questions ?? []).map((question) => ({
+    ...question,
+    correctAnswer: question.correctAnswer,
+  }));
   const correctAnswers = questions.filter((question) => question.correctAnswer === (answers[question.id] ?? "")).length;
   const totalQuestions = questions.length;
   const percentage = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
   const passed = percentage >= quiz.passingScore;
   const durationMinutes = Math.max(1, Math.ceil((Date.now() - startedAt) / 60000));
 
-  const topicProgress = await prisma.topicProgress.findUnique({
+  const topicProgress = await prisma.lessonProgress.findFirst({
     where: {
-      studentId_topicId: {
-        studentId,
-        topicId: quiz.topicId,
-      },
+      userId: studentId,
+      lessonId,
     },
   });
 
-  await prisma.topicProgress.upsert({
+  await prisma.lessonProgress.upsert({
     where: {
-      studentId_topicId: {
-        studentId,
-        topicId: quiz.topicId,
+      userId_lessonId: {
+        userId: studentId,
+        lessonId,
       },
     },
     update: {
       status: passed ? "COMPLETED" : "IN_PROGRESS",
-      score: percentage,
-      timeSpentMinutes: (topicProgress?.timeSpentMinutes ?? 0) + durationMinutes,
-      completedAt: passed ? new Date() : topicProgress?.completedAt ?? null,
-      lastVisitedAt: new Date(),
+      percentComplete: percentage,
     },
     create: {
-      studentId,
-      topicId: quiz.topicId,
+      userId: studentId,
+      lessonId,
       status: passed ? "COMPLETED" : "IN_PROGRESS",
-      score: percentage,
-      timeSpentMinutes: durationMinutes,
-      completedAt: passed ? new Date() : null,
-      lastVisitedAt: new Date(),
+      percentComplete: percentage,
     },
   });
 

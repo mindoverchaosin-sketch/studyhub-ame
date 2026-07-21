@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { signIn, getSession } from "next-auth/react";
 import { FiChrome, FiEye, FiEyeOff } from "react-icons/fi";
 import { z } from "zod";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
-import { loginWithCredentials } from "@/app/(auth)/login/actions";
 import { registerWithCredentials } from "@/app/(auth)/register/actions";
 
 type AuthFormProps = {
@@ -52,9 +53,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
     setErrors((current) => ({ ...current, [field]: undefined }));
   };
 
+  const router = useRouter();
+  const isSignUp = mode === "signup";
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const schema = mode === "signup" ? signUpSchema : signInSchema;
+    const schema = isSignUp ? signUpSchema : signInSchema;
     const result = schema.safeParse(values);
 
     if (!result.success) {
@@ -83,27 +87,58 @@ export default function AuthForm({ mode }: AuthFormProps) {
       formData.set("name", values.name);
     }
 
-    let actionResult: AuthActionResult;
-
     if (isSignUp) {
-      actionResult = await registerWithCredentials(formData);
-    } else {
-      actionResult = await loginWithCredentials(formData);
+      const actionResult = await registerWithCredentials(formData);
+
+      if (actionResult && actionResult.success === false) {
+        setFormMessage(actionResult.error ?? "Authentication failed.");
+        setIsSubmitting(false);
+        setSubmitted(false);
+        return;
+      }
+
+      const signInResult = await signIn("credentials", {
+        redirect: false,
+        email: values.email,
+        password: values.password,
+      });
+
+      if (!signInResult?.ok) {
+        setFormMessage(
+          signInResult?.error ?? "Registration succeeded, but sign-in failed."
+        );
+        setIsSubmitting(false);
+        setSubmitted(false);
+        return;
+      }
+
+      const session = await getSession();
+      const role = session?.user?.role;
+      const destination = role === "ADMIN" ? "/admin/dashboard" : "/student/dashboard";
+
+      router.push(destination);
+      return;
     }
 
-    setIsSubmitting(false);
+    const signInResult = await signIn("credentials", {
+      redirect: false,
+      email: values.email,
+      password: values.password,
+    });
 
-    if (actionResult && actionResult.success === false) {
-      setFormMessage(actionResult.error ?? "Authentication failed.");
+    if (!signInResult?.ok) {
+      setFormMessage(signInResult?.error ?? "Invalid email or password.");
+      setIsSubmitting(false);
       setSubmitted(false);
       return;
     }
 
-    setSubmitted(true);
-    setFormMessage(null);
-  };
+    const session = await getSession();
+    const role = session?.user?.role;
+    const destination = role === "ADMIN" ? "/admin/dashboard" : "/student/dashboard";
 
-  const isSignUp = mode === "signup";
+    router.push(destination);
+  };
 
   return (
     <Card variant="elevated" className="border-slate-200/80 bg-white/95 p-6 shadow-[0_24px_90px_rgba(15,23,42,0.06)] sm:p-8">

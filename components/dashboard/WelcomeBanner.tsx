@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FiArrowRight } from "react-icons/fi";
+import Heading from "@/components/ui/Heading";
 
 type WelcomeBannerProps = {
   studentName: string;
@@ -14,9 +15,9 @@ export default function WelcomeBanner({ studentName, targetExam }: WelcomeBanner
       <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-2xl">
           <p className="text-sm font-semibold uppercase tracking-[0.3em] text-blue-600">Welcome back</p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+          <Heading as="h1" size="lg" className="mt-3 text-3xl sm:text-4xl">
             {studentName}
-          </h1>
+          </Heading>
           <p className="mt-4 text-base leading-8 text-slate-600">
             Your current target exam is <span className="font-semibold text-slate-900">{examLabel}</span>.
             Keep your momentum strong with a focused plan for today.
@@ -30,6 +31,7 @@ export default function WelcomeBanner({ studentName, targetExam }: WelcomeBanner
           <Link
             href="/modules"
             className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-white"
+            aria-label="View study modules"
           >
             View modules
             <FiArrowRight className="h-4 w-4" />

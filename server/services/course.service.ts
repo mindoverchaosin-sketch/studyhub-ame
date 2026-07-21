@@ -1,49 +1,30 @@
-import prisma from '@/lib/prisma'
-import { Course, ExamType } from '@prisma/client'
+import type { CourseDTO } from '@/server/application/dto/course.dto'
+import { courseRepository } from '@/server/repositories/course.repository'
+import { mapCourseEntityToDTO } from '@/server/application/mappers/course.mapper'
 
 /**
  * CourseService
  * Handles course-related database operations
  */
 
-export async function getAllCourses(): Promise<Course[]> {
-  return prisma.course.findMany({
-    where: { isPublished: true },
-    orderBy: { createdAt: 'desc' },
-  })
+export async function getAllCourses(): Promise<CourseDTO[]> {
+  return (await courseRepository.findAllPublished()).map(mapCourseEntityToDTO)
 }
 
-export async function getAdminCourses(): Promise<(Course & { _count: { modules: number } })[]> {
-  return prisma.course.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: {
-      _count: {
-        select: {
-          modules: true,
-        },
-      },
-    },
-  })
+export async function getAdminCourses(): Promise<CourseDTO[]> {
+  return (await courseRepository.findAll()).map(mapCourseEntityToDTO)
 }
 
-export async function getCourseBySlug(slug: string): Promise<Course | null> {
-  return prisma.course.findUnique({
-    where: { slug },
-  })
+export async function getCourseBySlug(slug: string): Promise<CourseDTO | null> {
+  const course = await courseRepository.findBySlug(slug)
+  return course ? mapCourseEntityToDTO(course) : null
 }
 
-export async function getCourseById(id: string): Promise<Course | null> {
-  return prisma.course.findUnique({
-    where: { id },
-  })
+export async function getCourseById(id: string): Promise<CourseDTO | null> {
+  const course = await courseRepository.findById(id)
+  return course ? mapCourseEntityToDTO(course) : null
 }
 
-export async function getCoursesByExamType(examType: ExamType): Promise<Course[]> {
-  return prisma.course.findMany({
-    where: {
-      examType,
-      isPublished: true,
-    },
-    orderBy: { createdAt: 'desc' },
-  })
+export async function getCoursesByExamType(_examType: string): Promise<CourseDTO[]> {
+  return (await courseRepository.findAllPublished()).map(mapCourseEntityToDTO)
 }

@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma'
-import { User, UserRole } from '@prisma/client'
+
+type UserRole = 'STUDENT' | 'ADMIN' | 'INSTRUCTOR'
 
 /**
  * UserService
@@ -10,6 +11,7 @@ export async function getUserByEmail(email: string) {
   return prisma.user.findUnique({
     where: { email },
     include: {
+      role: true,
       studentProfile: true,
       adminProfile: true,
     },
@@ -20,6 +22,7 @@ export async function getUserById(id: string) {
   return prisma.user.findUnique({
     where: { id },
     include: {
+      role: true,
       studentProfile: true,
       adminProfile: true,
     },
@@ -47,7 +50,11 @@ export async function getAdminProfile(userId: string) {
 export async function getUsersByRole(role: UserRole) {
   return prisma.user.findMany({
     where: {
-      role,
+      role: {
+        is: {
+          name: role,
+        },
+      },
       isActive: true,
     },
     include: {
@@ -61,7 +68,11 @@ export async function getUsersByRole(role: UserRole) {
 export async function getUserCountByRole(role: UserRole): Promise<number> {
   return prisma.user.count({
     where: {
-      role,
+      role: {
+        is: {
+          name: role,
+        },
+      },
       isActive: true,
     },
   })

@@ -1,0 +1,12 @@
+export { default as ModuleTable } from "@/components/admin/modules/ModuleTable";
+export { default as ModuleToolbar } from "@/components/admin/modules/ModuleToolbar";
+export { default as ModuleFilters } from "@/components/admin/modules/ModuleFilters";
+export { default as ModuleSearch } from "@/components/admin/modules/ModuleSearch";
+export { default as ModuleStatusBadge } from "@/components/admin/modules/ModuleStatusBadge";
+export { default as ModuleActions } from "@/components/admin/modules/ModuleActions";
+export { default as ModuleWizard } from "@/components/admin/modules/ModuleWizard";
+export { default as ModuleWizardSteps } from "@/components/admin/modules/ModuleWizardSteps";
+export { default as ModuleOverviewCard } from "@/components/admin/modules/ModuleOverviewCard";
+export { default as ModuleDeleteDialog } from "@/components/admin/modules/ModuleDeleteDialog";
+export { default as ModulePublishDialog } from "@/components/admin/modules/ModulePublishDialog";
+export { default as BulkActionBar } from "@/components/admin/modules/BulkActionBar";

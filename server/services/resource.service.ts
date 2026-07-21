@@ -1,44 +1,31 @@
-import prisma from '@/lib/prisma'
-import { Resource, ResourceType } from '@prisma/client'
+import type { ResourceDTO } from '@/server/application/dto/resource.dto'
+import { resourceRepository } from '@/server/repositories/resource.repository'
+import type { StudyMaterialType } from '@prisma/client'
+import { mapResourceEntityToDTO } from '@/server/application/mappers/resource.mapper'
 
 /**
  * ResourceService
  * Handles resource-related database operations
  */
 
-export async function getResourcesByTopic(topicId: string): Promise<Resource[]> {
-  return prisma.resource.findMany({
-    where: { topicId },
-    orderBy: { order: 'asc' },
-  })
+export async function getResourcesByTopic(topicId: string): Promise<ResourceDTO[]> {
+  return (await resourceRepository.findByLesson(topicId)).map(mapResourceEntityToDTO)
 }
 
-export async function getResourceById(id: string): Promise<Resource | null> {
-  return prisma.resource.findUnique({
-    where: { id },
-  })
+export async function getResourceById(id: string): Promise<ResourceDTO | null> {
+  const resource = await resourceRepository.findById(id)
+  return resource ? mapResourceEntityToDTO(resource) : null
 }
 
-export async function getResourcesByType(topicId: string, type: ResourceType): Promise<Resource[]> {
-  return prisma.resource.findMany({
-    where: {
-      topicId,
-      type,
-    },
-    orderBy: { order: 'asc' },
-  })
+export async function getResourcesByType(topicId: string, type: string): Promise<ResourceDTO[]> {
+  return (await resourceRepository.findByLessonAndType(topicId, type as unknown as StudyMaterialType)).map(mapResourceEntityToDTO)
 }
 
-export async function getPremiumResourcesByTopic(topicId: string): Promise<Resource[]> {
-  return prisma.resource.findMany({
-    where: {
-      topicId,
-      isPremium: true,
-    },
-    orderBy: { order: 'asc' },
-  })
+export async function getPremiumResourcesByTopic(topicId: string): Promise<ResourceDTO[]> {
+  const resources = await resourceRepository.findByLesson(topicId)
+  return resources.filter((resource) => resource.isPremium).map(mapResourceEntityToDTO)
 }
 
 export async function getResourceCount(): Promise<number> {
-  return prisma.resource.count()
+  return resourceRepository.countAll()
 }

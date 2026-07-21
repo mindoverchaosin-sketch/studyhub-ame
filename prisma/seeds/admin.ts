@@ -18,13 +18,18 @@ export async function seedAdmin() {
   const hashedPassword = await bcrypt.hash(defaultPassword, 10)
 
   // Create admin user
+  const adminRole = await prisma.role.upsert({
+    where: { name: 'ADMIN' },
+    update: {},
+    create: { name: 'ADMIN', description: 'Administrator role' },
+  })
+
   const adminUser = await prisma.user.create({
     data: {
       email: 'admin@aeroprep.com',
       displayName: 'Administrator',
       passwordHash: hashedPassword,
-      role: 'ADMIN',
-      emailVerified: true,
+      roleId: adminRole.id,
       isActive: true,
     },
   })

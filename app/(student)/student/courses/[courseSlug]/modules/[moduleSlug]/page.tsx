@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { requireStudent } from "@/auth";
 import { redirect } from "next/navigation";
 import Sidebar from "@/components/dashboard/Sidebar";
 import CourseBrowserShell from "@/features/courses/components/CourseBrowserShell";
@@ -10,9 +10,9 @@ type ModuleDetailPageProps = {
 };
 
 export default async function ModuleDetailPage({ params }: ModuleDetailPageProps) {
-  const session = await auth();
-
-  if (!session?.user?.id) {
+  try {
+    await requireStudent();
+  } catch {
     redirect("/login");
   }
 

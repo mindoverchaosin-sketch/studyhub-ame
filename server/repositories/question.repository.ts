@@ -2,15 +2,19 @@ import prisma from '@/lib/prisma'
 import type { Prisma } from '@prisma/client'
 
 export class QuestionRepository {
-  async findByTopic(topicId: string) {
+  async findByTopic(questionBankId: string) {
     return prisma.question.findMany({
-      where: { topicId },
+      where: { questionBankId },
       orderBy: { createdAt: 'desc' },
     })
   }
 
   async findById(id: string) {
     return prisma.question.findUnique({ where: { id } })
+  }
+
+  async countAll() {
+    return prisma.question.count()
   }
 
   async create(input: Prisma.QuestionCreateInput) {

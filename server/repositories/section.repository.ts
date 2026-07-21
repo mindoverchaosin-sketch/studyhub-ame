@@ -3,30 +3,30 @@ import type { Prisma } from '@prisma/client'
 
 export class SectionRepository {
   async findByModule(moduleId: string) {
-    return prisma.section.findMany({
+    return prisma.lesson.findMany({
       where: { moduleId },
-      orderBy: { order: 'asc' },
+      orderBy: { displayOrder: 'asc' },
     })
   }
 
   async findById(id: string) {
-    return prisma.section.findUnique({ where: { id } })
+    return prisma.lesson.findUnique({ where: { id } })
   }
 
-  async create(input: Prisma.SectionCreateInput) {
-    return prisma.section.create({ data: input })
+  async create(input: Prisma.LessonCreateInput) {
+    return prisma.lesson.create({ data: input })
   }
 
-  async update(id: string, data: Prisma.SectionUpdateInput) {
-    return prisma.section.update({ where: { id }, data })
+  async update(id: string, data: Prisma.LessonUpdateInput) {
+    return prisma.lesson.update({ where: { id }, data })
   }
 
   async delete(id: string) {
-    return prisma.section.delete({ where: { id } })
+    return prisma.lesson.delete({ where: { id } })
   }
 
-  async setPublishState(id: string, isPublished: boolean) {
-    return prisma.section.update({ where: { id }, data: { isPublished } })
+  async setPublishState(id: string, status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED') {
+    return prisma.lesson.update({ where: { id }, data: { status } })
   }
 }
 

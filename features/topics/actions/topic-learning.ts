@@ -34,10 +34,9 @@ export async function getTopicLearningPageData(topicSlug: string): Promise<Topic
     getQuizByTopic(topic.id),
   ]);
 
-  const section = await prisma.section.findUnique({ where: { id: topic.sectionId } });
-  const learningModule = section ? await prisma.module.findUnique({ where: { id: section.moduleId } }) : null;
+  const learningModule = topic.moduleId ? await prisma.module.findUnique({ where: { id: topic.moduleId } }) : null;
   const course = learningModule ? await prisma.course.findUnique({ where: { id: learningModule.courseId } }) : null;
-  const allTopicsInSection = section ? await getTopicsBySection(section.id) : [];
+  const allTopicsInSection = learningModule ? await prisma.lesson.findMany({ where: { moduleId: learningModule.id }, orderBy: { displayOrder: 'asc' } }) : [];
   const topicIndex = allTopicsInSection.findIndex((item) => item.id === topic.id);
 
   const previousTopic = topicIndex > 0 ? { slug: allTopicsInSection[topicIndex - 1].slug, title: allTopicsInSection[topicIndex - 1].title } : null;

@@ -1,47 +1,31 @@
-import prisma from '@/lib/prisma'
-import { Quiz } from '@prisma/client'
+import type { QuizDTO } from '@/server/application/dto/quiz.dto'
+import { quizRepository } from '@/server/repositories/quiz.repository'
+import { mapQuizEntityToDTO, mapQuizWithQuestionsEntityToDTO } from '@/server/application/mappers/quiz.mapper'
 
 /**
  * QuizService
  * Handles quiz-related database operations
  */
 
-export async function getQuizByTopic(topicId: string): Promise<Quiz | null> {
-  return prisma.quiz.findFirst({
-    where: {
-      topicId,
-      isPublished: true,
-    },
-  })
+export async function getQuizByTopic(topicId: string): Promise<QuizDTO | null> {
+  const quiz = await quizRepository.findByLesson(topicId)
+  return quiz ? mapQuizEntityToDTO(quiz, topicId) : null
 }
 
-export async function getQuizById(id: string) {
-  return prisma.quiz.findUnique({
-    where: { id },
-  })
+export async function getQuizById(id: string): Promise<QuizDTO | null> {
+  const quiz = await quizRepository.findById(id)
+  return quiz ? mapQuizEntityToDTO(quiz) : null
 }
 
-export async function getQuizWithQuestions(id: string) {
-  return prisma.quiz.findUnique({
-    where: { id },
-    include: {
-      quizQuestions: {
-        include: {
-          question: true,
-        },
-        orderBy: { order: 'asc' },
-      },
-    },
-  })
+export async function getQuizWithQuestions(id: string): Promise<QuizDTO | null> {
+  const quiz = await quizRepository.findWithQuestions(id)
+  return quiz ? mapQuizWithQuestionsEntityToDTO(quiz) : null
 }
 
-export async function getPublishedQuizzes(): Promise<Quiz[]> {
-  return prisma.quiz.findMany({
-    where: { isPublished: true },
-    orderBy: { createdAt: 'desc' },
-  })
+export async function getPublishedQuizzes(): Promise<QuizDTO[]> {
+  return (await quizRepository.findAllPublished()).map((q) => mapQuizEntityToDTO(q))
 }
 
 export async function getQuizCount(): Promise<number> {
-  return prisma.quiz.count()
+  return quizRepository.countAll()
 }

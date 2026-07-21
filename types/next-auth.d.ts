@@ -1,6 +1,7 @@
 import { DefaultSession } from "next-auth"
 import { DefaultJWT } from "next-auth/jwt"
-import { UserRole } from "@prisma/client"
+
+type UserRole = "STUDENT" | "ADMIN" | "INSTRUCTOR"
 
 declare module "next-auth" {
   interface Session {

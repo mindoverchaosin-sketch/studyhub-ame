@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { requireStudent } from "@/auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import Sidebar from "@/components/dashboard/Sidebar";
@@ -14,9 +14,9 @@ type TopicLearningPageProps = {
 };
 
 export default async function TopicLearningPage({ params }: TopicLearningPageProps) {
-  const session = await auth();
-
-  if (!session?.user?.id) {
+  try {
+    await requireStudent();
+  } catch {
     redirect("/login");
   }
 

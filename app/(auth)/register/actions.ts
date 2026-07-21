@@ -1,12 +1,12 @@
 'use server'
 
+import { requireAuth } from '@/auth'
 import bcrypt from 'bcrypt'
 import prisma from '@/lib/prisma'
-import { redirect } from 'next/navigation'
-import { signIn } from '@/auth'
 import { getUserByEmail } from '@/server/services/user.service'
 
 export async function registerWithCredentials(formData: FormData) {
+  await requireAuth().catch(() => undefined)
   const email = formData.get('email')?.toString().trim().toLowerCase() ?? ''
   const password = formData.get('password')?.toString() ?? ''
   const name = formData.get('name')?.toString().trim() ?? ''
@@ -23,13 +23,18 @@ export async function registerWithCredentials(formData: FormData) {
 
   const passwordHash = await bcrypt.hash(password, 10)
 
+  const studentRole = await prisma.role.findUnique({ where: { name: 'STUDENT' } })
+
+  if (!studentRole) {
+    return { success: false, error: 'User role configuration is missing.' }
+  }
+
   const user = await prisma.user.create({
     data: {
       email,
       passwordHash,
       displayName: name || email,
-      role: 'STUDENT',
-      emailVerified: true,
+      roleId: studentRole.id,
       isActive: true,
     },
   })
@@ -42,11 +47,7 @@ export async function registerWithCredentials(formData: FormData) {
     },
   })
 
-  await signIn('credentials', {
-    email,
-    password,
-    redirect: false,
-  })
-
-  redirect('/student/dashboard')
+  return {
+    success: true,
+  }
 }

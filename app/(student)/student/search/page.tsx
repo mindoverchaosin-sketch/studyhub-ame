@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { requireStudent } from "@/auth";
 import { redirect } from "next/navigation";
 import Sidebar from "@/components/dashboard/Sidebar";
 import SearchPageClient from "@/features/search/components/SearchPage";
@@ -8,9 +8,9 @@ type SearchPageProps = {
 };
 
 export default async function StudentSearchPage({ searchParams }: SearchPageProps) {
-  const session = await auth();
-
-  if (!session?.user?.id) {
+  try {
+    await requireStudent();
+  } catch {
     redirect("/login");
   }
 

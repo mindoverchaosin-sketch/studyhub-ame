@@ -9,8 +9,7 @@ export async function seedDgca() {
       title: 'DGCA Part-66',
       slug: 'dgca-part-66',
       description: 'Directorate General of Civil Aviation Part-66 Aircraft Maintenance Engineering course',
-      examType: 'DGCA',
-      isPublished: true,
+      status: 'PUBLISHED',
     },
   })
 
@@ -39,13 +38,14 @@ export async function seedDgca() {
   for (const moduleData of dgcaModules) {
     await prisma.module.upsert({
       where: { slug: moduleData.slug },
-      update: { order: moduleData.order },
+      update: { displayOrder: moduleData.order },
       create: {
         courseId: dgcaCourse.id,
         title: moduleData.title,
         slug: moduleData.slug,
-        order: moduleData.order,
-        isPublished: true,
+        moduleNumber: String(moduleData.order),
+        displayOrder: moduleData.order,
+        status: 'PUBLISHED',
       },
     })
   }

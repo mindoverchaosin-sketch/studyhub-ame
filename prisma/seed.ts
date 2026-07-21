@@ -13,8 +13,7 @@ async function main() {
         title: 'DGCA Part-66',
         slug: 'dgca-part-66',
         description: 'Directorate General of Civil Aviation Part-66 Aircraft Maintenance Engineering course',
-        examType: 'DGCA',
-        isPublished: true,
+        status: 'PUBLISHED',
       },
     })
 
@@ -41,13 +40,14 @@ async function main() {
     for (const moduleData of dgcaModules) {
       await prisma.module.upsert({
         where: { slug: moduleData.slug },
-        update: { order: moduleData.order },
+        update: { displayOrder: moduleData.order },
         create: {
           courseId: dgcaCourse.id,
           title: moduleData.title,
           slug: moduleData.slug,
-          order: moduleData.order,
-          isPublished: true,
+          moduleNumber: String(moduleData.order),
+          displayOrder: moduleData.order,
+          status: 'PUBLISHED',
         },
       })
     }
@@ -61,8 +61,7 @@ async function main() {
         title: 'EASA Part-66',
         slug: 'easa-part-66',
         description: 'European Union Aviation Safety Agency Part-66 Aircraft Maintenance Engineering course',
-        examType: 'EASA',
-        isPublished: true,
+        status: 'PUBLISHED',
       },
     })
 
@@ -83,13 +82,14 @@ async function main() {
     for (const moduleData of easaModules) {
       await prisma.module.upsert({
         where: { slug: moduleData.slug },
-        update: { order: moduleData.order },
+        update: { displayOrder: moduleData.order },
         create: {
           courseId: easaCourse.id,
           title: moduleData.title,
           slug: moduleData.slug,
-          order: moduleData.order,
-          isPublished: true,
+          moduleNumber: String(moduleData.order),
+          displayOrder: moduleData.order,
+          status: 'PUBLISHED',
         },
       })
     }
@@ -106,13 +106,18 @@ async function main() {
     if (!existingAdmin) {
       const hashedPassword = await bcrypt.default.hash(defaultPassword, 10)
 
+      const adminRole = await prisma.role.upsert({
+        where: { name: 'ADMIN' },
+        update: {},
+        create: { name: 'ADMIN', description: 'Administrator role' },
+      })
+
       const adminUser = await prisma.user.create({
         data: {
           email: 'admin@aeroprep.com',
           displayName: 'Administrator',
           passwordHash: hashedPassword,
-          role: 'ADMIN',
-          emailVerified: true,
+          roleId: adminRole.id,
           isActive: true,
         },
       })
