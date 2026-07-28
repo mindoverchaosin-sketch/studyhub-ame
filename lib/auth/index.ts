@@ -168,9 +168,16 @@ export async function requirePermission(permission: string): Promise<AuthSession
 
   const userWithPerms = await roleRepository.getPermissionsForUser(session.user.id)
 
-  const hasPermission = userWithPerms?.role?.permissions?.some(
-  (permissionRecord) => permissionRecord.permission.name === permission
- )
+  const hasPermission =
+    userWithPerms?.role?.permissions?.some(
+      (
+        permissionRecord: {
+          permission: {
+            name: string
+          }
+        }
+      ) => permissionRecord.permission.name === permission
+    ) ?? false
 
   if (!hasPermission) {
     throw new ForbiddenError(`Permission required: ${permission}`)
