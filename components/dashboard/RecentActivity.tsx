@@ -4,28 +4,14 @@ type ActivityItem = {
   time: string;
 };
 
-const activityItems: ActivityItem[] = [
-  {
-    title: "Completed Airframes revision",
-    detail: "You reviewed the latest notes and marked the topic as understood.",
-    time: "15 min ago",
-  },
-  {
-    title: "Attempted a practice quiz",
-    detail: "Your score improved compared with the previous session.",
-    time: "1 hour ago",
-  },
-  {
-    title: "Added a new bookmark",
-    detail: "Saved a key reference for your next recap session.",
-    time: "Yesterday",
-  },
-];
+type RecentActivityProps = {
+  items?: ActivityItem[];
+};
 
-export default function RecentActivity() {
+export default function RecentActivity({ items = [] }: RecentActivityProps) {
   return (
     <div className="space-y-3">
-      {activityItems.map((item) => (
+      {items.map((item) => (
         <div key={item.title} className="flex items-start justify-between gap-4 rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
           <div>
             <p className="font-semibold text-slate-950">{item.title}</p>

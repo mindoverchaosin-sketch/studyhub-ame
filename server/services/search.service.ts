@@ -1,4 +1,4 @@
-import prisma from "@/lib/prisma";
+import { searchRepository } from '@/server/repositories/search.repository'
 import type { SearchCategory, SearchResponse, SearchResultItem } from "@/features/search/types";
 
 function createResult(
@@ -39,47 +39,16 @@ export async function searchContent(query: string): Promise<SearchResponse> {
     };
   }
 
-  const [courses, modules] = await Promise.all([
-    prisma.course.findMany({
-      where: {
-        status: "PUBLISHED",
-        OR: [{ title: { contains: normalized, mode: "insensitive" } }, { description: { contains: normalized, mode: "insensitive" } }],
-      },
-      orderBy: { createdAt: "desc" },
-      take: 8,
-    }),
-    prisma.module.findMany({
-      where: {
-        status: "PUBLISHED",
-        OR: [{ title: { contains: normalized, mode: "insensitive" } }, { description: { contains: normalized, mode: "insensitive" } }],
-      },
-      include: {
-        course: true,
-      },
-      orderBy: { displayOrder: "asc" },
-      take: 8,
-    }),
-  ]);
+  const resp = await searchRepository.searchAll(normalized)
 
   const groupedResults = {
-    course: courses.map((course) =>
-      createResult("course", course.id, course.title, course.description, `/student/courses/${course.slug}`, course.status),
-    ),
-    module: modules.map((module) =>
-      createResult(
-        "module",
-        module.id,
-        module.title,
-        module.description,
-        `/student/courses/${module.course.slug}/modules/${module.slug}`,
-        module.course.title,
-      ),
-    ),
+    course: resp.groupedResults.course,
+    module: resp.groupedResults.module,
     section: [],
     topic: [],
     resource: [],
     question: [],
-  } satisfies Record<SearchCategory, SearchResultItem[]>;
+  } satisfies Record<SearchCategory, SearchResultItem[]>
 
   const totalResults = Object.values(groupedResults).reduce((sum, group) => sum + group.length, 0);
 

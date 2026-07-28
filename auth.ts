@@ -1,4 +1,3 @@
-import { auth, authOptions } from '@/lib/auth'
-import { requireAdmin, requireAuth, requirePermission, requireStudent } from '@/lib/auth'
+import { auth, authOptions, AppError, UnauthorizedError, ForbiddenError, NotFoundError, ValidationError, DatabaseError, UnexpectedError, requireAuth, requireStudent, requireAdmin, requirePermission, requireOwnership } from '@/lib/auth'
 
-export { auth, authOptions, requireAdmin, requireAuth, requirePermission, requireStudent }
+export { auth, authOptions, AppError, UnauthorizedError, ForbiddenError, NotFoundError, ValidationError, DatabaseError, UnexpectedError, requireAuth, requireStudent, requireAdmin, requirePermission, requireOwnership }

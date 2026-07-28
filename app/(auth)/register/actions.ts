@@ -2,8 +2,9 @@
 
 import { requireAuth } from '@/auth'
 import bcrypt from 'bcrypt'
-import prisma from '@/lib/prisma'
 import { getUserByEmail } from '@/server/services/user.service'
+import { userRepository } from '@/server/repositories/user.repository'
+import { roleRepository } from '@/server/repositories/role.repository'
 
 export async function registerWithCredentials(formData: FormData) {
   await requireAuth().catch(() => undefined)
@@ -23,29 +24,21 @@ export async function registerWithCredentials(formData: FormData) {
 
   const passwordHash = await bcrypt.hash(password, 10)
 
-  const studentRole = await prisma.role.findUnique({ where: { name: 'STUDENT' } })
+  const studentRole = await roleRepository.findByName('STUDENT')
 
   if (!studentRole) {
     return { success: false, error: 'User role configuration is missing.' }
   }
 
-  const user = await prisma.user.create({
-    data: {
-      email,
-      passwordHash,
-      displayName: name || email,
-      roleId: studentRole.id,
-      isActive: true,
-    },
-  })
+  const user = await userRepository.createUser({
+    email,
+    passwordHash,
+    displayName: name || email,
+    roleId: studentRole.id,
+    isActive: true,
+  } as any)
 
-  await prisma.studentProfile.create({
-    data: {
-      userId: user.id,
-      fullName: name || email,
-      targetExam: 'BOTH',
-    },
-  })
+  await userRepository.createStudentProfile({ userId: user.id, fullName: name || email, targetExam: 'BOTH' } as any)
 
   return {
     success: true,

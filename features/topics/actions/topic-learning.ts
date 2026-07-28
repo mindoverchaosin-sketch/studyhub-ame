@@ -1,11 +1,12 @@
 import { auth } from "@/auth";
-import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { getQuestionsByTopic } from "@/server/services/question.service";
 import { getQuizByTopic } from "@/server/services/quiz.service";
 import { getResourcesByTopic } from "@/server/services/resource.service";
 import { getStudentProgress, getTopicProgress } from "@/server/services/progress.service";
 import { getTopicBySlug, getTopicsBySection } from "@/server/services/topic.service";
+import { getModuleById, getModuleWithSections } from '@/server/services/module.service'
+import { getCourseById } from '@/server/services/course.service'
 import { getProgressStatusLabel } from "@/features/topics/utils/topic-learning";
 import type { TopicLearningPageData } from "@/features/topics/types";
 
@@ -34,9 +35,10 @@ export async function getTopicLearningPageData(topicSlug: string): Promise<Topic
     getQuizByTopic(topic.id),
   ]);
 
-  const learningModule = topic.moduleId ? await prisma.module.findUnique({ where: { id: topic.moduleId } }) : null;
-  const course = learningModule ? await prisma.course.findUnique({ where: { id: learningModule.courseId } }) : null;
-  const allTopicsInSection = learningModule ? await prisma.lesson.findMany({ where: { moduleId: learningModule.id }, orderBy: { displayOrder: 'asc' } }) : [];
+  const learningModule = topic.moduleId ? await getModuleById(topic.moduleId) : null;
+  const course = learningModule ? await getCourseById(learningModule.courseId) : null;
+  const moduleWithSections = learningModule ? await getModuleWithSections(learningModule.id) : null;
+  const allTopicsInSection = moduleWithSections ? moduleWithSections.sections.map((s) => ({ id: s.id, slug: s.slug, title: s.title })) : [];
   const topicIndex = allTopicsInSection.findIndex((item) => item.id === topic.id);
 
   const previousTopic = topicIndex > 0 ? { slug: allTopicsInSection[topicIndex - 1].slug, title: allTopicsInSection[topicIndex - 1].title } : null;

@@ -13,6 +13,11 @@ export class SectionRepository {
     return prisma.lesson.findUnique({ where: { id } })
   }
 
+  async findManyByIds(ids: string[]) {
+    if (!ids.length) return []
+    return prisma.lesson.findMany({ where: { id: { in: ids } } })
+  }
+
   async create(input: Prisma.LessonCreateInput) {
     return prisma.lesson.create({ data: input })
   }

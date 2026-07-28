@@ -1,9 +1,8 @@
 "use server";
 
 import { auth } from "@/auth";
-import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import { getQuizWithQuestions } from "@/server/services/quiz.service";
+import { getQuizAnalytics, getQuizWithQuestions, submitQuizAttempt } from "@/server/services/quiz.service";
 import { getTopicProgress } from "@/server/services/progress.service";
 import { getTopicById } from "@/server/services/topic.service";
 import type { QuizPlayerPageData } from "@/features/quiz/types";
@@ -28,6 +27,7 @@ export async function getQuizPlayerPageData(quizId: string): Promise<QuizPlayerP
 
   const topic = await getTopicById(quiz.topicId);
   const topicProgress = await getTopicProgress(studentId, quiz.lessonId ?? quiz.topicId);
+  const analytics = await getQuizAnalytics(studentId, quizId);
 
   return {
     quiz: {
@@ -55,59 +55,31 @@ export async function getQuizPlayerPageData(quizId: string): Promise<QuizPlayerP
       timeSpentMinutes: topicProgress?.timeSpentMinutes ?? 0,
       score: topicProgress?.score ?? null,
     },
+    analytics,
   };
 }
 
-export async function submitQuizAction(quizId: string, answers: Record<string, string>, startedAt: number) {
+export async function submitQuizAction(
+  quizId: string,
+  answers: Record<string, string>,
+  startedAt: number,
+  options?: {
+    questionStates?: Record<string, { markedForReview?: boolean; bookmarked?: boolean; skipped?: boolean }>;
+    mode?: "practice" | "mock";
+    durationMinutes?: number;
+    timedOut?: boolean;
+  },
+) {
   const studentId = await requireStudentId();
-  const quiz = await getQuizWithQuestions(quizId);
 
-  if (!quiz) {
-    return null;
-  }
-
-  const lessonId = quiz.lessonId ?? quiz.topicId;
-  const questions = (quiz.questions ?? []).map((question) => ({
-    ...question,
-    correctAnswer: question.correctAnswer,
-  }));
-  const correctAnswers = questions.filter((question) => question.correctAnswer === (answers[question.id] ?? "")).length;
-  const totalQuestions = questions.length;
-  const percentage = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
-  const passed = percentage >= quiz.passingScore;
-  const durationMinutes = Math.max(1, Math.ceil((Date.now() - startedAt) / 60000));
-
-  const topicProgress = await prisma.lessonProgress.findFirst({
-    where: {
-      userId: studentId,
-      lessonId,
-    },
+  return submitQuizAttempt({
+    studentId,
+    quizId,
+    answers,
+    startedAt,
+    mode: options?.mode ?? "practice",
+    durationMinutes: options?.durationMinutes ?? 1,
+    timedOut: options?.timedOut ?? false,
+    questionStates: options?.questionStates,
   });
-
-  await prisma.lessonProgress.upsert({
-    where: {
-      userId_lessonId: {
-        userId: studentId,
-        lessonId,
-      },
-    },
-    update: {
-      status: passed ? "COMPLETED" : "IN_PROGRESS",
-      percentComplete: percentage,
-    },
-    create: {
-      userId: studentId,
-      lessonId,
-      status: passed ? "COMPLETED" : "IN_PROGRESS",
-      percentComplete: percentage,
-    },
-  });
-
-  return {
-    score: percentage,
-    correct: correctAnswers,
-    incorrect: totalQuestions - correctAnswers,
-    passed,
-    durationMinutes,
-  };
 }

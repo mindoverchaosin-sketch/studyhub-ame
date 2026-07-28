@@ -1,21 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  variable: "--font-plus-jakarta-sans",
-  subsets: ["latin"],
-});
+const fontClassName = "font-sans";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.aeroprep.com"),
@@ -59,7 +45,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${plusJakartaSans.variable} h-full antialiased`}
+      className={`${fontClassName} h-full antialiased`}
     >
       <body className="flex min-h-screen flex-col bg-white text-slate-950">
         <a

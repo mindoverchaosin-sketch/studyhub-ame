@@ -1,12 +1,16 @@
 import { getServerSession, type NextAuthOptions } from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import bcrypt from 'bcrypt'
-import prisma from '@/lib/prisma'
 import { getUserByEmail } from '@/server/services/user.service'
+import { userRepository } from '@/server/repositories/user.repository'
+import { roleRepository } from '@/server/repositories/role.repository'
+import { permissionService } from '@/server/services/permission.service'
 import type { Session, User } from 'next-auth'
 import type { JWT } from 'next-auth/jwt'
 
-export type UserRole = 'STUDENT' | 'ADMIN' | 'INSTRUCTOR'
+export type UserRole = 'STUDENT' | 'ADMIN' | 'INSTRUCTOR' | 'SUPER_ADMIN' | 'CONTENT_MANAGER' | 'STUDENT_MANAGER' | 'FINANCE_MANAGER' | 'SUPPORT_AGENT' | 'QUESTION_REVIEWER'
+
+const AUTH_ROLE_VALUES = ['STUDENT', 'ADMIN', 'INSTRUCTOR', 'SUPER_ADMIN', 'CONTENT_MANAGER', 'STUDENT_MANAGER', 'FINANCE_MANAGER', 'SUPPORT_AGENT', 'QUESTION_REVIEWER'] as const
 
 export type AuthSession = Session & {
   user: Session['user'] & {
@@ -18,7 +22,7 @@ export type AuthSession = Session & {
 type AuthUser = User & { role?: UserRole | string }
 type AuthSessionUser = Session['user'] & { id?: string; role?: UserRole }
 
-const VALID_ROLES = new Set<UserRole>(['STUDENT', 'ADMIN', 'INSTRUCTOR'])
+const VALID_ROLES = new Set<UserRole>(['STUDENT', 'ADMIN', 'INSTRUCTOR', 'SUPER_ADMIN', 'CONTENT_MANAGER', 'STUDENT_MANAGER', 'FINANCE_MANAGER', 'SUPPORT_AGENT', 'QUESTION_REVIEWER'])
 
 function isValidRole(role: string | undefined): role is UserRole {
   return typeof role === 'string' && VALID_ROLES.has(role as UserRole)
@@ -86,18 +90,7 @@ async function getValidatedSession(): Promise<AuthSession | null> {
     return null
   }
 
-  const dbUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      id: true,
-      isActive: true,
-      role: {
-        select: {
-          name: true,
-        },
-      },
-    },
-  })
+  const dbUser = await userRepository.findById(session.user.id)
 
   if (!dbUser || !dbUser.isActive) {
     return null
@@ -122,6 +115,10 @@ export async function requireAuth(): Promise<AuthSession> {
   return session
 }
 
+export async function requireAuthenticated(): Promise<AuthSession> {
+  return requireAuth()
+}
+
 export async function requireStudent(): Promise<AuthSession> {
   const session = await requireAuth()
 
@@ -135,40 +132,43 @@ export async function requireStudent(): Promise<AuthSession> {
 export async function requireAdmin(): Promise<AuthSession> {
   const session = await requireAuth()
 
-  if (session.user.role !== 'ADMIN') {
-    throw new ForbiddenError('Admin access required.')
+  if (session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN') {
+    return session
+  }
+
+  throw new ForbiddenError('Admin access required.')
+}
+
+export async function requireRole(role: UserRole): Promise<AuthSession> {
+  const session = await requireAuth()
+
+  if (session.user.role !== role) {
+    throw new ForbiddenError(`Role required: ${role}`)
   }
 
   return session
 }
 
+export function requireOwnership(resourceUserId: string, currentUserId: string, allowAdmin = false, currentUserRole?: string): void {
+  if (allowAdmin && currentUserRole === 'ADMIN') {
+    return
+  }
+
+  if (resourceUserId !== currentUserId) {
+    throw new ForbiddenError('Access denied.')
+  }
+}
+
 export async function requirePermission(permission: string): Promise<AuthSession> {
   const session = await requireAuth()
 
-  if (session.user.role === 'ADMIN') {
+  if (permissionService.hasPermission(session.user.role, permission as any)) {
     return session
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      role: {
-        select: {
-          permissions: {
-            select: {
-              permission: {
-                select: {
-                  name: true,
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  })
+  const userWithPerms = await roleRepository.getPermissionsForUser(session.user.id)
 
-  const hasPermission = user?.role?.permissions?.some(({ permission: permissionRecord }) => permissionRecord.name === permission)
+  const hasPermission = userWithPerms?.role?.permissions?.some(({ permission: permissionRecord }) => permissionRecord.name === permission)
 
   if (!hasPermission) {
     throw new ForbiddenError(`Permission required: ${permission}`)
@@ -229,7 +229,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.displayName ?? user.email,
           role: (user.role?.name ?? 'STUDENT') as UserRole,
-        }
+        } as import('next-auth').User
       },
     }),
   ],

@@ -65,5 +65,7 @@ export const adminNavigationMock: NavigationItem[] = [
   { href: "/admin/orders", label: "Orders", icon: "◮" },
   { href: "/admin/students", label: "Students", icon: "◼" },
   { href: "/admin/analytics", label: "Analytics", icon: "◐" },
+  { href: "/admin/billing", label: "Billing", icon: "💳" },
   { href: "/admin/settings", label: "Settings", icon: "⚙" },
+  { href: "/admin/audit-logs", label: "Audit Logs", icon: "🧾" },
 ];

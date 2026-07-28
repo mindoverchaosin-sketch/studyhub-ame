@@ -29,9 +29,9 @@ const quickActions: QuickAction[] = [
     icon: FiFileText,
   },
   {
-    title: "Plan next session",
-    description: "Set your next study block and stay consistent with your routine.",
-    href: "/student/dashboard",
+    title: "Adaptive revision",
+    description: "Surface the topics that need the most attention and keep your plan focused.",
+    href: "/student/adaptive-learning",
     icon: FiClock,
   },
 ];

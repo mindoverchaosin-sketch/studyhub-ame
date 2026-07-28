@@ -1,4 +1,4 @@
-import prisma from '@/lib/prisma'
+import { userRepository } from '@/server/repositories/user.repository'
 
 type UserRole = 'STUDENT' | 'ADMIN' | 'INSTRUCTOR'
 
@@ -8,72 +8,27 @@ type UserRole = 'STUDENT' | 'ADMIN' | 'INSTRUCTOR'
  */
 
 export async function getUserByEmail(email: string) {
-  return prisma.user.findUnique({
-    where: { email },
-    include: {
-      role: true,
-      studentProfile: true,
-      adminProfile: true,
-    },
-  })
+  return userRepository.findByEmail(email)
 }
 
 export async function getUserById(id: string) {
-  return prisma.user.findUnique({
-    where: { id },
-    include: {
-      role: true,
-      studentProfile: true,
-      adminProfile: true,
-    },
-  })
+  return userRepository.findById(id)
 }
 
 export async function getStudentProfile(userId: string) {
-  return prisma.studentProfile.findUnique({
-    where: { userId },
-    include: {
-      user: true,
-    },
-  })
+  return userRepository.findStudentProfile(userId)
 }
 
 export async function getAdminProfile(userId: string) {
-  return prisma.adminProfile.findUnique({
-    where: { userId },
-    include: {
-      user: true,
-    },
-  })
+  return userRepository.findAdminProfile(userId)
 }
 
 export async function getUsersByRole(role: UserRole) {
-  return prisma.user.findMany({
-    where: {
-      role: {
-        is: {
-          name: role,
-        },
-      },
-      isActive: true,
-    },
-    include: {
-      studentProfile: true,
-      adminProfile: true,
-    },
-    orderBy: { createdAt: 'desc' },
-  })
+  return userRepository.findByRole(role)
 }
 
 export async function getUserCountByRole(role: UserRole): Promise<number> {
-  return prisma.user.count({
-    where: {
-      role: {
-        is: {
-          name: role,
-        },
-      },
-      isActive: true,
-    },
-  })
+  if (role === 'STUDENT') return userRepository.countStudents()
+  if (role === 'ADMIN') return userRepository.countAdmins()
+  return 0
 }

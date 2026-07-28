@@ -10,3 +10,4 @@ export { default as ModuleOverviewCard } from "@/components/admin/modules/Module
 export { default as ModuleDeleteDialog } from "@/components/admin/modules/ModuleDeleteDialog";
 export { default as ModulePublishDialog } from "@/components/admin/modules/ModulePublishDialog";
 export { default as BulkActionBar } from "@/components/admin/modules/BulkActionBar";
+export { default as ModuleDirectoryPanel } from "@/components/admin/modules/ModuleDirectoryPanel";

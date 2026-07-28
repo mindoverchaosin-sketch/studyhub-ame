@@ -7,6 +7,8 @@ const navItems = [
   { href: "/student/search", label: "Search", icon: FiSearch, active: false },
   { href: "/modules", label: "Modules", icon: FiBookOpen, active: false },
   { href: "/quiz", label: "Practice", icon: FiCompass, active: false },
+  { href: "/student/adaptive-learning", label: "Adaptive learning", icon: FiCompass, active: false },
+  { href: "/student/dashboard/billing", label: "Billing", icon: FiSettings, active: false },
   { href: "/about", label: "Support", icon: FiMessageSquare, active: false },
   { href: "/admin/dashboard", label: "Settings", icon: FiSettings, active: false },
 ];

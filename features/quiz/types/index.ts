@@ -25,4 +25,10 @@ export type QuizPlayerPageData = {
     timeSpentMinutes: number;
     score: number | null;
   };
+  analytics?: {
+    bestScore: number;
+    averageScore: number;
+    completionPercent: number;
+    recentAttempts: Array<{ id: string; score: number; passed: boolean; attemptedAt: Date; quizTitle: string }>;
+  };
 };

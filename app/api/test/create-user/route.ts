@@ -1,50 +1,62 @@
-import { requireAdmin } from '@/auth'
+import { requirePermission } from '@/auth'
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcrypt'
-import prisma from '@/lib/prisma'
+import { userRepository } from '@/server/repositories/user.repository'
+import { roleRepository } from '@/server/repositories/role.repository'
+import { withRequestLogging } from '@/lib/request-logger'
+import { getRequestId } from '@/lib/request-context'
 
-export async function POST(request: Request) {
-  await requireAdmin()
-  if (process.env.NODE_ENV !== 'development') {
-    return NextResponse.json({ error: 'Not allowed' }, { status: 403 })
-  }
+export async function POST(req: Request) {
+  return withRequestLogging(req, 'createUserTest', async () => {
+    await requirePermission('manageUsers')
+    if (process.env.NODE_ENV !== 'development') {
+      const response = NextResponse.json({ error: 'Not allowed' }, { status: 403 })
+      const requestId = getRequestId()
+      if (requestId) response.headers.set('x-request-id', requestId)
+      return response
+    }
 
-  const body = await request.json()
-  const { email, password, name } = body
+    const body = await req.json()
+    const { email, password, name } = body
 
-  if (!email || !password) {
-    return NextResponse.json({ error: 'email and password required' }, { status: 400 })
-  }
+    if (!email || !password) {
+      const response = NextResponse.json({ error: 'email and password required' }, { status: 400 })
+      const requestId = getRequestId()
+      if (requestId) response.headers.set('x-request-id', requestId)
+      return response
+    }
 
-  const existing = await prisma.user.findUnique({ where: { email } })
-  if (existing) {
-    return NextResponse.json({ ok: true, message: 'already exists' })
-  }
+    const existing = await userRepository.findByEmail(email)
+    if (existing) {
+      const response = NextResponse.json({ ok: true, message: 'already exists' })
+      const requestId = getRequestId()
+      if (requestId) response.headers.set('x-request-id', requestId)
+      return response
+    }
 
-  const passwordHash = await bcrypt.hash(password, 10)
-  const studentRole = await prisma.role.findUnique({ where: { name: 'STUDENT' } })
+    const passwordHash = await bcrypt.hash(password, 10)
+    const studentRole = await roleRepository.findByName('STUDENT')
 
-  if (!studentRole) {
-    return NextResponse.json({ error: 'student role missing' }, { status: 500 })
-  }
+    if (!studentRole) {
+      const response = NextResponse.json({ error: 'student role missing' }, { status: 500 })
+      const requestId = getRequestId()
+      if (requestId) response.headers.set('x-request-id', requestId)
+      return response
+    }
 
-  const user = await prisma.user.create({
-    data: {
+    const user = await userRepository.createUser({
       email,
       passwordHash,
       displayName: name || email,
       roleId: studentRole.id,
       isActive: true,
-    },
-  })
+    } as any)
 
-  await prisma.studentProfile.create({
-    data: {
-      userId: user.id,
-      fullName: name || email,
-      targetExam: 'BOTH',
-    },
-  })
+    await userRepository.createStudentProfile({ userId: user.id, fullName: name || email, targetExam: 'BOTH' } as any)
 
-  return NextResponse.json({ ok: true, email: user.email })
+    const response = NextResponse.json({ ok: true, email: user.email })
+    const requestId = getRequestId()
+    if (requestId) response.headers.set('x-request-id', requestId)
+    return response
+  })
 }

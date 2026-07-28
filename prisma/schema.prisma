@@ -55,6 +55,21 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  PAUSED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  FAILED
+  CANCELLED
+}
+
 enum QuestionType {
   MULTIPLE_CHOICE
   TRUE_FALSE
@@ -110,6 +125,7 @@ model User {
   purchases        Purchase[]
   orders           Order[]
   entitlements     Entitlement[]
+  subscriptions    Subscription[]      @relation("userSubscriptions")
 
   @@index([email])
   @@index([isActive])
@@ -429,6 +445,8 @@ model Question {
   correctOptionIndex Int?
   explanation        String?
   difficulty         Difficulty   @default(BEGINNER)
+  status             Status       @default(DRAFT)
+  metadata           Json?
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
   deletedAt          DateTime?
@@ -437,6 +455,66 @@ model Question {
 
   @@index([questionBankId])
   @@index([difficulty])
+}
+
+model ExamTemplate {
+  id                     String    @id @default(uuid())
+  name                   String
+  description            String?
+  questionBankId         String?
+  moduleId               String?
+  courseId               String?
+  durationMinutes        Int       @default(60)
+  questionCount          Int       @default(20)
+  passingPercentage      Int       @default(60)
+  shuffleQuestions       Boolean   @default(false)
+  shuffleAnswers         Boolean   @default(false)
+  negativeMarkingEnabled Boolean   @default(false)
+  active                 Boolean   @default(false)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([questionBankId])
+  @@index([active])
+}
+
+model ExamAttempt {
+  id          String   @id @default(uuid())
+  studentId   String
+  templateId  String
+  status      Status   @default(DRAFT)
+  startedAt   DateTime?
+  submittedAt DateTime?
+  expiresAt   DateTime?
+  score       Float?
+  percentage  Float?
+  passed      Boolean?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([templateId])
+}
+
+model ExamAttemptQuestion {
+  id           String @id @default(uuid())
+  attemptId    String
+  questionId   String
+  displayOrder Int
+
+  @@index([attemptId])
+  @@index([questionId])
+}
+
+model ExamAttemptAnswer {
+  id                String @id @default(uuid())
+  attemptQuestionId String
+  selectedOption    Int?
+  bookmarked        Boolean @default(false)
+  markedForReview   Boolean @default(false)
+  answeredAt        DateTime?
+
+  @@index([attemptQuestionId])
 }
 
 model LearningObjective {
@@ -713,7 +791,8 @@ model SubscriptionPlan {
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
-  productPrice ProductPrice @relation(fields: [productPriceId], references: [id], onDelete: Restrict)
+  productPrice   ProductPrice   @relation(fields: [productPriceId], references: [id], onDelete: Restrict)
+  subscriptions  Subscription[]
 
   @@index([slug])
 }
@@ -806,3 +885,48 @@ model AccessPolicy {
   @@index([resourceId])
   @@index([policyType])
 }
+
+model Subscription {
+  id                 String               @id @default(uuid())
+  userId             String
+  subscriptionPlanId String
+  status             SubscriptionStatus   @default(ACTIVE)
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  renewalAttempts    Int                  @default(0)
+  cancelledAt        DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  deletedAt          DateTime?
+
+  user               User                 @relation("userSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
+  subscriptionPlan   SubscriptionPlan     @relation(fields: [subscriptionPlanId], references: [id], onDelete: Restrict)
+  invoices           Invoice[]
+
+  @@index([userId])
+  @@index([subscriptionPlanId])
+  @@index([status])
+}
+
+model Invoice {
+  id              String        @id @default(uuid())
+  subscriptionId  String
+  invoiceNumber   String        @unique
+  status          InvoiceStatus @default(DRAFT)
+  dueDate         DateTime?
+  paidAt          DateTime?
+  amount          Decimal       @db.Decimal(10, 2)
+  currency        String        @default("INR")
+  description     String?
+  metadata        Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@index([status])
+  @@index([invoiceNumber])
+}
+

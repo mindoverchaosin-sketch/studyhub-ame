@@ -34,3 +34,19 @@ export function mockResourceRepository(stubs: Partial<any> = {}) {
 
   return impl
 }
+
+export function mockProgressRepository(stubs: Partial<any> = {}) {
+  const defaultImpl = {
+    createQuizAttempt: vi.fn().mockResolvedValue(null),
+    findQuizAttemptsByUser: vi.fn().mockResolvedValue([]),
+    upsertLessonProgress: vi.fn().mockResolvedValue(null),
+  }
+
+  const impl = { ...defaultImpl, ...stubs }
+
+  vi.doMock('@/server/repositories/progress.repository', () => ({
+    progressRepository: impl,
+  }))
+
+  return impl
+}

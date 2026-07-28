@@ -1,6 +1,7 @@
 import { topicRepository } from '@/server/repositories/topic.repository'
 import type { TopicDTO } from '@/server/application/dto/topic.dto'
 import { mapTopicEntityToDTO } from '@/server/application/mappers/topic.mapper'
+import { NotFoundError } from '@/auth'
 
 /**
  * TopicService
@@ -28,7 +29,7 @@ export async function getTopicCount(): Promise<number> {
 export async function getTopicWithResources(id: string): Promise<TopicDTO> {
   const topic = await topicRepository.findById(id)
   if (!topic) {
-    throw new Error(`Topic not found: ${id}`)
+    throw new NotFoundError(`Topic not found: ${id}`)
   }
   return mapTopicEntityToDTO(topic)
 }
@@ -36,7 +37,7 @@ export async function getTopicWithResources(id: string): Promise<TopicDTO> {
 export async function getTopicWithQuestions(id: string): Promise<TopicDTO> {
   const topic = await topicRepository.findById(id)
   if (!topic) {
-    throw new Error(`Topic not found: ${id}`)
+    throw new NotFoundError(`Topic not found: ${id}`)
   }
   return mapTopicEntityToDTO(topic)
 }

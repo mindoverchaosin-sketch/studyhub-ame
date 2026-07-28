@@ -1,4 +1,5 @@
-import prisma from '@/lib/prisma'
+import { progressRepository } from '@/server/repositories/progress.repository'
+import { invalidateServiceCache } from '@/server/services/cache'
 
 type ProgressRow = {
   id: string
@@ -19,10 +20,7 @@ type ProgressRow = {
  */
 
 export async function getStudentProgress(studentId: string): Promise<ProgressRow[]> {
-  const rows = await prisma.progress.findMany({
-    where: { userId: studentId },
-    orderBy: { updatedAt: 'desc' },
-  })
+  const rows = await progressRepository.findProgressRowsByUser(studentId)
 
   return rows.map((row) => ({
     id: row.id,
@@ -39,12 +37,7 @@ export async function getStudentProgress(studentId: string): Promise<ProgressRow
 }
 
 export async function getTopicProgress(studentId: string, topicId: string): Promise<ProgressRow | null> {
-  const progress = await prisma.lessonProgress.findFirst({
-    where: {
-      userId: studentId,
-      lessonId: topicId,
-    },
-  })
+  const progress = await progressRepository.findTopicProgress(studentId, topicId)
 
   if (!progress) {
     return null
@@ -65,13 +58,7 @@ export async function getTopicProgress(studentId: string, topicId: string): Prom
 }
 
 export async function getStudentProgressByCourse(studentId: string, courseId: string) {
-  const rows = await prisma.progress.findMany({
-    where: {
-      userId: studentId,
-      courseId,
-    },
-    orderBy: { updatedAt: 'desc' },
-  })
+  const rows = await progressRepository.findStudentProgressByCourse(studentId, courseId)
 
   return rows.map((row) => ({
     ...row,
@@ -82,13 +69,7 @@ export async function getStudentProgressByCourse(studentId: string, courseId: st
 }
 
 export async function getStudentCompletedTopics(studentId: string): Promise<ProgressRow[]> {
-  const rows = await prisma.progress.findMany({
-    where: {
-      userId: studentId,
-      status: 'COMPLETED',
-    },
-    orderBy: { createdAt: 'desc' },
-  })
+  const rows = await progressRepository.findCompletedTopics(studentId)
 
   return rows.map((row) => ({
     id: row.id,
@@ -106,8 +87,19 @@ export async function getStudentCompletedTopics(studentId: string): Promise<Prog
 
 export async function getQuizAttemptCount(): Promise<number> {
   try {
-    return await prisma.quizAttempt.count()
+    return await progressRepository.countQuizAttempts()
   } catch {
     return 0
   }
+}
+
+export async function upsertLessonProgress(userId: string, lessonId: string, data: any) {
+  const result = await progressRepository.upsertLessonProgress(userId, lessonId, data)
+  invalidateServiceCache('dashboard-summary', userId)
+  invalidateServiceCache('study-planner', userId)
+  invalidateServiceCache('progress-insights', userId)
+  invalidateServiceCache('achievement-summary', userId)
+  invalidateServiceCache('continue-learning', userId)
+  invalidateServiceCache('goal-progress', userId)
+  return result
 }
