@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postinstall": "prisma generate",
     "test": "vitest",
     "test:ci": "vitest run",
     "start": "next start",
