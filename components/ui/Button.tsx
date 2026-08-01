@@ -6,6 +6,7 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "ghost";
   size?: "sm" | "md" | "lg";
   fullWidth?: boolean;
+  asChild?: boolean;
 };
 
 const baseClasses =
@@ -30,6 +31,7 @@ export default function Button({
   fullWidth = false,
   className = "",
   style,
+  asChild = false,
   ...props
 }: ButtonProps) {
   const variantStyle =
@@ -52,6 +54,14 @@ export default function Button({
             transitionDuration: transitions.slow,
             ...style,
           };
+
+  if (asChild) {
+    return (
+      <span className={[baseClasses, variantClasses[variant], sizeClasses[size], fullWidth ? "w-full" : "", className].filter(Boolean).join(" ")} style={variantStyle}>
+        {children}
+      </span>
+    );
+  }
 
   return (
     <button

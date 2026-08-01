@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -12,8 +13,8 @@ const plans: Array<{
   features: string[];
   featured?: boolean;
 }> = [
-  { name: "Starter", price: "$19", description: "A focused starter plan for students building their routine.", features: ["Core modules", "Revision notes", "Practice quizzes"] },
-  { name: "Pro", price: "$39", description: "Everything serious learners need for deeper exam prep.", features: ["All modules", "Mock exams", "Progress insights"], featured: true },
+  { name: "Foundation", price: "₹999", description: "A focused starting point for students building their DGCA or EASA routine.", features: ["Core modules", "Revision notes", "Practice quizzes"] },
+  { name: "Pro", price: "₹2,499", description: "Everything serious learners need for deeper exam prep and consistent progress.", features: ["All modules", "Mock exams", "Progress insights"], featured: true },
 ];
 
 export default function PricingSection() {
@@ -21,12 +22,12 @@ export default function PricingSection() {
     <Section>
       <Container>
         <div className="max-w-2xl">
-          <Badge variant="accent">Pricing preview</Badge>
+          <Badge variant="accent">Pricing</Badge>
           <Heading as="h2" size="md" className="mt-4">
-            Pick the plan that fits your prep rhythm.
+            Choose the plan that matches your exam timeline.
           </Heading>
         </div>
-        <div className="mt-10 grid gap-6 lg:grid-cols-2">
+        <div className="mt-12 grid gap-6 lg:grid-cols-2">
           {plans.map((plan) => (
             <Card key={plan.name} variant={plan.featured ? "elevated" : "default"} className={plan.featured ? "border-blue-200 bg-gradient-to-br from-blue-50/80 to-white shadow-[0_24px_80px_-34px_rgba(37,99,235,0.35)]" : "shadow-[0_16px_60px_-34px_rgba(15,23,42,0.2)]"}>
               <div className="flex items-center justify-between gap-4">
@@ -48,8 +49,8 @@ export default function PricingSection() {
                   </li>
                 ))}
               </ul>
-              <Button variant={plan.featured ? "primary" : "secondary"} className="mt-6" fullWidth>
-                Choose {plan.name}
+              <Button asChild variant={plan.featured ? "primary" : "secondary"} className="mt-6" fullWidth>
+                <Link href="/pricing">Choose {plan.name}</Link>
               </Button>
             </Card>
           ))}

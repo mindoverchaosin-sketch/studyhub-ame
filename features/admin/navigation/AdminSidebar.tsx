@@ -9,8 +9,9 @@ const navItems = [
   { href: "/admin/topics", label: "Topics", icon: <FiBookOpen className="h-5 w-5" /> },
   { href: "/admin/resources", label: "Resources", icon: <FiFileText className="h-5 w-5" /> },
   { href: "/admin/questions", label: "Questions", icon: <FiHelpCircle className="h-5 w-5" /> },
-  { href: "/admin/students", label: "Students", icon: <FiUsers className="h-5 w-5" />, disabled: true },
-  { href: "/admin/analytics", label: "Analytics", icon: <FiBarChart2 className="h-5 w-5" />, disabled: true },
+  { href: "/admin/students", label: "Students", icon: <FiUsers className="h-5 w-5" /> },
+  { href: "/admin/users", label: "Users", icon: <FiUsers className="h-5 w-5" /> },
+  { href: "/admin/analytics", label: "Analytics", icon: <FiBarChart2 className="h-5 w-5" /> },
   { href: "/admin/settings", label: "Settings", icon: <FiSettings className="h-5 w-5" />, disabled: true },
 ]
 

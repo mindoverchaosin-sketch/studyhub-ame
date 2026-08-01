@@ -1,38 +1,55 @@
-import React from 'react'
-import { listExamTemplates, generateAttempt } from '@/server/actions/exam.actions'
+import { listExamTemplates } from '@/server/actions/exam.actions'
+import type { MockTestTemplate } from '@/lib/mock/exams'
 import Link from 'next/link'
 
 export default async function StudentMockExamsPage() {
   const templates = await listExamTemplates({ active: true, pageSize: 50 })
+  // fallback to mock templates when backend has no active templates
+  const { mockExamTemplates } = await import('@/lib/mock/exams')
+  const items: MockTestTemplate[] = templates.length > 0 ? templates : mockExamTemplates
 
   return (
     <div className="space-y-4 p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Mock Exams</h1>
-          <p className="text-sm text-slate-600">Start new attempts and review your exam history for smarter preparation.</p>
+          <p className="text-sm text-slate-600">Start a timed mock, track history, and analyze your strengths.</p>
         </div>
         <Link href="/student/mock-exams/history" className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">View history</Link>
       </div>
 
-      <div className="mt-4">
-        {templates.length === 0 ? (
-          <p>No active exams available</p>
-        ) : (
-          <ul className="space-y-2">
-            {templates.map((t: any) => (
-              <li key={t.id} className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {items.map((t: MockTestTemplate) => (
+          <li key={t.id} className="list-none">
+            <div className="h-full rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="font-medium">{t.name}</div>
-                  <div className="text-sm text-slate-500">{t.description}</div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">{t.title}</p>
+                  <p className="mt-3 text-sm leading-7 text-slate-600">{t.description}</p>
                 </div>
-                <div>
-                  <Link href="#" className="rounded bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700">Start</Link>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">{t.difficulty}</span>
+              </div>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                  <p className="font-semibold text-slate-900">Questions</p>
+                  <p className="mt-2">{t.questionCount}</p>
                 </div>
-              </li>
-            ))}
-          </ul>
-        )}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                  <p className="font-semibold text-slate-900">Duration</p>
+                  <p className="mt-2">{t.durationMinutes} min</p>
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+                <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">Pass {t.passingScore}%</span>
+                <Link href={templates.length > 0 ? `/student/mock-exams/${t.id}/start` : `/student/mock-exams/demo/${t.id}`} className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">
+                  {templates.length > 0 ? 'Start exam' : 'Start demo'}
+                </Link>
+              </div>
+            </div>
+          </li>
+        ))}
       </div>
     </div>
   )

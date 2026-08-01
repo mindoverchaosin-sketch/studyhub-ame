@@ -5,6 +5,7 @@ import { getUserByEmail } from '@/server/services/user.service'
 import { userRepository } from '@/server/repositories/user.repository'
 import { roleRepository } from '@/server/repositories/role.repository'
 import { permissionService } from '@/server/services/permission.service'
+import { auditLogService } from '@/server/services/audit-log.service'
 import type { Session, User } from 'next-auth'
 import type { JWT } from 'next-auth/jwt'
 
@@ -103,6 +104,10 @@ async function getValidatedSession(): Promise<AuthSession | null> {
   }
 
   return session as AuthSession
+}
+
+export async function getCurrentUser(): Promise<AuthSession | null> {
+  return getValidatedSession()
 }
 
 export async function requireAuth(): Promise<AuthSession> {
@@ -262,6 +267,30 @@ export const authOptions: NextAuthOptions = {
       }
 
       return session
+    },
+  },
+
+  events: {
+    async signIn(message) {
+      try {
+        const actorId = (message.user as { id?: string } | undefined)?.id ?? null
+        if (actorId) {
+          await auditLogService.recordEvent({ actorId, actorRole: (message.user as { role?: string } | undefined)?.role ?? null, action: 'auth.login', entityType: 'USER', entityId: actorId, metadata: { source: 'next-auth' } })
+        }
+      } catch {
+        // Swallow audit failures so auth remains available.
+      }
+    },
+
+    async signOut(message) {
+      try {
+        const actorId = ((message as { token?: { sub?: string } }).token?.sub) ?? ((message as { session?: { user?: { id?: string } } }).session?.user?.id) ?? null
+        if (actorId) {
+          await auditLogService.recordEvent({ actorId, action: 'auth.logout', entityType: 'USER', entityId: actorId, metadata: { source: 'next-auth' } })
+        }
+      } catch {
+        // Swallow audit failures so sign-out remains available.
+      }
     },
   },
 }

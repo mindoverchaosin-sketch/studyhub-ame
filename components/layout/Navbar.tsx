@@ -9,10 +9,10 @@ import { FaPlane } from "react-icons/fa6";
 
 const navigation = [
   { href: "/", label: "Home" },
-  { href: "/dgca", label: "DGCA" },
-  { href: "/easa", label: "EASA" },
-  { href: "/mock-tests", label: "Mock Tests" },
+  { href: "/modules", label: "Courses" },
+  { href: "/quiz", label: "Mock Tests" },
   { href: "/pricing", label: "Pricing" },
+  { href: "/about", label: "About" },
 ] as const;
 
 type NavbarProps = HTMLAttributes<HTMLElement> & {
@@ -23,16 +23,18 @@ export default function Navbar({ compact = false, className = "", ...props }: Na
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
 
+  const isActive = (href: string) => pathname === href || (href === "/" ? pathname === "/" : pathname.startsWith(href));
+
   const linkClasses = (href: string) =>
     [
       "rounded-full px-3 py-2 text-sm font-medium transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
-      pathname === href ? "text-blue-600" : "text-slate-700 hover:text-blue-600",
+      isActive(href) ? "bg-blue-600/10 text-blue-700 shadow-sm" : "text-slate-700 hover:bg-slate-100 hover:text-blue-700",
     ].join(" ");
 
   return (
     <header className={["sticky top-0 z-50 border-b border-white/70 bg-white/75 shadow-[0_1px_0_rgba(15,23,42,0.05)] backdrop-blur-2xl", compact ? "py-2" : "py-3", className].filter(Boolean).join(" ")} {...props}>
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" aria-label="AeroPrep home" className="flex items-center gap-2 text-lg font-semibold text-blue-600 transition duration-200 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
+        <Link href="/" aria-label="AeroPrep home" className="flex items-center gap-2 text-lg font-semibold text-slate-950 transition duration-200 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-600/20">
             <FaPlane className="h-5 w-5" />
           </span>
@@ -48,10 +50,10 @@ export default function Navbar({ compact = false, className = "", ...props }: Na
         </nav>
 
         <div className="flex items-center gap-3">
-          <Link href="/login" className="hidden rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition duration-200 hover:-translate-y-0.5 hover:border-slate-400 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:inline-flex">
+          <Link href="/auth/login" className="hidden rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition duration-200 hover:-translate-y-0.5 hover:border-slate-400 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:inline-flex">
             Login
           </Link>
-          <Link href="/register" className="hidden rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition duration-200 hover:-translate-y-0.5 hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:inline-flex">
+          <Link href="/auth/register" className="hidden rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition duration-200 hover:-translate-y-0.5 hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:inline-flex">
             Get Started
           </Link>
 
@@ -70,10 +72,10 @@ export default function Navbar({ compact = false, className = "", ...props }: Na
               </Link>
             ))}
             <div className="mt-3 flex flex-col gap-2 border-t border-slate-200 pt-3">
-              <Link href="/login" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 text-center transition hover:border-slate-400 hover:bg-slate-50" onClick={() => setIsMenuOpen(false)}>
+              <Link href="/auth/login" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 text-center transition hover:border-slate-400 hover:bg-slate-50" onClick={() => setIsMenuOpen(false)}>
                 Login
               </Link>
-              <Link href="/register" className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white text-center transition hover:bg-blue-700" onClick={() => setIsMenuOpen(false)}>
+              <Link href="/auth/register" className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white text-center transition hover:bg-blue-700" onClick={() => setIsMenuOpen(false)}>
                 Get Started
               </Link>
             </div>

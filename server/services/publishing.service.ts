@@ -1,8 +1,9 @@
+import { lessonRepository } from '@/server/repositories/lesson.repository'
 import { moduleRepository } from '@/server/repositories/module.repository'
 import { resourceRepository } from '@/server/repositories/resource.repository'
 import { questionRepository } from '@/server/repositories/question.repository'
 
-export type PublishingTargetType = 'MODULE' | 'STUDY_MATERIAL' | 'QUESTION'
+export type PublishingTargetType = 'MODULE' | 'LESSON' | 'STUDY_MATERIAL' | 'QUESTION'
 export type PublishingWorkflowState = 'DRAFT' | 'IN_REVIEW' | 'PUBLISHED' | 'ARCHIVED'
 
 export type PublishingResult = {
@@ -108,6 +109,8 @@ export class PublishingService {
     switch (targetType) {
       case 'MODULE':
         return moduleRepository.findById(targetId)
+      case 'LESSON':
+        return lessonRepository.findById(targetId)
       case 'STUDY_MATERIAL':
         return resourceRepository.findById(targetId)
       case 'QUESTION':
@@ -121,6 +124,8 @@ export class PublishingService {
     switch (targetType) {
       case 'MODULE':
         return moduleRepository.update(targetId, data as any)
+      case 'LESSON':
+        return lessonRepository.update(targetId, data as any)
       case 'STUDY_MATERIAL':
         return resourceRepository.update(targetId, data as any)
       case 'QUESTION':

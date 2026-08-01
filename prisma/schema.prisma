@@ -10,6 +10,8 @@ enum RoleName {
   STUDENT
   ADMIN
   INSTRUCTOR
+  CONTENT_EDITOR
+  SUPER_ADMIN
 }
 
 enum Difficulty {
@@ -126,6 +128,7 @@ model User {
   orders           Order[]
   entitlements     Entitlement[]
   subscriptions    Subscription[]      @relation("userSubscriptions")
+  aiConversations  AIConversation[]
 
   @@index([email])
   @@index([isActive])
@@ -230,6 +233,38 @@ model Notification {
 
   @@index([userId])
   @@index([isRead])
+}
+
+model AIConversation {
+  id         String      @id @default(uuid())
+  userId     String?
+  title      String
+  metadata   Json?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  deletedAt  DateTime?
+
+  user     User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  messages AIMessage[]
+
+  @@index([userId])
+  @@index([title])
+}
+
+model AIMessage {
+  id             String      @id @default(uuid())
+  conversationId String
+  role           String
+  content        String
+  finishReason   String?
+  usage          Json?
+  model          String?
+  metadata       Json?
+  createdAt      DateTime    @default(now())
+
+  conversation AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
 }
 
 model AuditLog {
@@ -348,6 +383,7 @@ model Lesson {
   displayOrder    Int       @default(0)
   status          Status    @default(DRAFT)
   publishedAt     DateTime?
+  metadata        Json?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime?

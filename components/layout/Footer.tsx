@@ -7,15 +7,15 @@ const columns = [
     links: [
       { href: "/about", label: "About" },
       { href: "/pricing", label: "Pricing" },
-      { href: "/contact", label: "Contact" },
+      { href: "/auth/register", label: "Get Started" },
     ],
   },
   {
     title: "Resources",
     links: [
-      { href: "/dgca", label: "DGCA Guides" },
-      { href: "/easa", label: "EASA Guides" },
-      { href: "/mock-tests", label: "Mock Tests" },
+      { href: "/modules", label: "Courses" },
+      { href: "/quiz", label: "Mock Tests" },
+      { href: "/about", label: "Why AeroPrep" },
     ],
   },
   {
@@ -31,7 +31,7 @@ const columns = [
     links: [
       { href: "mailto:support@aeroprep.com", label: "support@aeroprep.com" },
       { href: "tel:+15551234567", label: "+1 (555) 123-4567" },
-      { href: "/contact", label: "Book a demo" },
+      { href: "/auth/register", label: "Book a demo" },
     ],
   },
 ] as const;

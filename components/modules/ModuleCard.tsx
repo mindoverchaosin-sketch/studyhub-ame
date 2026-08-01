@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FiBookOpen, FiClock, FiFileText, FiPlayCircle } from "react-icons/fi";
+import { FiBookOpen, FiFileText, FiPlayCircle } from "react-icons/fi";
 import type { Module } from "@/types/module";
 
 type ModuleCardProps = {

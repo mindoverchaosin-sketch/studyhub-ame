@@ -1,0 +1,214 @@
+import { createAIProvider } from '@/services/ai/AIProviderFactory';
+import { promptBuilder } from '@/services/ai/PromptBuilder';
+import { aiContextBuilderService } from './context-builder.service';
+import { conversationService } from './conversation.service';
+import { recommendationService } from './recommendation.service';
+import { analyticsService } from './analytics.service';
+import { placeholderQuestionBankRepository } from './question-bank.service';
+import { retrievalService } from './retrieval.service';
+import { AIServiceError, ValidationError } from './ai-error';
+import type {
+  AIRequestPayload,
+  AIResponseDTO,
+  AIExplainResponseDTO,
+  AIRecommendationDTO,
+} from './ai-api.types';
+import type { AIStreamChunk, AIUsage, AIRequestContext } from '@/types/ai';
+
+export class AIService {
+  constructor(private readonly provider = createAIProvider()) {}
+
+  async handleChat(payload: AIRequestPayload, userId: string): Promise<AIResponseDTO> {
+    if (!payload.prompt?.trim()) {
+      throw new ValidationError('A prompt is required.');
+    }
+
+    const conversation = await (payload.conversationId
+      ? conversationService.getConversation(payload.conversationId)
+      : conversationService.createConversation('Tutor session', userId));
+
+    if (!conversation) {
+      throw new AIServiceError('Conversation not found.', 404, 'CONVERSATION_NOT_FOUND');
+    }
+
+    const contextSnapshot = aiContextBuilderService.buildContext(payload.context as Record<string, unknown>);
+    const retrievalContext = await retrievalService.buildRetrievalContext(payload.context as Record<string, unknown>);
+    const prompt = promptBuilder.buildPrompt(payload.prompt, contextSnapshot, retrievalContext, {
+      includeContext: true,
+      includeRetrieval: true,
+      includeHistory: false,
+      maxChunks: 3,
+    });
+
+    const requestContext: AIRequestContext = {
+      prompt,
+      conversation,
+      contextSnapshot,
+      retrievalContext,
+    };
+    const message = await this.provider.generateResponse(requestContext);
+
+    conversationService.addMessage(conversation.id, message);
+
+    return {
+      success: true,
+      message: message.content,
+      conversationId: conversation.id,
+      provider: process.env.AI_PROVIDER?.toLowerCase() ?? 'mock',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  async *streamChat(payload: AIRequestPayload, userId: string, options?: { timeoutMs?: number; attempt?: number; signal?: AbortSignal }): AsyncGenerator<AIStreamChunk> {
+    if (!payload.prompt?.trim()) {
+      throw new AIServiceError('A prompt is required.');
+    }
+
+    const conversation = await (payload.conversationId
+      ? conversationService.getConversation(payload.conversationId)
+      : conversationService.createConversation('Tutor session', userId));
+
+    if (!conversation) {
+      throw new AIServiceError('Conversation not found.', 404, 'CONVERSATION_NOT_FOUND');
+    }
+
+    const contextSnapshot = aiContextBuilderService.buildContext(payload.context as Record<string, unknown>);
+    const retrievalContext = await retrievalService.buildRetrievalContext(payload.context as Record<string, unknown>);
+    const prompt = promptBuilder.buildPrompt(payload.prompt, contextSnapshot, retrievalContext, {
+      includeContext: true,
+      includeRetrieval: true,
+      includeHistory: false,
+      maxChunks: 3,
+    });
+
+    const requestContext: AIRequestContext = {
+      prompt,
+      conversation,
+      contextSnapshot,
+      retrievalContext,
+    };
+
+    if (typeof this.provider.streamResponse !== 'function') {
+      const response = await this.provider.generateResponse(requestContext);
+      conversationService.addMessage(conversation.id, response);
+      yield { type: 'delta', content: response.content, conversationId: conversation.id };
+      yield { type: 'done', finishReason: response.finishReason, usage: response.usage, model: response.model, metadata: response.metadata, conversationId: conversation.id };
+      return;
+    }
+
+    let assistantMessage: { id: string; role: 'assistant'; content: string; createdAt: string; model: string; metadata: Record<string, unknown>; finishReason?: string; usage?: AIUsage } = {
+      id: `msg-${Date.now()}`,
+      role: 'assistant',
+      content: '',
+      createdAt: new Date().toISOString(),
+      model: process.env.AI_PROVIDER?.toLowerCase() ?? 'mock',
+      metadata: { provider: process.env.AI_PROVIDER?.toLowerCase() ?? 'mock' },
+    };
+
+    try {
+      for await (const chunk of this.provider.streamResponse(requestContext, options)) {
+        const enrichedChunk = { ...chunk, conversationId: conversation.id };
+        if (chunk.type === 'delta' && chunk.content) {
+          assistantMessage.content += chunk.content;
+          yield enrichedChunk;
+        } else if (chunk.type === 'done') {
+          assistantMessage.finishReason = chunk.finishReason;
+          assistantMessage.usage = chunk.usage;
+          assistantMessage.model = chunk.model ?? assistantMessage.model;
+          assistantMessage.metadata = { ...assistantMessage.metadata, ...chunk.metadata };
+          conversationService.addMessage(conversation.id, assistantMessage);
+          yield enrichedChunk;
+          return;
+        } else if (chunk.type === 'error') {
+          yield enrichedChunk;
+          return;
+        }
+      }
+      conversationService.addMessage(conversation.id, assistantMessage);
+      yield { type: 'done', finishReason: assistantMessage.finishReason ?? 'stop', usage: assistantMessage.usage, model: assistantMessage.model, metadata: assistantMessage.metadata, conversationId: conversation.id };
+    } catch (error) {
+      yield { type: 'error', error: String(error), conversationId: conversation.id };
+    }
+  }
+
+  async handleExplain(questionId: string): Promise<AIExplainResponseDTO> {
+    const question = await placeholderQuestionBankRepository.getQuestion(questionId);
+    if (!question) {
+      throw new AIServiceError('Question not found.', 404, 'QUESTION_NOT_FOUND');
+    }
+
+    const explanation = await this.provider.generateExplanation(question);
+
+    return {
+      success: true,
+      explanation,
+      provider: 'mock',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  async handleRecommendations(userId: string): Promise<AIRecommendationDTO> {
+    const recommendations = recommendationService.buildRecommendations({
+      mockTestHistory: [{ score: 62 }, { score: 74 }],
+      lessonProgress: [{ completed: true }, { completed: false }, { completed: false }],
+      questionActivity: [{ recommended: true }],
+      weakTopics: ['Corrosion'],
+      studyConsistency: 3,
+    });
+
+    return {
+      success: true,
+      recommendations,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  async handleSummarize(prompt: string): Promise<AIResponseDTO> {
+    if (!prompt?.trim()) {
+      throw new ValidationError('A prompt is required.');
+    }
+
+    const summaryConversation = await conversationService.createConversation('Summary', undefined);
+    const message = await this.provider.generateResponse({
+      prompt: `Summarize: ${prompt}`,
+      conversation: summaryConversation,
+    });
+
+    conversationService.addMessage(summaryConversation.id, message);
+
+    return {
+      success: true,
+      message: message.content,
+      provider: 'mock',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  async handleGenerateQuestions(topic: string): Promise<AIResponseDTO> {
+    if (!topic?.trim()) {
+      throw new ValidationError('A topic is required.');
+    }
+
+    const generatedConversation = await conversationService.createConversation('Generated questions', undefined);
+    const message = await this.provider.generateResponse({
+      prompt: `Generate questions for ${topic}`,
+      conversation: generatedConversation,
+    });
+
+    conversationService.addMessage(generatedConversation.id, message);
+
+    return {
+      success: true,
+      message: message.content,
+      provider: 'mock',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  async getAnalytics(): Promise<ReturnType<AnalyticsService['buildSnapshot']>> {
+    return analyticsService.buildSnapshot();
+  }
+}
+
+import { AnalyticsService } from './analytics.service';
+export const aiService = new AIService();

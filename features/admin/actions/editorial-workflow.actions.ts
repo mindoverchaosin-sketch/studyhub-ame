@@ -1,21 +1,34 @@
 "use server"
 
 import {
+  addLessonReviewComment,
   addReviewComment,
-  assignReviewer,
+  approveLessonReview,
   archiveQuestion,
+  assignLessonReviewer,
+  assignReviewer,
   bulkAssignReviewerToQuestions,
   bulkApproveWorkflowQuestions,
+  bulkUpdateLessonReviewQueue,
   bulkUpdateReviewQueue,
   compareVersions,
+  createLessonVersionSnapshot,
   createVersionSnapshot,
   EditorialStatus,
   getEditorialWorkflow,
+  getLessonEditorialWorkflow,
+  publishLesson,
   publishQuestion,
+  rejectLessonReview,
   restoreArchivedQuestion,
+  restoreLessonVersion,
   restoreVersion,
+  sendLessonBackToDraft,
+  submitLessonForReview,
+  unpublishLesson,
   unpublishQuestion,
   updateEditorialStatus,
+  updateLessonEditorialStatus,
 } from '@/server/services/editorial-workflow.service'
 import {
   bulkUpdateQuestionStatus,
@@ -37,6 +50,11 @@ export async function getQuestionByIdAction(questionId: string) {
 export async function getEditorialWorkflowAction(questionId: string) {
   await requirePermission('manageQuestions')
   return getEditorialWorkflow(questionId)
+}
+
+export async function getLessonEditorialWorkflowAction(lessonId: string) {
+  await requirePermission('manageModules')
+  return getLessonEditorialWorkflow(lessonId)
 }
 
 export async function updateEditorialStatusAction(questionId: string, status: EditorialStatus, actor = 'Admin', comment?: string) {
@@ -86,6 +104,11 @@ export async function createVersionSnapshotAction(questionId: string, summary: s
   return createVersionSnapshot(questionId, summary, author)
 }
 
+export async function createLessonVersionSnapshotAction(lessonId: string, summary: string, author = 'Editor') {
+  await requirePermission('manageModules')
+  return createLessonVersionSnapshot(lessonId, summary, author)
+}
+
 export async function compareVersionsAction(questionId: string, fromVersion: number, toVersion: number) {
   await requirePermission('manageQuestions')
   return compareVersions(questionId, fromVersion, toVersion)
@@ -94,6 +117,11 @@ export async function compareVersionsAction(questionId: string, fromVersion: num
 export async function restoreVersionAction(questionId: string, versionId: string) {
   await requirePermission('manageQuestions')
   return restoreVersion(questionId, versionId)
+}
+
+export async function restoreLessonVersionAction(lessonId: string, versionId: string) {
+  await requirePermission('manageModules')
+  return restoreLessonVersion(lessonId, versionId)
 }
 
 export async function publishQuestionAction(questionId: string, actor = 'Admin', scheduledFor?: string) {
@@ -114,6 +142,56 @@ export async function archiveQuestionAction(questionId: string, actor = 'Admin')
 export async function restoreArchivedQuestionAction(questionId: string, actor = 'Admin') {
   await requirePermission('manageQuestions')
   return restoreArchivedQuestion(questionId, actor)
+}
+
+export async function updateLessonEditorialStatusAction(lessonId: string, status: EditorialStatus, actor = 'Admin', comment?: string) {
+  await requirePermission('manageModules')
+  return updateLessonEditorialStatus(lessonId, status, actor, comment)
+}
+
+export async function submitLessonForReviewAction(lessonId: string, actor = 'Admin', comment?: string) {
+  await requirePermission('manageModules')
+  return submitLessonForReview(lessonId, actor, comment)
+}
+
+export async function approveLessonReviewAction(lessonId: string, actor = 'Admin') {
+  await requirePermission('manageModules')
+  return approveLessonReview(lessonId, actor)
+}
+
+export async function rejectLessonReviewAction(lessonId: string, reason: string, actor = 'Admin') {
+  await requirePermission('manageModules')
+  return rejectLessonReview(lessonId, reason, actor)
+}
+
+export async function sendLessonBackToDraftAction(lessonId: string, actor = 'Admin', comment?: string) {
+  await requirePermission('manageModules')
+  return sendLessonBackToDraft(lessonId, actor, comment)
+}
+
+export async function publishLessonAction(lessonId: string, actor = 'Admin') {
+  await requirePermission('manageModules')
+  return publishLesson(lessonId, actor)
+}
+
+export async function unpublishLessonAction(lessonId: string, actor = 'Admin') {
+  await requirePermission('manageModules')
+  return unpublishLesson(lessonId, actor)
+}
+
+export async function addLessonReviewCommentAction(lessonId: string, reviewId: string, comment: string, actor = 'Reviewer') {
+  await requirePermission('manageModules')
+  return addLessonReviewComment(lessonId, reviewId, comment, actor)
+}
+
+export async function assignLessonReviewerAction(lessonId: string, reviewId: string, reviewer: string) {
+  await requirePermission('manageModules')
+  return assignLessonReviewer(lessonId, reviewId, reviewer)
+}
+
+export async function bulkUpdateLessonReviewQueueAction(lessonId: string, reviewIds: string[], status: EditorialStatus) {
+  await requirePermission('manageModules')
+  return bulkUpdateLessonReviewQueue(lessonId, reviewIds, status)
 }
 
 export async function bulkApproveWorkflowQuestionsAction(questionIds: string[]) {

@@ -1,10 +1,17 @@
 export type ModuleStatus = "COMPLETED" | "IN_PROGRESS" | "NOT_STARTED" | "LOCKED";
+export type ModuleExamType = "DGCA" | "EASA";
 
 export interface ModuleLesson {
   id: string;
+  slug: string;
   title: string;
   duration: string;
   completed: boolean;
+  locked?: boolean;
+  summary?: string;
+  keyPoints?: string[];
+  notes?: string[];
+  resources?: string[];
 }
 
 export interface ModuleResource {
@@ -31,6 +38,7 @@ export interface ModuleData {
   lessonsCount: number;
   resourcesCount: number;
   status: ModuleStatus;
+  examType: ModuleExamType;
   objectives: string[];
   lessons: ModuleLesson[];
   resources: ModuleResource[];
@@ -52,11 +60,12 @@ export const mockModules: ModuleData[] = [
     lessonsCount: 8,
     resourcesCount: 5,
     status: "IN_PROGRESS",
+    examType: "DGCA",
     objectives: ["Identify major airframe components", "Explain primary systems", "Interpret maintenance documentation"],
     lessons: [
-      { id: "lesson-1", title: "Structural layout", duration: "18 min", completed: true },
-      { id: "lesson-2", title: "Hydraulic systems", duration: "22 min", completed: true },
-      { id: "lesson-3", title: "Fuel and electrical systems", duration: "26 min", completed: false },
+      { id: "lesson-1", slug: "structural-layout", title: "Structural layout", duration: "18 min", completed: true, summary: "Learn how major structural sections connect and support the aircraft." },
+      { id: "lesson-2", slug: "hydraulic-systems", title: "Hydraulic systems", duration: "22 min", completed: true, summary: "Trace the flow of pressure and control through the hydraulic network." },
+      { id: "lesson-3", slug: "fuel-and-electrical-systems", title: "Fuel and electrical systems", duration: "26 min", completed: false, summary: "Review the integration of power distribution and fuel management." },
     ],
     resources: [
       { id: "resource-1", title: "Airframe fundamentals", type: "PDF" },
@@ -81,10 +90,11 @@ export const mockModules: ModuleData[] = [
     lessonsCount: 9,
     resourcesCount: 4,
     status: "COMPLETED",
+    examType: "EASA",
     objectives: ["Apply navigation principles", "Recognize key procedures", "Review exam-style scenarios"],
     lessons: [
-      { id: "lesson-4", title: "En-route planning", duration: "20 min", completed: true },
-      { id: "lesson-5", title: "Approach procedures", duration: "24 min", completed: true },
+      { id: "lesson-4", slug: "en-route-planning", title: "En-route planning", duration: "20 min", completed: true, summary: "Plan efficient routes and recognize key checkpoints." },
+      { id: "lesson-5", slug: "approach-procedures", title: "Approach procedures", duration: "24 min", completed: true, summary: "Practice reading standard approach patterns and restrictions." },
     ],
     resources: [
       { id: "resource-3", title: "Procedure summary", type: "Note" },
@@ -108,9 +118,10 @@ export const mockModules: ModuleData[] = [
     lessonsCount: 7,
     resourcesCount: 3,
     status: "NOT_STARTED",
+    examType: "DGCA",
     objectives: ["Recognize learning factors", "Discuss fatigue and workload", "Apply human factors principles"],
     lessons: [
-      { id: "lesson-6", title: "Introduction to human factors", duration: "16 min", completed: false },
+      { id: "lesson-6", slug: "introduction-to-human-factors", title: "Introduction to human factors", duration: "16 min", completed: false, summary: "Discover the habits that improve judgment and reduce operational risk." },
     ],
     resources: [
       { id: "resource-5", title: "Human factors primer", type: "PDF" },
@@ -133,6 +144,7 @@ export const mockModules: ModuleData[] = [
     lessonsCount: 6,
     resourcesCount: 2,
     status: "LOCKED",
+    examType: "EASA",
     objectives: ["Preview advanced meteorological topics", "Prepare for future study"],
     lessons: [],
     resources: [],

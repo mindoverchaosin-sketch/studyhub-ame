@@ -1,6 +1,14 @@
 import prisma from '@/lib/prisma'
 import type { Prisma } from '@prisma/client'
 
+type AdminUserQueryParams = {
+  search?: string
+  role?: string
+  status?: 'ACTIVE' | 'SUSPENDED'
+  skip?: number
+  take?: number
+}
+
 type StudentAdminQueryParams = {
   search?: string
   status?: 'ACTIVE' | 'SUSPENDED'
@@ -130,6 +138,42 @@ export class UserRepository {
 
   async createStudentProfile(input: Prisma.StudentProfileCreateInput) {
     return prisma.studentProfile.create({ data: input })
+  }
+
+  async findManyForAdmin(params: AdminUserQueryParams = {}) {
+    const where: Prisma.UserWhereInput = {
+      ...(params.search ? {
+        OR: [
+          { email: { contains: params.search, mode: 'insensitive' } },
+          { displayName: { contains: params.search, mode: 'insensitive' } },
+        ],
+      } : {}),
+      ...(params.role ? { role: { is: { name: params.role as any } } } : {}),
+      ...(params.status ? { isActive: params.status === 'ACTIVE' } : {}),
+    }
+
+    return prisma.user.findMany({
+      where,
+      include: { role: true },
+      skip: params.skip ?? 0,
+      take: params.take ?? 20,
+      orderBy: { createdAt: 'desc' },
+    })
+  }
+
+  async countManyForAdmin(params: AdminUserQueryParams = {}) {
+    const where: Prisma.UserWhereInput = {
+      ...(params.search ? {
+        OR: [
+          { email: { contains: params.search, mode: 'insensitive' } },
+          { displayName: { contains: params.search, mode: 'insensitive' } },
+        ],
+      } : {}),
+      ...(params.role ? { role: { is: { name: params.role as any } } } : {}),
+      ...(params.status ? { isActive: params.status === 'ACTIVE' } : {}),
+    }
+
+    return prisma.user.count({ where })
   }
 }
 

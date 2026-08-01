@@ -5,7 +5,7 @@ import { requirePermission } from '@/auth'
 import { withAuditLogging } from '@/server/actions/audit-helpers'
 import { publishingService } from '@/server/services/publishing.service'
 
-export async function submitForReviewAction(targetType: 'MODULE' | 'STUDY_MATERIAL' | 'QUESTION', targetId: string) {
+export async function submitForReviewAction(targetType: 'MODULE' | 'STUDY_MATERIAL' | 'QUESTION' | 'LESSON', targetId: string) {
   await requirePermission('publishContent')
   const result = await withAuditLogging({
     permission: 'publishContent',
@@ -22,7 +22,7 @@ export async function submitForReviewAction(targetType: 'MODULE' | 'STUDY_MATERI
   return result
 }
 
-export async function approvePublishingAction(targetType: 'MODULE' | 'STUDY_MATERIAL' | 'QUESTION', targetId: string) {
+export async function approvePublishingAction(targetType: 'MODULE' | 'STUDY_MATERIAL' | 'QUESTION' | 'LESSON', targetId: string) {
   await requirePermission('publishContent')
   const result = await withAuditLogging({
     permission: 'publishContent',
@@ -39,7 +39,7 @@ export async function approvePublishingAction(targetType: 'MODULE' | 'STUDY_MATE
   return result
 }
 
-export async function rejectPublishingAction(targetType: 'MODULE' | 'STUDY_MATERIAL' | 'QUESTION', targetId: string, reason?: string) {
+export async function rejectPublishingAction(targetType: 'MODULE' | 'STUDY_MATERIAL' | 'QUESTION' | 'LESSON', targetId: string, reason?: string) {
   await requirePermission('publishContent')
   const result = await withAuditLogging({
     permission: 'publishContent',
@@ -56,7 +56,7 @@ export async function rejectPublishingAction(targetType: 'MODULE' | 'STUDY_MATER
   return result
 }
 
-export async function publishContentAction(targetType: 'MODULE' | 'STUDY_MATERIAL' | 'QUESTION', targetId: string) {
+export async function publishContentAction(targetType: 'MODULE' | 'STUDY_MATERIAL' | 'QUESTION' | 'LESSON', targetId: string) {
   await requirePermission('publishContent')
   const result = await withAuditLogging({
     permission: 'publishContent',
@@ -73,7 +73,7 @@ export async function publishContentAction(targetType: 'MODULE' | 'STUDY_MATERIA
   return result
 }
 
-export async function unpublishContentAction(targetType: 'MODULE' | 'STUDY_MATERIAL' | 'QUESTION', targetId: string) {
+export async function unpublishContentAction(targetType: 'MODULE' | 'STUDY_MATERIAL' | 'QUESTION' | 'LESSON', targetId: string) {
   await requirePermission('publishContent')
   const result = await withAuditLogging({
     permission: 'publishContent',
@@ -90,7 +90,7 @@ export async function unpublishContentAction(targetType: 'MODULE' | 'STUDY_MATER
   return result
 }
 
-export async function archiveContentAction(targetType: 'MODULE' | 'STUDY_MATERIAL' | 'QUESTION', targetId: string) {
+export async function archiveContentAction(targetType: 'MODULE' | 'STUDY_MATERIAL' | 'QUESTION' | 'LESSON', targetId: string) {
   await requirePermission('publishContent')
   const result = await withAuditLogging({
     permission: 'publishContent',

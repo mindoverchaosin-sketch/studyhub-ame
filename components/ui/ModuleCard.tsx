@@ -11,7 +11,7 @@ type ModuleCardProps = HTMLAttributes<HTMLElement> & {
 export default function ModuleCard({ title, description, meta, icon, className = "", style, ...props }: ModuleCardProps) {
   return (
     <article
-      className={["group rounded-[1.5rem] border border-slate-200/80 bg-white p-7 transition duration-300 hover:-translate-y-1", className].filter(Boolean).join(" ")}
+      className={["group rounded-[1.5rem] border border-slate-200/80 bg-white p-7 transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_70px_-34px_rgba(37,99,235,0.28)]", className].filter(Boolean).join(" ")}
       style={{ borderRadius: borderRadius["2xl"], boxShadow: shadows.md, backgroundColor: colors.surface, transitionDuration: transitions.slow, ...style }}
       {...props}
     >

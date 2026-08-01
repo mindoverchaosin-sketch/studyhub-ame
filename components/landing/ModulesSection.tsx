@@ -1,4 +1,6 @@
+import Link from "next/link";
 import Badge from "@/components/ui/Badge";
+import Button from "@/components/ui/Button";
 import Container from "@/components/ui/Container";
 import Heading from "@/components/ui/Heading";
 import ModuleCard from "@/components/ui/ModuleCard";
@@ -15,7 +17,7 @@ export default function ModulesSection() {
   return (
     <Section>
       <Container>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <Badge variant="accent">Popular DGCA modules</Badge>
             <Heading as="h2" size="md" className="mt-4">
@@ -30,6 +32,15 @@ export default function ModulesSection() {
           {modules.map((module) => (
             <ModuleCard key={module.title} {...module} />
           ))}
+        </div>
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-4 rounded-[1.75rem] border border-slate-200 bg-slate-50/80 px-6 py-5 sm:px-8">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-600">Explore more</p>
+            <p className="mt-2 text-sm leading-7 text-slate-600">Progress through DGCA and EASA pathways with structured lessons that keep momentum high.</p>
+          </div>
+          <Button asChild variant="primary" size="md">
+            <Link href="/modules">Explore Modules</Link>
+          </Button>
         </div>
       </Container>
     </Section>

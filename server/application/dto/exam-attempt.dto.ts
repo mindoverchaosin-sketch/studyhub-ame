@@ -1,21 +1,20 @@
-export type ExamAttemptQuestionDTO = {
-  id: string
-  questionId: string
-  displayOrder: number
-}
+import type { AttemptQuestion } from '@/types/exam'
+
+export type ExamAttemptQuestionDTO = AttemptQuestion
 
 export type ExamAttemptDTO = {
   id: string
   studentId: string
   templateId: string
+  title: string
   status: string
   startedAt?: string | null
   submittedAt?: string | null
-  expiresAt?: string | null
+  expiresAt?: string
   score?: number | null
   percentage?: number | null
   passed?: boolean | null
-  questions?: ExamAttemptQuestionDTO[]
+  questions: ExamAttemptQuestionDTO[]
   createdAt: string
   updatedAt: string
 }

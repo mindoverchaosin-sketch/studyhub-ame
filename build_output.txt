@@ -1,0 +1,139 @@
+﻿
+> studyhub-ame@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.2.10 (Turbopack)
+- Environments: .env
+
+node.exe : ΓÜá The "middleware" file convention is deprecated. Please use 
+"proxy" instead. Learn more: 
+https://nextjs.org/docs/messages/middleware-to-proxy
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ΓÜá The "middle...leware-to-proxy 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 71s
+  Running TypeScript ...
+  Finished TypeScript in 2.3min ...
+  Collecting page data using 3 workers ...
+  Generating static pages using 3 workers (0/54) ...
+  Generating static pages using 3 workers (13/54) 
+  Generating static pages using 3 workers (26/54) 
+(node:41528) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 
+'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these 
+modes will adopt standard libpq semantics, which have weaker security 
+guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 
+'uselibpqcompat=true&sslmode=require'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode 
+definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36068) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 
+'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these 
+modes will adopt standard libpq semantics, which have weaker security 
+guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 
+'uselibpqcompat=true&sslmode=require'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode 
+definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  Generating static pages using 3 workers (40/54) 
+Γ£ô Generating static pages using 3 workers (54/54) in 31.7s
+  Finalizing page optimization ...
+
+Route (app)
+Γöî Γùï /
+Γö£ Γùï /_not-found
+Γö£ Γùï /about
+Γö£ ╞Æ /admin
+Γö£ ╞Æ /admin/analytics
+Γö£ ╞Æ /admin/audit-logs
+Γö£ ╞Æ /admin/billing
+Γö£ ╞Æ /admin/billing/invoices
+Γö£ ╞Æ /admin/billing/invoices/[id]
+Γö£ ╞Æ /admin/billing/plans
+Γö£ ╞Æ /admin/billing/plans/[id]
+Γö£ ╞Æ /admin/billing/plans/[id]/edit
+Γö£ ╞Æ /admin/billing/subscriptions
+Γö£ ╞Æ /admin/billing/subscriptions/[id]
+Γö£ Γùï /admin/courses
+Γö£ Γùï /admin/dashboard
+Γö£ Γùï /admin/exams
+Γö£ ╞Æ /admin/lessons
+Γö£ ╞Æ /admin/materials
+Γö£ ╞Æ /admin/mock-tests
+Γö£ ╞Æ /admin/modules
+Γö£ ╞Æ /admin/modules/[moduleId]
+Γö£ ╞Æ /admin/orders
+Γö£ ╞Æ /admin/products
+Γö£ ╞Æ /admin/questions
+Γö£ ╞Æ /admin/quizzes
+Γö£ ╞Æ /admin/settings
+Γö£ ╞Æ /admin/students
+Γö£ ╞Æ /admin/students/[studentId]
+Γö£ ╞Æ /admin/users
+Γö£ ╞Æ /api/ai/chat
+Γö£ ╞Æ /api/ai/chat/stream
+Γö£ ╞Æ /api/ai/explain
+Γö£ ╞Æ /api/ai/generate-questions
+Γö£ ╞Æ /api/ai/recommendations
+Γö£ ╞Æ /api/ai/summarize
+Γö£ ╞Æ /api/auth/[...nextauth]
+Γö£ ╞Æ /api/exam/attempt/[attemptId]/bookmark
+Γö£ ╞Æ /api/exam/attempt/[attemptId]/load
+Γö£ ╞Æ /api/exam/attempt/[attemptId]/mark-review
+Γö£ ╞Æ /api/exam/attempt/[attemptId]/save-answer
+Γö£ ╞Æ /api/exam/attempt/[attemptId]/submit
+Γö£ ╞Æ /api/health
+Γö£ ╞Æ /api/media
+Γö£ ╞Æ /api/metrics
+Γö£ ╞Æ /api/test/create-user
+Γö£ Γùï /login
+Γö£ Γùï /modules
+Γö£ Γùï /pricing
+Γö£ Γùï /quiz
+Γö£ Γùï /register
+Γö£ Γùï /robots.txt
+Γö£ Γùï /sitemap.xml
+Γö£ ╞Æ /student/adaptive-learning
+Γö£ ╞Æ /student/ai-tutor
+Γö£ ╞Æ /student/courses
+Γö£ ╞Æ /student/courses/[courseSlug]
+Γö£ ╞Æ /student/courses/[courseSlug]/modules/[moduleSlug]
+Γö£ ╞Æ /student/dashboard
+Γö£ ╞Æ /student/dashboard/billing
+Γö£ Γùï /student/mock-exams
+Γö£ ╞Æ /student/mock-exams/[attemptId]
+Γö£ ╞Æ /student/mock-exams/[attemptId]/results
+Γö£ ╞Æ /student/mock-exams/demo/[templateId]
+Γö£ ╞Æ /student/mock-exams/history
+Γö£ ╞Æ /student/mock-exams/start/[templateId]
+Γö£ Γùï /student/modules
+Γö£ ╞Æ /student/modules/[slug]
+Γö£ ╞Æ /student/modules/[slug]/lessons/[lessonSlug]
+Γö£ ╞Æ /student/question-bank
+Γö£ ╞Æ /student/quiz/[quizId]
+Γö£ ╞Æ /student/search
+Γö£ ╞Æ /student/topics/[topicSlug]
+Γöö Γùï /unauthorized
+
+
+╞Æ Proxy (Middleware)
+
+Γùï  (Static)   prerendered as static content
+╞Æ  (Dynamic)  server-rendered on demand
+

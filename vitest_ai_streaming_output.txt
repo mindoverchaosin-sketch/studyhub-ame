@@ -1,0 +1,28 @@
+﻿node.exe : [33mThe CJS build of Vite's Node API is deprecated. See 
+https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for 
+more details.[39m
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([33mThe CJS bu...e details.[39m 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+ RUN  v1.6.1 C:/Users/stylish_pranav/studyhub-ame
+
+ Γ£ô tests/services/ai-streaming.test.ts > AIService streaming > streams delta chunks and persists the final assistant message
+ Γ£ô tests/services/ai-streaming.test.ts > AIService streaming > falls back to non-streaming providers and yields a full delta followed by done
+ Γ£ô tests/services/ai-streaming.test.ts > AIService streaming > propagates provider error chunks without persisting assistant content
+ Γ£ô tests/services/ai-streaming.test.ts > AIService streaming > handles provider aborts gracefully and returns an error chunk
+ Γ£ô tests/components/AIChatPanel.test.tsx > AIChatPanel streaming UI > renders streaming assistant text from complete chunks 1120ms
+ Γ£ô tests/components/AIChatPanel.test.tsx > AIChatPanel streaming UI > buffers partial chunks and merges text correctly
+ Γ£ô tests/components/AIChatPanel.test.tsx > AIChatPanel streaming UI > handles malformed stream lines without breaking the UI
+ Γ£ô tests/components/AIChatPanel.test.tsx > AIChatPanel streaming UI > shows cancel button while streaming and stops updates after cancellation 405ms
+ Γ£ô tests/components/AIChatPanel.test.tsx > AIChatPanel streaming UI > renders provider error from stream as an error message
+
+ Test Files  2 passed (2)
+      Tests  9 passed (9)
+   Start at  19:36:26
+   Duration  16.31s (transform 1.08s, setup 3.83s, collect 1.64s, tests 2.19s, environment 17.95s, prepare 2.04s)
+

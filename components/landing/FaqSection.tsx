@@ -1,4 +1,6 @@
+import Link from "next/link";
 import Badge from "@/components/ui/Badge";
+import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Container from "@/components/ui/Container";
 import Heading from "@/components/ui/Heading";
@@ -27,6 +29,15 @@ export default function FaqSection() {
               <p className="mt-3 text-sm leading-7 text-slate-600">{faq.answer}</p>
             </Card>
           ))}
+        </div>
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-[1.75rem] border border-slate-200 bg-white px-6 py-5 shadow-[0_16px_50px_-34px_rgba(15,23,42,0.24)] sm:px-8">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-600">Ready to begin</p>
+            <p className="mt-2 text-sm leading-7 text-slate-600">Create your free account and start your next study session with a clear plan.</p>
+          </div>
+          <Button asChild variant="primary" size="md">
+            <Link href="/auth/register">Create Free Account</Link>
+          </Button>
         </div>
       </Container>
     </Section>

@@ -64,8 +64,8 @@ describe('ExamPlayer', () => {
     vi.stubGlobal('fetch', fetchMock)
     render(<ExamPlayer initialAttempt={makeAttempt()} />)
 
-    fireEvent.click(screen.getAllByLabelText('A')[0])
-    fireEvent.click(screen.getAllByLabelText('B')[0])
+    fireEvent.click(screen.getAllByText('A')[0])
+    fireEvent.click(screen.getAllByText('B')[0])
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1), { timeout: 3000 })
   })
@@ -82,7 +82,7 @@ describe('ExamPlayer', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2), { timeout: 3000 })
 
     expect(screen.getByTestId('bookmark-button')).toHaveTextContent('Unbookmark')
-    expect(screen.getByTestId('review-button')).toHaveTextContent('Unmark Review')
+    expect(screen.getByTestId('review-button')).toHaveTextContent('Unmark review')
   })
 
   it('prevents duplicate submit', async () => {
