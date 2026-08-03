@@ -6,7 +6,7 @@ export default function AdminNavbar() {
     <header className="flex flex-col gap-4 rounded-[2rem] border border-slate-200/80 bg-white/80 p-4 shadow-[0_20px_70px_rgba(15,23,42,0.04)] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-6">
       <div>
         <p className="text-sm font-semibold uppercase tracking-[0.28em] text-slate-500">Operations</p>
-        <h1 className="mt-1 text-xl font-semibold text-slate-950">Content administration</h1>
+        <h2 className="mt-1 text-xl font-semibold text-slate-950">Content administration</h2>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

@@ -20,7 +20,7 @@ export default function AdminContentTable<T extends Record<string, unknown>>({ t
           <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
-                {columns.map((column) => <th key={String(column.key)} className="px-4 py-3 font-semibold">{column.label}</th>)}
+                {columns.map((column) => <th scope="col" key={String(column.key)} className="px-4 py-3 font-semibold">{column.label}</th>)}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">

@@ -176,13 +176,13 @@ export function LessonsManager() {
       {toast ? <Toast message={toast} /> : null}
 
       <div className="flex flex-col gap-3 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
-        <input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search lessons" className="w-full rounded-2xl border border-slate-200 px-3 py-2 md:max-w-xs" />
-        <select value={module} onChange={(event) => { setModule(event.target.value); setPage(1); }} className="rounded-2xl border border-slate-200 px-3 py-2">
+        <input aria-label="Search lessons" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search lessons" className="w-full rounded-2xl border border-slate-200 px-3 py-2 md:max-w-xs" />
+        <select aria-label="Filter by module" value={module} onChange={(event) => { setModule(event.target.value); setPage(1); }} className="rounded-2xl border border-slate-200 px-3 py-2">
           <option value="All modules">All modules</option>
           <option value="Aircraft Materials">Aircraft Materials</option>
           <option value="Hydraulic Systems">Hydraulic Systems</option>
         </select>
-        <select value={sortKey} onChange={(event) => { setSortKey(event.target.value as 'title' | 'status' | 'updatedAt'); setPage(1); }} className="rounded-2xl border border-slate-200 px-3 py-2">
+        <select aria-label="Sort lessons" value={sortKey} onChange={(event) => { setSortKey(event.target.value as 'title' | 'status' | 'updatedAt'); setPage(1); }} className="rounded-2xl border border-slate-200 px-3 py-2">
           <option value="updatedAt">Sort by updated</option>
           <option value="title">Sort by title</option>
           <option value="status">Sort by status</option>
@@ -194,11 +194,11 @@ export function LessonsManager() {
           <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
-                <th className="px-4 py-3 font-semibold">Title</th>
-                <th className="px-4 py-3 font-semibold">Module</th>
-                <th className="px-4 py-3 font-semibold">Status</th>
-                <th className="px-4 py-3 font-semibold">Updated</th>
-                <th className="px-4 py-3 font-semibold">Actions</th>
+                <th scope="col" className="px-4 py-3 font-semibold">Title</th>
+                <th scope="col" className="px-4 py-3 font-semibold">Module</th>
+                <th scope="col" className="px-4 py-3 font-semibold">Status</th>
+                <th scope="col" className="px-4 py-3 font-semibold">Updated</th>
+                <th scope="col" className="px-4 py-3 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">

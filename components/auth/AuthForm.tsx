@@ -240,9 +240,8 @@ export default function AuthForm({ mode }: AuthFormProps) {
             />
             Remember me
           </label>
-          <Link href="/register" className="text-sm font-medium text-blue-600 transition hover:text-blue-700">
-            Forgot password?
-          </Link>
+          {/* Password reset is a deferred feature; do not implement in this sprint. */}
+          <span className="text-sm font-medium text-blue-600 opacity-60" aria-disabled="true" title="Forgot password is unavailable until a future release">Forgot password?</span>
         </div>
 
         <Button type="submit" fullWidth disabled={isSubmitting}>

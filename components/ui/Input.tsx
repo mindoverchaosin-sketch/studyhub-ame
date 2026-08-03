@@ -9,6 +9,9 @@ type InputProps = InputHTMLAttributes<HTMLInputElement> & {
 
 export function Input({ label, hint, error, className = "", style, ...props }: InputProps) {
   const inputId = props.id ?? `${props.name ?? "field"}-input`;
+  const hintId = hint ? `${inputId}-hint` : undefined;
+  const errorId = error ? `${inputId}-error` : undefined;
+  const describedBy = [props["aria-describedby"], errorId, hintId].filter(Boolean).join(" ") || undefined;
 
   return (
     <div className="w-full">
@@ -28,10 +31,12 @@ export function Input({ label, hint, error, className = "", style, ...props }: I
           ...style,
         }}
         aria-invalid={Boolean(error)}
+        aria-describedby={describedBy}
+        aria-required={props.required ?? false}
         {...props}
       />
-      {error ? <p className="mt-2 text-sm text-rose-600">{error}</p> : null}
-      {hint && !error ? <p className="mt-2 text-sm text-slate-500">{hint}</p> : null}
+      {error ? <p id={errorId} className="mt-2 text-sm text-rose-600">{error}</p> : null}
+      {hint && !error ? <p id={hintId} className="mt-2 text-sm text-slate-500">{hint}</p> : null}
     </div>
   );
 }

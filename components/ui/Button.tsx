@@ -1,4 +1,7 @@
+"use client";
+
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import React from "react";
 import { borderRadius, colors, shadows, transitions } from "@/constants/theme";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -32,6 +35,8 @@ export default function Button({
   className = "",
   style,
   asChild = false,
+  type,
+  onClick,
   ...props
 }: ButtonProps) {
   const variantStyle =
@@ -55,9 +60,52 @@ export default function Button({
             ...style,
           };
 
+  // Ensure buttons inside forms do not implicitly submit unless explicitly requested
+  const buttonType = type ?? "button";
+
   if (asChild) {
+    // If the child is an interactive element (anchor, Link, or button), clone it and merge classes/handlers
+    const child = React.Children.only(children) as React.ReactElement | null;
+
+    if (React.isValidElement(child)) {
+      const childProps: any = child.props || {};
+      const isInteractive = !!(childProps.href || child.type === 'a' || child.type === 'button');
+
+      const mergedClassName = [baseClasses, variantClasses[variant], sizeClasses[size], fullWidth ? "w-full" : "", className, childProps.className]
+        .filter(Boolean)
+        .join(" ");
+
+      const mergedStyle = { ...(childProps.style || {}), ...variantStyle };
+
+      const mergedOnClick = (e: any) => {
+        onClick?.(e);
+        childProps.onClick?.(e);
+      };
+
+      if (isInteractive) {
+        return React.cloneElement(child, {
+          className: mergedClassName,
+          style: mergedStyle,
+          onClick: mergedOnClick,
+        } as any);
+      }
+    }
+
+    // Fallback: non-interactive child, preserve previous span/button behavior
     return (
-      <span className={[baseClasses, variantClasses[variant], sizeClasses[size], fullWidth ? "w-full" : "", className].filter(Boolean).join(" ")} style={variantStyle}>
+      <span
+        role="button"
+        tabIndex={0}
+        onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onClick?.(e as any);
+          }
+        }}
+        className={[baseClasses, variantClasses[variant], sizeClasses[size], fullWidth ? "w-full" : "", className].filter(Boolean).join(" ")}
+        style={variantStyle}
+      >
         {children}
       </span>
     );
@@ -65,6 +113,8 @@ export default function Button({
 
   return (
     <button
+      type={buttonType}
+      onClick={onClick}
       className={[baseClasses, variantClasses[variant], sizeClasses[size], fullWidth ? "w-full" : "", className].filter(Boolean).join(" ")}
       style={variantStyle}
       {...props}

@@ -159,13 +159,13 @@ export function MockTestsManager() {
       {toast ? <Toast message={toast} /> : null}
 
       <div className="flex flex-col gap-3 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
-        <input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search mock tests" className="w-full rounded-2xl border border-slate-200 px-3 py-2 md:max-w-xs" />
-        <select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} className="rounded-2xl border border-slate-200 px-3 py-2">
+        <input aria-label="Search mock tests" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search mock tests" className="w-full rounded-2xl border border-slate-200 px-3 py-2 md:max-w-xs" />
+        <select aria-label="Filter by status" value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} className="rounded-2xl border border-slate-200 px-3 py-2">
           <option value="All statuses">All statuses</option>
           <option value="Draft">Draft</option>
           <option value="Published">Published</option>
         </select>
-        <select value={sortKey} onChange={(event) => { setSortKey(event.target.value as 'title' | 'status' | 'updatedAt'); setPage(1); }} className="rounded-2xl border border-slate-200 px-3 py-2">
+        <select aria-label="Sort mock tests" value={sortKey} onChange={(event) => { setSortKey(event.target.value as 'title' | 'status' | 'updatedAt'); setPage(1); }} className="rounded-2xl border border-slate-200 px-3 py-2">
           <option value="updatedAt">Sort by updated</option>
           <option value="title">Sort by title</option>
           <option value="status">Sort by status</option>
@@ -177,12 +177,12 @@ export function MockTestsManager() {
           <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
-                <th className="px-4 py-3 font-semibold">Title</th>
-                <th className="px-4 py-3 font-semibold">Duration</th>
-                <th className="px-4 py-3 font-semibold">Passing</th>
-                <th className="px-4 py-3 font-semibold">Questions</th>
-                <th className="px-4 py-3 font-semibold">Status</th>
-                <th className="px-4 py-3 font-semibold">Actions</th>
+                <th scope="col" className="px-4 py-3 font-semibold">Title</th>
+                <th scope="col" className="px-4 py-3 font-semibold">Duration</th>
+                <th scope="col" className="px-4 py-3 font-semibold">Passing</th>
+                <th scope="col" className="px-4 py-3 font-semibold">Questions</th>
+                <th scope="col" className="px-4 py-3 font-semibold">Status</th>
+                <th scope="col" className="px-4 py-3 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">

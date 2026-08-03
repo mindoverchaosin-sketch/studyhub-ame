@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { HTMLAttributes } from "react";
 import { FiMenu, FiX } from "react-icons/fi";
 import { FaPlane } from "react-icons/fa6";
@@ -31,6 +31,20 @@ export default function Navbar({ compact = false, className = "", ...props }: Na
       isActive(href) ? "bg-blue-600/10 text-blue-700 shadow-sm" : "text-slate-700 hover:bg-slate-100 hover:text-blue-700",
     ].join(" ");
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape' && isMenuOpen) {
+        setIsMenuOpen(false);
+      }
+    }
+
+    if (isMenuOpen) {
+      document.addEventListener('keydown', onKey);
+      return () => document.removeEventListener('keydown', onKey);
+    }
+    return;
+  }, [isMenuOpen]);
+
   return (
     <header className={["sticky top-0 z-50 border-b border-white/70 bg-white/75 shadow-[0_1px_0_rgba(15,23,42,0.05)] backdrop-blur-2xl", compact ? "py-2" : "py-3", className].filter(Boolean).join(" ")} {...props}>
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -43,7 +57,7 @@ export default function Navbar({ compact = false, className = "", ...props }: Na
 
         <nav className="hidden items-center gap-1 md:flex" aria-label="Primary navigation">
           {navigation.map((item) => (
-            <Link key={item.href} href={item.href} className={linkClasses(item.href)}>
+            <Link key={item.href} href={item.href} aria-current={isActive(item.href) ? 'page' : undefined} className={linkClasses(item.href)}>
               {item.label}
             </Link>
           ))}
@@ -67,7 +81,7 @@ export default function Navbar({ compact = false, className = "", ...props }: Na
         <div id="mobile-navigation" className="border-t border-slate-200 bg-white/95 px-4 py-4 shadow-lg shadow-slate-200/60 md:hidden">
           <nav className="flex flex-col gap-2" aria-label="Mobile navigation">
             {navigation.map((item) => (
-              <Link key={item.href} href={item.href} className={linkClasses(item.href)} onClick={() => setIsMenuOpen(false)}>
+              <Link key={item.href} href={item.href} aria-current={isActive(item.href) ? 'page' : undefined} className={linkClasses(item.href)} onClick={() => setIsMenuOpen(false)}>
                 {item.label}
               </Link>
             ))}

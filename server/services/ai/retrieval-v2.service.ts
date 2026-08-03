@@ -309,7 +309,8 @@ export class RetrievalV2Service {
       retrievalMetricsCollector.chunksSearched = keywordResults.length + vectorResults.length;
       retrievalMetricsCollector.markRetrievalComplete();
 
-      const merged = timeSync('retrieval', 'hybrid_merge', () => this.mergeResults(keywordResults, vectorResults));
+      // Include cached ID lookup results (lesson/question) when merging hybrid results
+      const merged = timeSync('retrieval', 'hybrid_merge', () => this.mergeResults([...idResults, ...keywordResults], vectorResults));
       logger.info('retrieval.hybrid_merge.complete', { queryType, mergedCount: merged.length });
 
       const ranked = timeSync('retrieval', 'rerank', () => rankingService.rankResults(merged));

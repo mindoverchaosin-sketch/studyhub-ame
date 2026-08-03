@@ -71,10 +71,10 @@ export default async function StudentLessonPage({ params }: { params: Promise<{ 
 
           <Card className="space-y-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-blue-600">Lesson content</p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{lesson.title}</h2>
-              </div>
+                <div>
+                  <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-blue-600">Lesson content</h2>
+                  <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{lesson.title}</p>
+                </div>
               <div className="flex flex-wrap gap-2">
                 <Button variant="secondary" size="sm" type="button">
                   <span className="flex items-center gap-2"><FiFlag className="h-4 w-4" />Mark complete</span>
@@ -98,7 +98,7 @@ export default async function StudentLessonPage({ params }: { params: Promise<{ 
                 </p>
               </div>
 
-              <div className="rounde d-[1.5rem] border border-slate-200 bg-slate-50/80 p-5">
+              <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-5">
                 <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.24em] text-slate-600">
                   <FiPlayCircle className="h-4 w-4" />Key points
                 </div>

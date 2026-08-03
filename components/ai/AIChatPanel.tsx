@@ -216,11 +216,12 @@ export default function AIChatPanel() {
           </Card>
         </aside>
 
-        <Card className="flex-1 p-0" variant="elevated">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 px-5 py-4 sm:px-6">
+        <main className="flex-1" aria-labelledby="ai-conversation-heading">
+          <Card className="p-0" variant="elevated">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 px-5 py-4 sm:px-6">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-600">Conversation</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Adaptive guidance for your next revision block</h2>
+              <h2 id="ai-conversation-heading" className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Adaptive guidance for your next revision block</h2>
             </div>
             <Button type="button" variant="secondary" size="sm" onClick={clearConversation}>
               <span className="flex items-center gap-2">
@@ -228,18 +229,21 @@ export default function AIChatPanel() {
                 Clear
               </span>
             </Button>
-          </div>
+            </div>
 
-          <div className="flex min-h-[22rem] flex-col gap-3 px-5 py-5 sm:px-6">
-            <div className="flex-1 space-y-3 overflow-y-auto rounded-[1.25rem] border border-slate-200 bg-slate-50/80 p-4">
+            <div className="flex min-h-[22rem] flex-col gap-3 px-5 py-5 sm:px-6">
+            <div className="flex-1 space-y-3 overflow-y-auto rounded-[1.25rem] border border-slate-200 bg-slate-50/80 p-4" role="log" aria-live="polite" aria-atomic="false">
               {conversation.messages.length === 0 ? (
                 <div className="rounded-[1rem] border border-dashed border-slate-300 bg-white/80 p-4 text-sm leading-7 text-slate-600">
                   Start a conversation to receive a tailored explanation, revision plan, or practice set.
                 </div>
-              ) : (
+                ) : (
                 conversation.messages.map((message) => (
                   <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[85%] rounded-[1.25rem] px-4 py-3 text-sm leading-7 ${message.role === "user" ? "bg-blue-600 text-white" : "border border-slate-200 bg-white text-slate-700"}`}>
+                    <div
+                      className={`max-w-[85%] rounded-[1.25rem] px-4 py-3 text-sm leading-7 ${message.role === "user" ? "bg-blue-600 text-white" : "border border-slate-200 bg-white text-slate-700"}`}
+                      role={message.role === 'assistant' ? 'status' : undefined}
+                    >
                       {message.content}
                     </div>
                   </div>
@@ -286,8 +290,9 @@ export default function AIChatPanel() {
                 </div>
               </div>
             </div>
-          </div>
-        </Card>
+            </div>
+          </Card>
+        </main>
       </div>
     </div>
   );
