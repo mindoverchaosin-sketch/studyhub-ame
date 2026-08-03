@@ -155,7 +155,9 @@ export async function requireRole(role: UserRole): Promise<AuthSession> {
 }
 
 export function requireOwnership(resourceUserId: string, currentUserId: string, allowAdmin = false, currentUserRole?: string): void {
-  if (allowAdmin && currentUserRole === 'ADMIN') {
+  const normalizedRole = typeof currentUserRole === 'string' ? currentUserRole.toUpperCase() : undefined
+
+  if (allowAdmin && (normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN')) {
     return
   }
 

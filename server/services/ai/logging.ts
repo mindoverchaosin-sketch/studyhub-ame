@@ -1,3 +1,5 @@
+import { logger } from '@/lib/logger'
+
 export interface AIEventLog {
   event: string;
   userId?: string;
@@ -7,10 +9,13 @@ export interface AIEventLog {
 }
 
 export function logAIEvent(entry: AIEventLog) {
-  if (process.env.NODE_ENV === 'test') {
-    return;
-  }
-
-  // Placeholder hook for structured logging integration.
-  console.info('[ai-service]', JSON.stringify(entry));
+  if (process.env.NODE_ENV === 'test') return
+  logger.info('ai.event', {
+    service: 'AIService',
+    operation: entry.event,
+    userId: entry.userId,
+    conversationId: entry.conversationId,
+    status: entry.status,
+    metadata: entry.metadata,
+  })
 }

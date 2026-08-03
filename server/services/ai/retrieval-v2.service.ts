@@ -5,6 +5,8 @@ import { retrievalMetricsCollector } from '@/services/ai/RetrievalMetrics';
 import { questionRepository } from '@/server/repositories/question.repository';
 import { lessonRepository } from '@/server/repositories/lesson.repository';
 import { moduleRepository } from '@/server/repositories/module.repository';
+import { logger } from '@/lib/logger';
+import { timeAsync, timeSync } from '@/lib/timing';
 import type {
   AIRetrievalContext,
   AIContentSource,
@@ -154,8 +156,17 @@ async function keywordSearch(query: string): Promise<RetrievalCandidate[]> {
 }
 
 async function vectorSearch(query: string): Promise<RetrievalCandidate[]> {
-  const embedding = await embeddingProvider.createEmbedding(query);
-  const results = await vectorStore.search(embedding, 8);
+  const embedding = await timeAsync('retrieval', 'embedding', async () => {
+    const embeddingResult = await embeddingProvider.createEmbedding(query);
+    logger.info('retrieval.embedding.complete', { model: embeddingProvider.constructor.name });
+    return embeddingResult;
+  });
+
+  const results = await timeAsync('retrieval', 'vector_search', async () => {
+    const vectorResults = await vectorStore.search(embedding, 8);
+    logger.info('retrieval.vector_search.complete', { model: vectorStore.constructor.name, vectorCount: vectorResults.length });
+    return vectorResults;
+  });
 
   retrievalMetricsCollector.vectorHits += results.length;
   return results.map((result) => {
@@ -184,122 +195,162 @@ async function vectorSearch(query: string): Promise<RetrievalCandidate[]> {
 
 export class RetrievalV2Service {
   async buildRetrievalContext(input?: { lessonId?: string; moduleId?: string; questionId?: string; query?: string; }): Promise<AIRetrievalContext> {
-    const start = Date.now();
-    const safeInput = input ?? {};
-    const query = (safeInput.query?.trim && safeInput.query.trim()) || this.buildFallbackQuery(safeInput as any);
-    // Preserve compatibility: if specific IDs provided, fetch those records directly
-    const idResults: RetrievalCandidate[] = [];
-    if (safeInput.lessonId) {
-      try {
-        const lesson = await lessonRepository.findById(safeInput.lessonId);
-        if (lesson) {
-          let moduleTitle: string | undefined = undefined;
+    return timeAsync('retrieval', 'total', async () => {
+      const safeInput = input ?? {};
+      const queryType = safeInput.query?.trim() ? 'explicit' : 'fallback';
+
+      const query = timeSync('retrieval', 'query_normalization', () => {
+        return (safeInput.query?.trim && safeInput.query.trim()) || this.buildFallbackQuery(safeInput as any);
+      });
+
+      const idResults = await timeAsync('retrieval', 'cache_lookup', async () => {
+        const results: RetrievalCandidate[] = [];
+
+        if (safeInput.lessonId) {
           try {
-            if (lesson.moduleId) {
-              const mod = await moduleRepository.findById(lesson.moduleId);
-              moduleTitle = mod?.title;
+            const lesson = await lessonRepository.findById(safeInput.lessonId);
+            if (lesson) {
+              let moduleTitle: string | undefined = undefined;
+              try {
+                if (lesson.moduleId) {
+                  const mod = await moduleRepository.findById(lesson.moduleId);
+                  moduleTitle = mod?.title;
+                }
+              } catch (e) {
+                // ignore module lookup failures
+              }
+
+              const source: AIContentSource = {
+                id: lesson.id,
+                type: 'lesson',
+                title: lesson.title,
+                excerpt: lesson.description ?? '',
+                metadata: {
+                  lessonId: lesson.id,
+                  moduleId: lesson.moduleId,
+                  lessonTitle: lesson.title,
+                  moduleTitle: moduleTitle,
+                  difficulty: lesson.status,
+                  tags: Array.isArray((lesson.metadata as any)?.tags) ? (lesson.metadata as any).tags : [],
+                  contentType: 'lesson',
+                  updatedAt: lesson.updatedAt,
+                },
+              };
+              const chunk = toChunkFromSource(source)[0];
+              results.push({
+                chunk,
+                keywordScore: 1,
+                semanticScore: 0,
+                metadataScore: buildMetadataScores(chunk),
+                recencyScore: buildRecencyScore(chunk),
+                lessonPriority: 0.5,
+                moduleRelevance: 0.2,
+                citation: buildCitation(chunk),
+              });
             }
           } catch (e) {
-            // ignore module lookup failures
+            logger.warn('retrieval.cache_lookup.failure', { queryType, lessonId: safeInput.lessonId, errorMessage: e instanceof Error ? e.message : String(e) });
           }
-
-          const source: AIContentSource = {
-            id: lesson.id,
-            type: 'lesson',
-            title: lesson.title,
-            excerpt: lesson.description ?? '',
-            metadata: {
-              lessonId: lesson.id,
-              moduleId: lesson.moduleId,
-              lessonTitle: lesson.title,
-              moduleTitle: moduleTitle,
-              difficulty: lesson.status,
-              tags: Array.isArray((lesson.metadata as any)?.tags) ? (lesson.metadata as any).tags : [],
-              contentType: 'lesson',
-              updatedAt: lesson.updatedAt,
-            },
-          };
-          const chunk = toChunkFromSource(source)[0];
-          idResults.push({
-            chunk,
-            keywordScore: 1,
-            semanticScore: 0,
-            metadataScore: buildMetadataScores(chunk),
-            recencyScore: buildRecencyScore(chunk),
-            lessonPriority: 0.5,
-            moduleRelevance: 0.2,
-            citation: buildCitation(chunk),
-          });
         }
-      } catch (e) {}
-    }
-    if (safeInput.questionId) {
-      try {
-        const question = await questionRepository.findById(safeInput.questionId);
-        if (question) {
-          const source: AIContentSource = {
-            id: question.id,
-            type: 'question',
-            title: (question as any).prompt ?? (question as any).question ?? 'Question',
-            excerpt: (question as any).explanation ?? (question as any).prompt ?? (question as any).question ?? '',
-            metadata: {
-              lessonId: undefined,
-              moduleId: undefined,
-              lessonTitle: undefined,
-              moduleTitle: undefined,
-              difficulty: question.difficulty,
-              tags: [],
-              contentType: 'question',
-              updatedAt: question.createdAt,
-            },
-          };
-          const chunk = toChunkFromSource(source)[0];
-          idResults.push({
-            chunk,
-            keywordScore: 1,
-            semanticScore: 0,
-            metadataScore: buildMetadataScores(chunk),
-            recencyScore: buildRecencyScore(chunk),
-            lessonPriority: 0,
-            moduleRelevance: 0,
-            citation: buildCitation(chunk),
-          });
+
+        if (safeInput.questionId) {
+          try {
+            const question = await questionRepository.findById(safeInput.questionId);
+            if (question) {
+              const source: AIContentSource = {
+                id: question.id,
+                type: 'question',
+                title: (question as any).prompt ?? (question as any).question ?? 'Question',
+                excerpt: (question as any).explanation ?? (question as any).prompt ?? (question as any).question ?? '',
+                metadata: {
+                  lessonId: undefined,
+                  moduleId: undefined,
+                  lessonTitle: undefined,
+                  moduleTitle: undefined,
+                  difficulty: question.difficulty,
+                  tags: [],
+                  contentType: 'question',
+                  updatedAt: question.createdAt,
+                },
+              };
+              const chunk = toChunkFromSource(source)[0];
+              results.push({
+                chunk,
+                keywordScore: 1,
+                semanticScore: 0,
+                metadataScore: buildMetadataScores(chunk),
+                recencyScore: buildRecencyScore(chunk),
+                lessonPriority: 0,
+                moduleRelevance: 0,
+                citation: buildCitation(chunk),
+              });
+            }
+          } catch (e) {
+            logger.warn('retrieval.cache_lookup.failure', { queryType, questionId: safeInput.questionId, errorMessage: e instanceof Error ? e.message : String(e) });
+          }
         }
-      } catch (e) {}
-    }
 
-    const keywordResults = [...idResults, ...(await keywordSearch(query))];
-    const vectorResults = await vectorSearch(query);
+        logger.info('retrieval.cache_lookup.complete', { queryType, itemCount: results.length });
+        return results;
+      });
 
-    retrievalMetricsCollector.chunksSearched = keywordResults.length + vectorResults.length;
-    retrievalMetricsCollector.markRetrievalComplete();
+      const keywordResults = await timeAsync('retrieval', 'keyword_search', async () => {
+        const results = await keywordSearch(query);
+        logger.info('retrieval.keyword_search.complete', { queryType, keywordCount: results.length });
+        return results;
+      });
 
-    const merged = this.mergeResults(keywordResults, vectorResults);
-    const ranked = rankingService.rankResults(merged);
-    retrievalMetricsCollector.chunksSelected = ranked.length;
-    retrievalMetricsCollector.markRankingComplete();
+      const vectorResults = await timeAsync('retrieval', 'vector_search', async () => {
+        const results = await vectorSearch(query);
+        logger.info('retrieval.vector_search.complete', { queryType, vectorCount: results.length });
+        return results;
+      });
 
-    const retrievalContext: AIRetrievalContext = {
-      retrievalQuery: query,
-      sourceSummary: ranked.slice(0, 3).map((item) => `${item.chunk.sourceType.toUpperCase()} - ${item.chunk.title}: ${item.chunk.text}`).join(' | '),
-      retrievedSources: ranked.slice(0, 4).map((item) => ({
-        id: item.chunk.sourceId,
-        type: item.chunk.sourceType,
-        title: item.chunk.title,
-        excerpt: item.chunk.text,
-        metadata: item.chunk.metadata,
-      })),
-      retrievedChunks: ranked.slice(0, 8).map((item) => ({
-        ...item.chunk,
-        metadata: {
-          ...item.chunk.metadata,
-          relevance: item.rankingScore,
-          citation: item.citation,
-        },
-      })),
-    };
+      retrievalMetricsCollector.chunksSearched = keywordResults.length + vectorResults.length;
+      retrievalMetricsCollector.markRetrievalComplete();
 
-    return retrievalContext;
+      const merged = timeSync('retrieval', 'hybrid_merge', () => this.mergeResults(keywordResults, vectorResults));
+      logger.info('retrieval.hybrid_merge.complete', { queryType, mergedCount: merged.length });
+
+      const ranked = timeSync('retrieval', 'rerank', () => rankingService.rankResults(merged));
+      logger.info('retrieval.rerank.complete', { queryType, rankedCount: ranked.length });
+
+      const filtered = timeSync('retrieval', 'filter', () => ranked);
+      logger.info('retrieval.filter.complete', { queryType, filteredCount: filtered.length });
+
+      retrievalMetricsCollector.chunksSelected = filtered.length;
+      retrievalMetricsCollector.markRankingComplete();
+
+      return timeSync('retrieval', 'context_build', () => {
+        const retrievalContext: AIRetrievalContext = {
+          retrievalQuery: query,
+          sourceSummary: filtered.slice(0, 3).map((item) => `${item.chunk.sourceType.toUpperCase()} - ${item.chunk.title}: ${item.chunk.text}`).join(' | '),
+          retrievedSources: filtered.slice(0, 4).map((item) => ({
+            id: item.chunk.sourceId,
+            type: item.chunk.sourceType,
+            title: item.chunk.title,
+            excerpt: item.chunk.text,
+            metadata: item.chunk.metadata,
+          })),
+          retrievedChunks: filtered.slice(0, 8).map((item) => ({
+            ...item.chunk,
+            metadata: {
+              ...item.chunk.metadata,
+              relevance: item.rankingScore,
+              citation: item.citation,
+            },
+          })),
+        };
+
+        logger.info('retrieval.context_build.complete', {
+          queryType,
+          retrievedSourceCount: retrievalContext.retrievedSources.length,
+          retrievedChunkCount: retrievalContext.retrievedChunks.length,
+        });
+
+        return retrievalContext;
+      });
+    });
   }
 
   private mergeResults(keywordResults: RetrievalCandidate[], vectorResults: RetrievalCandidate[]): RetrievalCandidate[] {

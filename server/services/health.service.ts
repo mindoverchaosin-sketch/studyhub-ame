@@ -14,12 +14,16 @@ export interface HealthSnapshot {
     database: HealthCheckStatus
     cache: HealthCheckStatus
     application: HealthCheckStatus
+    aiProvider: HealthCheckStatus
+    mediaProvider: HealthCheckStatus
   }
 }
 
 export interface HealthServiceDependencies {
   databaseProbe?: () => Promise<boolean>
   cacheProbe?: () => HealthCheckStatus
+  aiProviderProbe?: () => Promise<boolean>
+  mediaProviderProbe?: () => Promise<boolean>
   now?: () => number
   uptimeProvider?: () => number
   version?: string
@@ -33,9 +37,13 @@ export class HealthService {
   async getHealthSnapshot(): Promise<HealthSnapshot> {
     const database = await this.getDatabaseStatus()
     const cache = this.getCacheStatus()
+    const aiProvider = await this.getAIProviderStatus()
+    const mediaProvider = await this.getMediaProviderStatus()
     const application = 'healthy'
 
-    const status: HealthStatus = database === 'healthy' && cache === 'healthy' && application === 'healthy'
+    const status: HealthStatus = [database, cache, application, aiProvider, mediaProvider].every(
+      (check) => check === 'healthy',
+    )
       ? 'healthy'
       : 'degraded'
 
@@ -50,6 +58,8 @@ export class HealthService {
         database,
         cache,
         application,
+        aiProvider,
+        mediaProvider,
       },
     }
   }
@@ -65,7 +75,7 @@ export class HealthService {
       ])
 
       return result ? 'healthy' : 'unhealthy'
-    } catch (error) {
+    } catch {
       return 'unhealthy'
     }
   }
@@ -80,6 +90,31 @@ export class HealthService {
     }
   }
 
+  private async getAIProviderStatus(): Promise<HealthCheckStatus> {
+    try {
+      const probe = this.deps.aiProviderProbe ?? this.defaultAIProviderProbe
+      const result = await Promise.race([
+        probe(),
+        new Promise<boolean>((_, reject) => {
+          setTimeout(() => reject(new Error('ai-provider-check-timeout')), 300)
+        }),
+      ])
+      return result ? 'healthy' : 'unhealthy'
+    } catch {
+      return 'unhealthy'
+    }
+  }
+
+  private async getMediaProviderStatus(): Promise<HealthCheckStatus> {
+    try {
+      const probe = this.deps.mediaProviderProbe ?? this.defaultMediaProviderProbe
+      const result = await probe()
+      return result ? 'healthy' : 'unhealthy'
+    } catch {
+      return 'unhealthy'
+    }
+  }
+
   private async defaultDatabaseProbe(): Promise<boolean> {
     const prisma = await import('@/lib/prisma')
     await prisma.default.$queryRaw`SELECT 1`
@@ -88,5 +123,22 @@ export class HealthService {
 
   private defaultCacheProbe(): HealthCheckStatus {
     return serviceCache.get('__health__') === null ? 'healthy' : 'healthy'
+  }
+
+  private async defaultAIProviderProbe(): Promise<boolean> {
+    const providerName = process.env.AI_PROVIDER?.toLowerCase() ?? 'mock'
+
+    if (providerName === 'mock') return true
+    if (providerName === 'openai') return Boolean(process.env.OPENAI_API_KEY)
+    if (providerName === 'anthropic') return Boolean(process.env.ANTHROPIC_API_KEY)
+    if (providerName === 'gemini' || providerName === 'google-gemini') {
+      return Boolean(process.env.GOOGLE_API_KEY || process.env.GOOGLE_CLOUD_API_KEY)
+    }
+
+    return true
+  }
+
+  private async defaultMediaProviderProbe(): Promise<boolean> {
+    return true
   }
 }

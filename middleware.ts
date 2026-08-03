@@ -16,10 +16,12 @@ function isStudentRoute(pathname: string) {
 
 export async function middleware(request: NextRequest) {
   const requestId = request.headers.get('x-request-id') || crypto.randomUUID()
+  const correlationId = request.headers.get('x-correlation-id') || requestId
   const { pathname } = request.nextUrl
 
   const response = NextResponse.next()
   response.headers.set('x-request-id', requestId)
+  response.headers.set('x-correlation-id', correlationId)
 
   if (pathname.startsWith('/api/auth') || pathname.startsWith('/_next') || pathname.startsWith('/favicon')) {
     return response

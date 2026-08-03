@@ -1,7 +1,16 @@
+import type { AIContextSnapshot } from '@/types/ai'
+
+export interface AIRetrievalContextOverrides {
+  lessonId?: string;
+  moduleId?: string;
+  questionId?: string;
+  query?: string;
+}
+
 export interface AIRequestPayload {
   prompt: string;
   conversationId?: string;
-  context?: Record<string, unknown>;
+  context?: Partial<AIContextSnapshot> & AIRetrievalContextOverrides;
 }
 
 export interface AIResponseDTO {

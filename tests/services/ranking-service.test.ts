@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import type { RetrievalCandidate } from '@/types/ai';
 import { RankingService } from '@/services/ai/RankingService';
 
-const stubCandidates = [
+const stubCandidates: RetrievalCandidate[] = [
   {
     chunk: {
       id: 'chunk-a',
@@ -59,7 +60,7 @@ describe('RankingService', () => {
 
   it('calculates rankingScore on each result', () => {
     const ranked = new RankingService().rankResults(stubCandidates);
-    expect(ranked[0].rankingScore).toBeGreaterThanOrEqual(ranked[1].rankingScore);
+    expect(ranked[0].rankingScore!).toBeGreaterThanOrEqual(ranked[1].rankingScore!);
     expect(typeof ranked[0].rankingScore).toBe('number');
   });
 });

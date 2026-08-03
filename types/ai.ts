@@ -94,6 +94,22 @@ export interface AIRetrievalContext {
   retrievedChunks: AIContentChunk[];
 }
 
+export interface AILearnerProfile {
+  overallMastery: number;
+  masteryConfidence: string;
+  masteryTrend: string;
+  readinessScore: number;
+  readinessRisk: string;
+  readinessConfidence: string;
+  strongAreas: string[];
+  weakAreas: string[];
+  recommendedActions: string[];
+  topRecommendations: Array<{ title: string; reason: string; priority: number; source: string }>;
+  weeklyPlanSummary: string;
+  analyticsSummary: string;
+  knowledgeGraphSummary: string;
+}
+
 export interface AIExplanation {
   answer: string;
   simplified: string;
@@ -185,6 +201,7 @@ export interface AIRequestContext {
   conversation: AIConversation;
   contextSnapshot?: AIContextSnapshot;
   retrievalContext?: AIRetrievalContext;
+  learnerProfile?: AILearnerProfile;
 }
 
 export interface AIProvider {

@@ -6,13 +6,14 @@ beforeEach(() => {
 
 describe('Retrieval pipeline end-to-end', () => {
   it('merges keyword and vector results, ranks, removes duplicates, and builds prompt content', async () => {
+    const documents = new Map();
     const sharedVectorStore = {
-      documents: new Map(),
-      insert: vi.fn(async function (doc: any) { this.documents.set(doc.chunkId, doc); }),
+      documents,
+      insert: vi.fn(async (doc: any) => { documents.set(doc.chunkId, doc); }),
       update: vi.fn(),
-      delete: vi.fn(async function (id: string) { this.documents.delete(id); }),
-      search: vi.fn(async function (embedding: number[], topK: number) {
-        const arr = Array.from(this.documents.values()).map((d: any) => ({ document: d, similarity: 0.9 }));
+      delete: vi.fn(async (id: string) => { documents.delete(id); }),
+      search: vi.fn(async (embedding: number[], topK: number) => {
+        const arr = Array.from(documents.values()).map((d: any) => ({ document: d, similarity: 0.9 }));
         return arr.slice(0, topK);
       }),
     } as any;

@@ -13,6 +13,12 @@ export interface MetricsSnapshot {
     misses: number
     hitRatio: number
   }
+  ai: {
+    requests: number
+    streamingSessions: number
+    providerFailures: number
+    tokenUsage: number
+  }
   uptime: number
   timestamp: string
 }
@@ -25,6 +31,11 @@ export class MetricsService {
   private serviceDurationMsTotal = 0
   private cacheHits = 0
   private cacheMisses = 0
+  // AI-specific metrics
+  private aiRequests = 0
+  private aiStreamingSessions = 0
+  private aiProviderFailures = 0
+  private aiTokenUsageTotal = 0
 
   recordRequestSuccess(): void {
     this.requestsTotal += 1
@@ -52,6 +63,32 @@ export class MetricsService {
     this.cacheMisses += 1
   }
 
+  recordAIRequest(): void {
+    this.aiRequests += 1
+  }
+
+  recordAIStreamingStart(): void {
+    this.aiStreamingSessions += 1
+  }
+
+  recordAIStreamingEnd(): void {
+    // streaming end is implicit; counter remains as concurrent sessions is not tracked here
+  }
+
+  recordAIProviderFailure(): void {
+    this.aiProviderFailures += 1
+  }
+
+  recordAITokenUsage(tokens: number): void {
+    if (typeof tokens === 'number' && tokens > 0) this.aiTokenUsageTotal += tokens
+  }
+
+  recordTiming(metricName: string, durationMs: number): void {
+    // Lightweight timing recorder - map to service execution for now
+    this.serviceExecutions += 1
+    this.serviceDurationMsTotal += durationMs
+  }
+
   getSnapshot(): MetricsSnapshot {
     return {
       requests: {
@@ -68,6 +105,12 @@ export class MetricsService {
         misses: this.cacheMisses,
         hitRatio: this.cacheHits + this.cacheMisses === 0 ? 0 : this.cacheHits / (this.cacheHits + this.cacheMisses),
       },
+      ai: {
+        requests: this.aiRequests,
+        streamingSessions: this.aiStreamingSessions,
+        providerFailures: this.aiProviderFailures,
+        tokenUsage: this.aiTokenUsageTotal,
+      },
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
     }
@@ -81,6 +124,10 @@ export class MetricsService {
     this.serviceDurationMsTotal = 0
     this.cacheHits = 0
     this.cacheMisses = 0
+    this.aiRequests = 0
+    this.aiStreamingSessions = 0
+    this.aiProviderFailures = 0
+    this.aiTokenUsageTotal = 0
   }
 }
 

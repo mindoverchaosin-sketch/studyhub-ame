@@ -1,4 +1,4 @@
-import type { AIContextSnapshot, AIRequestContext } from '@/types/ai';
+import type { AIContextSnapshot, AIRequestContext, AILearnerProfile } from '@/types/ai';
 import type { AIContentChunk, AIRetrievalContext } from '@/types/ai';
 
 export interface PromptBuilderOptions {
@@ -19,6 +19,7 @@ export class PromptBuilder {
       includeHistory: false,
       maxChunks: 3,
     },
+    learnerProfile?: AILearnerProfile,
   ): string {
     let assembled = basePrompt.trim();
 
@@ -32,6 +33,11 @@ export class PromptBuilder {
       assembled += `Learning goals: ${contextSnapshot.learningGoals.join(', ')}\n`;
     }
 
+    if (learnerProfile) {
+      assembled += `\n\nPersonalized learner profile:\n`;
+      assembled += this.formatLearnerProfile(learnerProfile);
+    }
+
     if (options.includeRetrieval && retrievalContext) {
       assembled += `\nGrounding sources:\n${retrievalContext.sourceSummary}\n`;
       assembled += this.formatRetrievalChunks(retrievalContext.retrievedChunks.slice(0, options.maxChunks ?? 3));
@@ -43,6 +49,26 @@ export class PromptBuilder {
     }
 
     return assembled.trim();
+  }
+
+  private formatLearnerProfile(profile: AILearnerProfile): string {
+    const topRecommendations = profile.topRecommendations.length
+      ? profile.topRecommendations.map((recommendation, index) =>
+          `${index + 1}. ${recommendation.title} (${recommendation.priority}) - ${recommendation.reason}`,
+        ).join('\n')
+      : 'No top recommendations available.';
+
+    return [
+      `Overall mastery: ${profile.overallMastery}% (${profile.masteryConfidence}, trend: ${profile.masteryTrend})`,
+      `Readiness: ${profile.readinessScore}% (${profile.readinessConfidence}, risk: ${profile.readinessRisk})`,
+      `Strong areas: ${profile.strongAreas.join(', ') || 'None'}`,
+      `Weak areas: ${profile.weakAreas.join(', ') || 'None'}`,
+      `Recommended actions: ${profile.recommendedActions.join(', ') || 'None'}`,
+      `Weekly study plan: ${profile.weeklyPlanSummary}`,
+      `Top recommendations:\n${topRecommendations}`,
+      `Analytics summary: ${profile.analyticsSummary}`,
+      `Knowledge graph summary: ${profile.knowledgeGraphSummary}`,
+    ].join('\n');
   }
 
   private formatRetrievalChunks(chunks: AIContentChunk[]): string {

@@ -48,6 +48,28 @@ describe('MetricsService', () => {
     vi.useRealTimers()
   })
 
+  it('records timing from sync and async timing helpers', async () => {
+    const nowSpy = vi.spyOn(Date, 'now')
+      .mockImplementationOnce(() => 0)
+      .mockImplementationOnce(() => 20)
+      .mockImplementationOnce(() => 0)
+      .mockImplementationOnce(() => 55)
+
+    const { timeSync, timeAsync } = await import('@/lib/timing')
+
+    const syncResult = timeSync('TimingHelper', 'syncOp', () => 'sync-ok')
+    const asyncResult = await timeAsync('TimingHelper', 'asyncOp', async () => 'async-ok')
+
+    expect(syncResult).toBe('sync-ok')
+    expect(asyncResult).toBe('async-ok')
+
+    const snapshot = metricsService.getSnapshot()
+    expect(snapshot.services.executions).toBe(2)
+    expect(snapshot.services.averageDurationMs).toBe(38)
+
+    nowSpy.mockRestore()
+  })
+
   it('tracks cache hit and miss counters', () => {
     serviceCache.get('missing-key')
     serviceCache.set('existing-key', { ok: true }, 60_000)

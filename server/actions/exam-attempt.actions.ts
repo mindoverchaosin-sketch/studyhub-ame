@@ -67,7 +67,7 @@ export async function loadAttemptResultsAction(attemptId: string) {
 
 export async function listExamHistoryAction(studentId: string) {
   const session = await requireStudent()
-  if (session.user.role !== 'ADMIN') {
+  if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
     requireOwnership(studentId, session.user.id)
   }
 

@@ -1,113 +1,71 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest';
+import { KnowledgeGraphService } from '@/server/services/learning/knowledge-graph.service';
+import { MasteryService } from '@/server/services/learning/mastery.service';
+import { StudyPlannerService } from '@/server/services/learning/study-planner.service';
 
-describe('study-planner.service', () => {
-  beforeEach(() => {
-    vi.resetModules()
-    vi.unmock('@/server/repositories/progress.repository')
-    vi.unmock('@/server/repositories/exam-attempt.repository')
-    vi.unmock('@/server/repositories/module.repository')
-    vi.unmock('@/server/services/adaptive-learning.service')
-  })
+const baseDate = '2026-08-01';
 
-  it('generates a daily plan for a normal student', async () => {
-    const progressRepo = {
-      findLessonProgressByUser: vi.fn().mockResolvedValue([
-        { id: 'lp1', percentComplete: 40, lesson: { title: 'Fractions', slug: 'fractions' } },
-        { id: 'lp2', percentComplete: 70, lesson: { title: 'Decimals', slug: 'decimals' } },
-      ]),
-      findModuleProgressByUser: vi.fn().mockResolvedValue([{ id: 'mp1', moduleId: 'm1', percentComplete: 100 }]),
-    }
-    const moduleRepo = { findById: vi.fn().mockResolvedValue({ id: 'm1', title: 'Core Maths', slug: 'core-maths' }) }
-    const examAttemptRepo = { listAttempts: vi.fn().mockResolvedValue([{ id: 'a1', status: 'SUBMITTED', percentage: 60 }]) }
-    const adaptiveService = {
-      getAdaptiveLearningData: vi.fn().mockResolvedValue({
-        performanceSummary: { weakTopics: ['Fractions'] },
-        reviewQueue: [{ id: 'r1', title: 'Fractions review' }],
-        recommendations: [{ id: 'rec1', title: 'Practice decimals' }],
-      }),
-    }
+async function setupPlannerGraph(kg: KnowledgeGraphService) {
+  await kg.upsertNode({ id: 'topic1', type: 'topic', title: 'Topic 1' });
+  await kg.upsertNode({ id: 'topic2', type: 'topic', title: 'Topic 2' });
+  await kg.upsertNode({ id: 'lesson1', type: 'lesson', title: 'Lesson 1' });
+  await kg.upsertNode({ id: 'lesson2', type: 'lesson', title: 'Lesson 2' });
+  await kg.upsertEdge({ id: 'edge1', sourceId: 'topic1', targetId: 'lesson1', relation: 'parent' });
+  await kg.upsertEdge({ id: 'edge2', sourceId: 'topic2', targetId: 'lesson2', relation: 'parent' });
+}
 
-    vi.doMock('@/server/repositories/progress.repository', () => ({ progressRepository: progressRepo }))
-    vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository: moduleRepo }))
-    vi.doMock('@/server/repositories/exam-attempt.repository', () => ({ examAttemptRepository: examAttemptRepo }))
-    vi.doMock('@/server/services/adaptive-learning.service', () => adaptiveService)
+describe('StudyPlannerService', () => {
+  it('generates a deterministic daily plan with available minutes', async () => {
+    const kg = new KnowledgeGraphService();
+    await setupPlannerGraph(kg);
+    await kg.recordStudentSignal('studentA', 'lesson1', { kind: 'completed', timestamp: Date.now() - 1000 });
+    await kg.recordStudentSignal('studentA', 'lesson1', { kind: 'answered', correct: true, timestamp: Date.now() - 900 });
+    await kg.recordStudentSignal('studentA', 'lesson2', { kind: 'answered', correct: false, timestamp: Date.now() - 800 });
 
-    const { generateDailyPlan } = await import('../../server/services/study-planner.service')
-    const dto = await generateDailyPlan('u1')
+    const planner = new StudyPlannerService({ dailyStudyHours: 1, defaultLessonDuration: 30, maxDailyItems: 2 }, kg, new MasteryService(undefined, kg));
+    const plan = await planner.generateDailyPlan('studentA', { currentDate: baseDate, availableStudyHoursPerDay: 1 });
 
-    expect(dto.estimatedStudyMinutes).toBeGreaterThan(0)
-    expect(dto.revisionTasks.length).toBeGreaterThan(0)
-    expect(dto.practiceTasks.length).toBeGreaterThan(0)
-    expect(dto.weakTopicTasks.some((task) => task.title.includes('Fractions'))).toBe(true)
-    expect(dto.mockExamTask).not.toBeNull()
-    expect(dto.generatedAt).toBeTruthy()
-  })
+    expect(plan.date).toBe(baseDate);
+    expect(plan.items.length).toBeGreaterThan(0);
+    expect(plan.totalEstimatedMinutes).toBeLessThanOrEqual(60);
+    expect(plan.items.every((item) => item.estimatedDurationMinutes <= 30)).toBe(true);
+  });
 
-  it('returns an empty plan for an empty student', async () => {
-    const progressRepo = {
-      findLessonProgressByUser: vi.fn().mockResolvedValue([]),
-      findModuleProgressByUser: vi.fn().mockResolvedValue([]),
-    }
-    const moduleRepo = { findById: vi.fn().mockResolvedValue(null) }
-    const examAttemptRepo = { listAttempts: vi.fn().mockResolvedValue([]) }
-    const adaptiveService = { getAdaptiveLearningData: vi.fn().mockResolvedValue(null) }
+  it('generates a weekly plan with no duplicate item ids', async () => {
+    const kg = new KnowledgeGraphService();
+    await setupPlannerGraph(kg);
+    await kg.recordStudentSignal('studentB', 'lesson2', { kind: 'answered', correct: false, timestamp: Date.now() - 900 });
 
-    vi.doMock('@/server/repositories/progress.repository', () => ({ progressRepository: progressRepo }))
-    vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository: moduleRepo }))
-    vi.doMock('@/server/repositories/exam-attempt.repository', () => ({ examAttemptRepository: examAttemptRepo }))
-    vi.doMock('@/server/services/adaptive-learning.service', () => adaptiveService)
+    const planner = new StudyPlannerService({ dailyStudyHours: 1, defaultLessonDuration: 30, maxDailyItems: 2, planningHorizonDays: 3 }, kg, new MasteryService(undefined, kg));
+    const week = await planner.generateWeeklyPlan('studentB', { currentDate: baseDate, availableStudyHoursPerDay: 1 });
 
-    const { generateDailyPlan } = await import('../../server/services/study-planner.service')
-    const dto = await generateDailyPlan('u2')
+    expect(week.dailyPlans.length).toBe(3);
+    const ids = week.dailyPlans.flatMap((day) => day.items.map((item) => item.id));
+    expect(new Set(ids).size).toBe(ids.length);
+  });
 
-    expect(dto.revisionTasks).toEqual([])
-    expect(dto.practiceTasks).toEqual([])
-    expect(dto.weakTopicTasks).toEqual([])
-    expect(dto.mockExamTask).toBeNull()
-  })
+  it('creates a catch-up plan for missed days', async () => {
+    const kg = new KnowledgeGraphService();
+    await setupPlannerGraph(kg);
+    await kg.recordStudentSignal('studentC', 'lesson1', { kind: 'answered', correct: false, timestamp: Date.now() - 1000 });
 
-  it('handles missing adaptive data without crashing', async () => {
-    const progressRepo = {
-      findLessonProgressByUser: vi.fn().mockResolvedValue([{ id: 'lp1', percentComplete: 40, lesson: { title: 'Fractions', slug: 'fractions' } }]),
-      findModuleProgressByUser: vi.fn().mockResolvedValue([]),
-    }
-    const moduleRepo = { findById: vi.fn().mockResolvedValue(null) }
-    const examAttemptRepo = { listAttempts: vi.fn().mockResolvedValue([]) }
-    const adaptiveService = { getAdaptiveLearningData: vi.fn().mockResolvedValue(null) }
+    const planner = new StudyPlannerService({ dailyStudyHours: 1, defaultLessonDuration: 30, maxDailyItems: 2 }, kg, new MasteryService(undefined, kg));
+    const catchUp = await planner.generateCatchUpPlan('studentC', { currentDate: baseDate, missedDays: 2, availableStudyHoursPerDay: 1 });
 
-    vi.doMock('@/server/repositories/progress.repository', () => ({ progressRepository: progressRepo }))
-    vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository: moduleRepo }))
-    vi.doMock('@/server/repositories/exam-attempt.repository', () => ({ examAttemptRepository: examAttemptRepo }))
-    vi.doMock('@/server/services/adaptive-learning.service', () => adaptiveService)
+    expect(catchUp.missedDays).toBe(2);
+    expect(catchUp.dailyPlans.length).toBe(2);
+    expect(catchUp.totalRequiredMinutes).toBeGreaterThan(0);
+  });
 
-    const { generateDailyPlan } = await import('../../server/services/study-planner.service')
-    const dto = await generateDailyPlan('u3')
+  it('builds a revision schedule from weak topic mastery', async () => {
+    const kg = new KnowledgeGraphService();
+    await setupPlannerGraph(kg);
+    await kg.recordStudentSignal('studentD', 'lesson2', { kind: 'answered', correct: false, timestamp: Date.now() - 1000 });
 
-    expect(dto.revisionTasks.length).toBeGreaterThan(0)
-    expect(dto.estimatedStudyMinutes).toBeGreaterThan(0)
-  })
+    const planner = new StudyPlannerService({ weakTopicThreshold: 100 }, kg, new MasteryService(undefined, kg));
+    const schedule = await planner.generateRevisionSchedule('studentD', { currentDate: baseDate });
 
-  it('returns a safe fallback when repositories fail', async () => {
-    const progressRepo = {
-      findLessonProgressByUser: vi.fn().mockRejectedValue(new Error('boom')),
-      findModuleProgressByUser: vi.fn().mockRejectedValue(new Error('boom')),
-    }
-    const moduleRepo = { findById: vi.fn().mockRejectedValue(new Error('boom')) }
-    const examAttemptRepo = { listAttempts: vi.fn().mockRejectedValue(new Error('boom')) }
-    const adaptiveService = { getAdaptiveLearningData: vi.fn().mockRejectedValue(new Error('boom')) }
-
-    vi.doMock('@/server/repositories/progress.repository', () => ({ progressRepository: progressRepo }))
-    vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository: moduleRepo }))
-    vi.doMock('@/server/repositories/exam-attempt.repository', () => ({ examAttemptRepository: examAttemptRepo }))
-    vi.doMock('@/server/services/adaptive-learning.service', () => adaptiveService)
-
-    const { generateDailyPlan } = await import('../../server/services/study-planner.service')
-    const dto = await generateDailyPlan('u4')
-
-    expect(dto.estimatedStudyMinutes).toBe(0)
-    expect(dto.revisionTasks).toEqual([])
-    expect(dto.practiceTasks).toEqual([])
-    expect(dto.weakTopicTasks).toEqual([])
-    expect(dto.mockExamTask).toBeNull()
-  })
-})
+    expect(schedule.length).toBeGreaterThan(0);
+    expect(schedule[0]).toHaveProperty('scheduledDate', '2026-08-02');
+  });
+});

@@ -22,12 +22,12 @@ class MockProvider {
 }
 
 describe('AI backend services', () => {
-  it('creates and continues conversations', () => {
+  it('creates and continues conversations', async () => {
     const service = new ConversationService();
-    const conversation = service.createConversation('Test chat');
+    const conversation = await service.createConversation('Test chat');
     expect(conversation.title).toBe('Test chat');
 
-    const updated = service.addMessage(conversation.id, { id: 'm-1', role: 'user', content: 'hello', createdAt: new Date().toISOString() });
+    const updated = await service.addMessage(conversation.id, { id: 'm-1', role: 'user', content: 'hello', createdAt: new Date().toISOString() });
     expect(updated?.messages).toHaveLength(1);
   });
 

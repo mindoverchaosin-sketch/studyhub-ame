@@ -82,7 +82,7 @@ describe('AIService streaming', () => {
     expect(conversationId).toBeTruthy()
     if (conversationId) {
       createdConversationIds.push(conversationId)
-      const conversation = conversationService.getConversation(conversationId)
+      const conversation = await conversationService.getConversation(conversationId)
       expect(conversation?.messages).toHaveLength(1)
       expect(conversation?.messages[0].content).toBe('Hello world')
       expect(conversation?.messages[0].usage).toEqual({ promptTokens: 2, completionTokens: 3, totalTokens: 5 })
@@ -107,7 +107,7 @@ describe('AIService streaming', () => {
     expect(conversationId).toBeTruthy()
     if (conversationId) {
       createdConversationIds.push(conversationId)
-      const conversation = conversationService.getConversation(conversationId)
+      const conversation = await conversationService.getConversation(conversationId)
       expect(conversation?.messages[0].content).toContain('fallback response for Fallback test')
     }
   })
@@ -141,7 +141,7 @@ describe('AIService streaming', () => {
     expect(conversationId).toBeTruthy()
     if (conversationId) {
       createdConversationIds.push(conversationId)
-      const conversation = conversationService.getConversation(conversationId)
+      const conversation = await conversationService.getConversation(conversationId)
       expect(conversation?.messages).toHaveLength(0)
     }
   })
@@ -192,7 +192,7 @@ describe('AIService streaming', () => {
     expect(conversationId).toBeTruthy()
     if (conversationId) {
       createdConversationIds.push(conversationId)
-      const conversation = conversationService.getConversation(conversationId)
+      const conversation = await conversationService.getConversation(conversationId)
       expect(conversation?.messages).toHaveLength(0)
     }
   })
