@@ -135,6 +135,35 @@ playwright-report/
 test-results/
 
 # ------------------------------------------------------------
+# Sprint 14 / lint analysis artifacts
+# ------------------------------------------------------------
+changed_files_lint.json
+changed_lint_classification.json
+changed_lint_summary.json
+inspect_priority.js
+inspect_priority_utf8.js
+scripts/classify_changed_file_lint_issues.js
+scripts/classify_changed_file_lint_summary.js
+scripts/dump_lint_errors.js
+scripts/inspect_priority_hunks.js
+scripts/print_line_ranges.js
+scripts/print_priority_lines.js
+scripts/priority_line_inspector.js
+scripts/show_priority_context.js
+sprint14_hunks.diff
+sprint14_priority_context.txt
+sprint14_priority_hunks.diff
+sprint14_priority_hunks_summary.txt
+sprint14_priority_line_inspector.txt
+sprint14_priority_line_ranges.txt
+sprint14_priority_lint.err
+sprint14_priority_lint.json
+sprint14_priority_lint_errors.json
+sprint14_priority_lint_summary.txt
+sprint14_priority_lint_unix.txt
+sprint14_priority_lint_utf8.json
+
+# ------------------------------------------------------------
 # Optional AI / Build Artifacts
 # ------------------------------------------------------------
 *.cache
