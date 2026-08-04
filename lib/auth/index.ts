@@ -1,6 +1,7 @@
 import { getServerSession, type NextAuthOptions } from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import bcrypt from 'bcrypt'
+import { env } from '@/lib/env'
 import { getUserByEmail } from '@/server/services/user.service'
 import { userRepository } from '@/server/repositories/user.repository'
 import { roleRepository } from '@/server/repositories/role.repository'
@@ -202,7 +203,7 @@ export const authOptions: NextAuthOptions = {
     signIn: '/login',
   },
 
-  secret: process.env.AUTH_SECRET || 'development-secret',
+  secret: env.NEXTAUTH_SECRET,
 
   providers: [
     Credentials({

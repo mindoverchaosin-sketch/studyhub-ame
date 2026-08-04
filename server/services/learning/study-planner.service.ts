@@ -9,7 +9,6 @@ import type {
   StudyItemType,
   MasteryResult,
   GraphNode,
-  PrerequisiteStatus,
   RevisionScheduleItem,
   CatchUpPlan,
 } from '@/types/learning';
@@ -48,7 +47,7 @@ export class StudyPlannerService {
     const date = input?.currentDate ?? isoDate(new Date());
     const hours = input?.availableStudyHoursPerDay ?? this.config.dailyStudyHours;
     const availableMinutes = hours * 60;
-    const items = await this.buildPlanItems(studentId, input, 1, masteryContext);
+    const items = await this.buildPlanItems(studentId, input, undefined, masteryContext);
     const scheduled = this.scheduleItems(items, availableMinutes);
     return {
       studentId,
@@ -142,9 +141,9 @@ export class StudyPlannerService {
     };
   }
 
-  private async buildPlanItems(studentId: string, input?: StudyPlannerInput, horizonDays = 7, masteryContext?: MasteryRequestContext) {
+  private async buildPlanItems(studentId: string, input?: StudyPlannerInput, _planningHorizonDays?: number, masteryContext?: MasteryRequestContext) {
     const requestContext = masteryContext ?? await this.mastery.createRequestContext(studentId);
-    const allTopics = await this.kg.listNodes({ type: 'topic' } as any);
+    const allTopics = await this.kg.listNodes({ type: 'topic' });
     const masteryScores = await Promise.all(allTopics.map((topic) => this.mastery.getTopicMastery(studentId, topic.id, requestContext)));
     const weakTopics = masteryScores.filter((score) => score.score < this.config.weakTopicThreshold);
     const schedule = weakTopics.map((topic) => this.createItemFromTopic(topic));
@@ -157,7 +156,7 @@ export class StudyPlannerService {
 
   private async buildCatchUpItems(studentId: string, missedDays: number, masteryContext?: MasteryRequestContext) {
     const requestContext = masteryContext ?? await this.mastery.createRequestContext(studentId);
-    const allTopics = await this.kg.listNodes({ type: 'topic' } as any);
+    const allTopics = await this.kg.listNodes({ type: 'topic' });
     const masteryScores = await Promise.all(allTopics.map((topic) => this.mastery.getTopicMastery(studentId, topic.id, requestContext)));
     const sorted = masteryScores.sort((a, b) => a.score - b.score || b.confidenceScore - a.confidenceScore);
     return sorted.slice(0, missedDays * 2).map((topic) => this.createItemFromTopic(topic, 'catchup'));
@@ -224,7 +223,7 @@ export class StudyPlannerService {
 
   private async findWeakTopics(studentId: string, masteryContext?: MasteryRequestContext) {
     const requestContext = masteryContext ?? await this.mastery.createRequestContext(studentId);
-    const allTopics = await this.kg.listNodes({ type: 'topic' } as any);
+    const allTopics = await this.kg.listNodes({ type: 'topic' });
     const masteryScores = await Promise.all(allTopics.map((topic) => this.mastery.getTopicMastery(studentId, topic.id, requestContext)));
     return masteryScores.filter((score) => score.score < this.config.weakTopicThreshold);
   }

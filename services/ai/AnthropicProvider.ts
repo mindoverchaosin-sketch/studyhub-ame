@@ -2,14 +2,20 @@ import { BaseAIProvider, createPlaceholderMessage } from "@/services/ai/AIProvid
 import type { AIExplanation, AIMessage, AIRequestContext, Question } from "@/types/ai";
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/chat/completions';
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-3.5';
+
+function getAnthropicConfig() {
+  return {
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    model: process.env.ANTHROPIC_MODEL ?? 'claude-3.5',
+  };
+}
 
 export class AnthropicProvider extends BaseAIProvider {
   private get headers() {
+    const { apiKey } = getAnthropicConfig();
     return {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${ANTHROPIC_API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
     };
   }
 
@@ -22,12 +28,13 @@ export class AnthropicProvider extends BaseAIProvider {
   }
 
   async generateResponse(context: AIRequestContext): Promise<AIMessage> {
-    if (!ANTHROPIC_API_KEY) {
+    const { apiKey, model } = getAnthropicConfig();
+    if (!apiKey) {
       throw new Error('Anthropic API key is not configured.');
     }
 
     const payload = {
-      model: ANTHROPIC_MODEL,
+      model,
       messages: [
         {
           role: 'user',
@@ -65,7 +72,7 @@ export class AnthropicProvider extends BaseAIProvider {
       createdAt: new Date().toISOString(),
       finishReason,
       usage,
-      model: ANTHROPIC_MODEL,
+      model,
       metadata: { provider: 'anthropic' },
     };
   }

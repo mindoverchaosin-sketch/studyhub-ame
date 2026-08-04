@@ -73,11 +73,15 @@ export class MasteryService {
     if (this.config.weights) {
       const totalWeight = sumWeights(this.config.weights);
       if (totalWeight !== 1) {
-        const normalized: any = {};
-        for (const [key, value] of Object.entries(this.config.weights)) {
-          normalized[key] = value / totalWeight;
-        }
-        this.config.weights = normalized as MasteryWeightConfig;
+        const normalized = {
+          questionCorrectness: this.config.weights.questionCorrectness / totalWeight,
+          mockPerformance: this.config.weights.mockPerformance / totalWeight,
+          lessonCompletion: this.config.weights.lessonCompletion / totalWeight,
+          revisionFrequency: this.config.weights.revisionFrequency / totalWeight,
+          studyTime: this.config.weights.studyTime / totalWeight,
+          aiInteraction: this.config.weights.aiInteraction / totalWeight,
+        } satisfies MasteryWeightConfig;
+        this.config.weights = normalized;
       }
     }
   }
@@ -150,7 +154,7 @@ export class MasteryService {
   }
 
   private async resolveEntityGraph(entityId: string, context?: MasteryRequestContext): Promise<GraphNode[]> {
-    if (context?.entityGraphCache.has(entityId)) {
+    if (context?.entityGraphCache?.has(entityId)) {
       return context.entityGraphCache.get(entityId)!;
     }
 
@@ -191,8 +195,8 @@ export class MasteryService {
     }
 
     const edges = direction === 'source'
-      ? await this.kg.listEdges({ sourceId: nodeId } as any)
-      : await this.kg.listEdges({ targetId: nodeId } as any);
+      ? await this.kg.listEdges({ sourceId: nodeId })
+      : await this.kg.listEdges({ targetId: nodeId });
 
     context?.edgeCache.set(cacheKey, edges);
     return edges;

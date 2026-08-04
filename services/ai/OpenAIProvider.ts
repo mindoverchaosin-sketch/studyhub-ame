@@ -2,8 +2,13 @@ import { BaseAIProvider } from "@/services/ai/AIProvider";
 import type { AIExplanation, AIMessage, AIRequestContext, Question } from "@/types/ai";
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_MODEL = process.env.OPENAI_MODEL ?? 'gpt-4.1-mini';
+
+function getOpenAIConfig() {
+  return {
+    apiKey: process.env.OPENAI_API_KEY,
+    model: process.env.OPENAI_MODEL ?? 'gpt-4.1-mini',
+  };
+}
 
 function buildMessages(context: AIRequestContext) {
   return [
@@ -25,7 +30,8 @@ export class OpenAIProvider extends BaseAIProvider {
   };
 
   async generateResponse({ prompt }: AIRequestContext): Promise<AIMessage> {
-    if (!OPENAI_API_KEY) {
+    const { apiKey, model } = getOpenAIConfig();
+    if (!apiKey) {
       throw new Error('OpenAI API key is not configured.');
     }
 
@@ -33,10 +39,10 @@ export class OpenAIProvider extends BaseAIProvider {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: OPENAI_MODEL,
+        model,
         messages: buildMessages({ prompt, conversation: { id: '', title: '', messages: [], createdAt: '', lastUpdated: '' } }),
         temperature: 0.7,
         max_tokens: 800,
@@ -66,13 +72,14 @@ export class OpenAIProvider extends BaseAIProvider {
       createdAt: new Date().toISOString(),
       finishReason: choice?.finish_reason,
       usage,
-      model: OPENAI_MODEL,
+      model,
       metadata: { provider: 'openai' },
     };
   }
 
   async *streamResponse({ prompt }: AIRequestContext, options?: { timeoutMs?: number; attempt?: number; signal?: AbortSignal }): AsyncGenerator<import('@/types/ai').AIStreamChunk> {
-    if (!OPENAI_API_KEY) {
+    const { apiKey, model } = getOpenAIConfig();
+    if (!apiKey) {
       yield { type: 'error', error: 'OpenAI API key is not configured.' };
       return;
     }
@@ -93,10 +100,10 @@ export class OpenAIProvider extends BaseAIProvider {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: OPENAI_MODEL,
+          model,
           messages: buildMessages({ prompt, conversation: { id: '', title: '', messages: [], createdAt: '', lastUpdated: '' } }),
           temperature: 0.7,
           max_tokens: 800,
@@ -134,7 +141,7 @@ export class OpenAIProvider extends BaseAIProvider {
           buffer = buffer.slice(newlineIndex + 1);
           if (!line) continue;
           if (line === 'data: [DONE]') {
-            yield { type: 'done', finishReason, usage, model: OPENAI_MODEL, metadata: { provider: 'openai' } };
+            yield { type: 'done', finishReason, usage, model, metadata: { provider: 'openai' } };
             return;
           }
           if (!line.startsWith('data: ')) continue;
@@ -162,7 +169,7 @@ export class OpenAIProvider extends BaseAIProvider {
         }
       }
 
-      yield { type: 'done', finishReason, usage, model: OPENAI_MODEL, metadata: { provider: 'openai' } };
+      yield { type: 'done', finishReason, usage, model, metadata: { provider: 'openai' } };
     } catch (error) {
       if (controller.signal.aborted) {
         yield { type: 'error', error: 'OpenAI stream aborted.' };

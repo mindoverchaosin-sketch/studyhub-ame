@@ -6,9 +6,36 @@ import { progressRepository } from '@/server/repositories/progress.repository'
 import { sectionRepository } from '@/server/repositories/section.repository'
 import { userRepository } from '@/server/repositories/user.repository'
 import { getAdaptiveLearningData } from '@/server/services/adaptive-learning.service'
-import { getCacheKey, invalidateServiceCache, withServiceCache } from '@/server/services/cache'
+import { getCacheKey, withServiceCache } from '@/server/services/cache'
 import { instrumentService } from '@/lib/logger'
 import { timeAsync, timeSync } from '@/lib/timing'
+
+type ProgressRow = {
+  id?: string
+  moduleId?: string
+  lessonId?: string
+  percentComplete?: number
+  updatedAt?: Date
+  title?: string
+  description?: string | null
+  slug?: string
+  lesson?: { title?: string; description?: string | null; slug?: string }
+}
+
+type AttemptRow = {
+  id: string
+  status?: string
+  percentage?: number
+  score?: number
+  quiz?: { title?: string }
+}
+
+type CourseProgressRow = {
+  status?: string
+  completionPercent?: number
+  courseId?: string
+  updatedAt?: Date
+}
 
 function formatRelativeTime(date: Date): string {
   const now = Date.now()
@@ -34,19 +61,19 @@ export async function getDashboardSummary(studentId: string): Promise<DashboardS
         ]))
 
         return await timeAsync('dashboard', 'build_summary', async () => {
-          const completedModules = moduleProgressRows.filter((entry: any) => (entry.percentComplete ?? 0) >= 100).length
-          const moduleIds = Array.from(new Set(moduleProgressRows.map((entry: any) => entry.moduleId).filter(Boolean)))
+          const completedModules = moduleProgressRows.filter((entry: ProgressRow) => (entry.percentComplete ?? 0) >= 100).length
+          const moduleIds = Array.from(new Set(moduleProgressRows.map((entry: ProgressRow) => entry.moduleId).filter((moduleId): moduleId is string => Boolean(moduleId))))
           const resolvedModules = moduleIds.length > 0
             ? await moduleRepository.findManyByIds(moduleIds)
             : []
           const totalModules = resolvedModules.length || moduleProgressRows.length
-          const completedLessons = lessonProgressRows.filter((entry: any) => (entry.percentComplete ?? 0) >= 100).length
+          const completedLessons = lessonProgressRows.filter((entry: ProgressRow) => (entry.percentComplete ?? 0) >= 100).length
           const questionsSolved = attempts.length > 0
-            ? (await examAttemptRepository.getAttemptQuestionsByAttemptIds(attempts.map((attempt: any) => attempt.id))).length
+            ? (await examAttemptRepository.getAttemptQuestionsByAttemptIds(attempts.map((attempt: AttemptRow) => attempt.id))).length
             : 0
-          const mockExamsTaken = attempts.filter((attempt: any) => attempt.status === 'SUBMITTED').length
+          const mockExamsTaken = attempts.filter((attempt: AttemptRow) => attempt.status === 'SUBMITTED').length
           const averageMockScore = mockExamsTaken > 0
-            ? Math.round(attempts.reduce((sum: number, attempt: any) => sum + (attempt.percentage ?? 0), 0) / mockExamsTaken)
+            ? Math.round(attempts.reduce((sum: number, attempt: AttemptRow) => sum + (attempt.percentage ?? 0), 0) / mockExamsTaken)
             : 0
           const revisionQueueCount = adaptiveData?.reviewQueue?.length ?? 0
           const weeklyStudyMinutes = Math.max(0, completedLessons * 15 + Math.max(0, (adaptiveData?.performanceSummary?.recentAccuracy ?? 0) / 10))
@@ -95,12 +122,14 @@ export async function getStudentDashboardData(userId: string): Promise<Dashboard
         progressRepository.findStudyStreak(userId),
       ]))
 
-      const courseProgress = courseProgressRows[0]
-      const firstLesson = lessonProgressRows[0]
-      const firstModule = moduleProgressRows[0]
-      const completedLessons = lessonProgressRows.filter((entry: any) => (entry.percentComplete ?? 0) >= 100).length
-      const completedModules = moduleProgressRows.filter((entry: any) => (entry.percentComplete ?? 0) >= 100).length
-      const averageQuizScore = recentQuizAttempts.length > 0 ? Math.round(recentQuizAttempts.reduce((sum: number, attempt: any) => sum + (attempt.score ?? 0), 0) / recentQuizAttempts.length) : 0
+      const courseProgress = courseProgressRows[0] as CourseProgressRow | undefined
+      const firstLesson = lessonProgressRows[0] as ProgressRow | undefined
+      const firstModule = moduleProgressRows[0] as ProgressRow | undefined
+      const safeLessonProgressRows = Array.isArray(lessonProgressRows) ? lessonProgressRows as ProgressRow[] : []
+      const safeModuleProgressRows = Array.isArray(moduleProgressRows) ? moduleProgressRows as ProgressRow[] : []
+      const completedLessons = safeLessonProgressRows.filter((entry: ProgressRow) => (entry.percentComplete ?? 0) >= 100).length
+      const completedModules = safeModuleProgressRows.filter((entry: ProgressRow) => (entry.percentComplete ?? 0) >= 100).length
+      const averageQuizScore = recentQuizAttempts.length > 0 ? Math.round(recentQuizAttempts.reduce((sum: number, attempt: AttemptRow) => sum + (attempt.score ?? 0), 0) / recentQuizAttempts.length) : 0
       const courseCompletion = courseProgress?.status === 'COMPLETED' || (courseProgress?.completionPercent ?? 0) >= 100 ? 100 : Math.min(100, Math.max(0, courseProgress?.completionPercent ?? 0))
 
       const [lessonDetail, moduleDetail, courseDetail] = await timeAsync('dashboard', 'load_reference_data', async () => Promise.all([
@@ -113,9 +142,9 @@ export async function getStudentDashboardData(userId: string): Promise<Dashboard
         const continueLearning = firstLesson
           ? [
               {
-                id: firstLesson.id,
+                id: firstLesson?.id ?? firstLesson?.lessonId ?? 'continue-learning',
                 lesson: {
-                  id: firstLesson.lessonId,
+                  id: firstLesson?.lessonId ?? 'continue-learning',
                   title: firstLesson.lesson?.title ?? lessonDetail?.title ?? 'Continue learning',
                   description: firstLesson.lesson?.description ?? lessonDetail?.description ?? null,
                   href: `/student/topics/${firstLesson.lesson?.slug ?? lessonDetail?.slug ?? 'welcome'}`,
@@ -141,14 +170,14 @@ export async function getStudentDashboardData(userId: string): Promise<Dashboard
           continueLearning,
           progress: {
             courseCompletion,
-            moduleCompletion: moduleProgressRows.length > 0 ? Math.round((completedModules / moduleProgressRows.length) * 100) : 0,
-            lessonCompletion: lessonProgressRows.length > 0 ? Math.round((completedLessons / lessonProgressRows.length) * 100) : 0,
+            moduleCompletion: safeModuleProgressRows.length > 0 ? Math.round((completedModules / safeModuleProgressRows.length) * 100) : 0,
+            lessonCompletion: safeLessonProgressRows.length > 0 ? Math.round((completedLessons / safeLessonProgressRows.length) * 100) : 0,
             quizScore: averageQuizScore,
           },
           dailyGoal: {
-            minutesStudiedToday: Math.max(15, lessonProgressRows.reduce((sum: number, entry: any) => sum + Math.max(5, Math.round((entry.percentComplete ?? 0) / 20)), 0)),
+            minutesStudiedToday: Math.max(15, safeLessonProgressRows.reduce((sum: number, entry: ProgressRow) => sum + Math.max(5, Math.round((entry.percentComplete ?? 0) / 20)), 0)),
             dailyTarget: 60,
-            remainingTime: Math.max(0, 60 - Math.max(15, lessonProgressRows.reduce((sum: number, entry: any) => sum + Math.max(5, Math.round((entry.percentComplete ?? 0) / 20)), 0))),
+            remainingTime: Math.max(0, 60 - Math.max(15, safeLessonProgressRows.reduce((sum: number, entry: ProgressRow) => sum + Math.max(5, Math.round((entry.percentComplete ?? 0) / 20)), 0))),
             weeklyStudyGoalMinutes: 300,
           },
           studyStreak: {
@@ -158,14 +187,14 @@ export async function getStudentDashboardData(userId: string): Promise<Dashboard
           },
           recentActivity: [
             ...(recentLessonProgress.length > 0
-              ? recentLessonProgress.map((item: any) => ({
+              ? recentLessonProgress.map((item: ProgressRow) => ({
                   title: `Lesson updated: ${item.lesson?.title ?? 'Lesson'}`,
                   detail: `${item.percentComplete ?? 0}% complete`,
                   time: formatRelativeTime(item.updatedAt ?? new Date()),
                 }))
               : []),
             ...(recentQuizAttempts.length > 0
-              ? recentQuizAttempts.map((item: any) => ({
+              ? recentQuizAttempts.map((item: { quiz?: { title?: string }; score?: number; attemptedAt?: Date }) => ({
                   title: `Quiz attempted: ${item.quiz?.title ?? 'Quiz'}`,
                   detail: `${item.score ?? 0}% score`,
                   time: formatRelativeTime(item.attemptedAt ?? new Date()),

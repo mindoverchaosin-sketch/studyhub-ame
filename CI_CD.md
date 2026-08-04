@@ -12,11 +12,15 @@ This document describes a recommended deployment pipeline for the project. It do
    - Run `npm run lint`.
    - Address issues before deployment.
 
-3. TypeScript
+3. Environment validation
+   - Run `npm run check:env`.
+   - Ensure required runtime variables and provider settings are correct.
+
+4. TypeScript
    - Run `npx tsc --noEmit`.
    - Ensure the typecheck is clean.
 
-4. Unit tests
+5. Unit tests
    - Run `npm run test:ci`.
    - Require passing tests before promotion.
 

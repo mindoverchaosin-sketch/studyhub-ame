@@ -1,6 +1,7 @@
 import { getToken } from 'next-auth/jwt'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { env } from '@/lib/env'
 import { normalizeRoleName } from '@/server/services/authorization.service'
 
 const adminRoutes = ['/admin', '/admin/analytics', '/admin/audit-logs', '/admin/billing', '/admin/courses', '/admin/lessons', '/admin/materials', '/admin/mock-tests', '/admin/modules', '/admin/questions', '/admin/students', '/admin/users', '/admin/settings']
@@ -27,7 +28,7 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  const token = await getToken({ req: request, secret: process.env.AUTH_SECRET || 'development-secret' })
+  const token = await getToken({ req: request, secret: env.NEXTAUTH_SECRET })
   const role = typeof token?.role === 'string' ? token.role : undefined
   const isAuthenticated = Boolean(token)
 

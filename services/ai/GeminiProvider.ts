@@ -1,20 +1,25 @@
 import { BaseAIProvider, createPlaceholderMessage } from "@/services/ai/AIProvider";
 import type { AIExplanation, AIMessage, AIRequestContext, Question } from "@/types/ai";
 
-const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GOOGLE_GEMINI_MODEL ?? 'gemini-1.5';
-const GEMINI_API_URL = 'https://gemini.googleapis.com/v1/models/' + GEMINI_MODEL + ':generateMessage';
+function getGeminiConfig() {
+  return {
+    apiKey: process.env.GOOGLE_GEMINI_API_KEY,
+    model: process.env.GOOGLE_GEMINI_MODEL ?? 'gemini-1.5',
+  };
+}
 
 export class GeminiProvider extends BaseAIProvider {
   private get headers() {
+    const { apiKey } = getGeminiConfig();
     return {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${GEMINI_API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
     };
   }
 
   async generateResponse(context: AIRequestContext): Promise<AIMessage> {
-    if (!GEMINI_API_KEY) {
+    const { apiKey, model } = getGeminiConfig();
+    if (!apiKey) {
       throw new Error('Google Gemini API key is not configured.');
     }
 
@@ -26,7 +31,7 @@ export class GeminiProvider extends BaseAIProvider {
       maxOutputTokens: 800,
     };
 
-    const response = await fetch(GEMINI_API_URL, {
+    const response = await fetch(`https://gemini.googleapis.com/v1/models/${model}:generateMessage`, {
       method: 'POST',
       headers: this.headers,
       body: JSON.stringify(payload),
@@ -51,7 +56,7 @@ export class GeminiProvider extends BaseAIProvider {
       content: String(content).trim(),
       createdAt: new Date().toISOString(),
       usage,
-      model: GEMINI_MODEL,
+      model,
       metadata: { provider: 'gemini' },
     };
   }

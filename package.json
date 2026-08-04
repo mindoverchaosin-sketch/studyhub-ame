@@ -8,6 +8,8 @@
     "postinstall": "prisma generate",
     "test": "vitest",
     "test:ci": "vitest run",
+    "check:env": "tsx -e \"import('./lib/env')\"",
+    "validate:ci": "npm run check:env && npm run lint && npx tsc --noEmit && npm run build && npm run test:ci",
     "start": "next start",
     "lint": "eslint"
   },

@@ -65,6 +65,8 @@
 
 - [ ] Environment files or platform settings match the intended production values.
 - [ ] Database, auth, and host settings are verified.
+- [ ] `.env.example` exists and production secrets are stored out of repository.
+- [ ] Runtime configuration validation is available and passes in deployment.
 
 ## Dependency audit
 

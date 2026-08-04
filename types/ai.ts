@@ -67,7 +67,7 @@ export interface PromptTemplate {
   prompt: string;
 }
 
-export type AIContentSourceType = 'lesson' | 'module' | 'question' | 'note';
+export type AIContentSourceType = 'lesson' | 'module' | 'question' | 'note' | 'mockTest';
 
 export interface AIContentSource {
   id: string;
@@ -165,7 +165,7 @@ export interface EmbeddingProvider {
 }
 
 export interface RetrievedCitation {
-  sourceType: 'lesson' | 'module' | 'question' | 'mockTest';
+  sourceType: AIContentSourceType | 'mockTest';
   sourceId: string;
   title: string;
   chunkId: string;

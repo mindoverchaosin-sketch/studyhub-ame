@@ -10,12 +10,6 @@ import type {
   ReadinessConfidence,
   ReadinessRisk,
   ReadinessAction,
-  GraphNode,
-  GraphEdge,
-  StudentGraphState,
-  StudentSignal,
-  MasteryResult,
-  StudyPlannerConfig,
 } from '@/types/learning';
 import type { KnowledgeGraphService } from './knowledge-graph.service';
 
@@ -376,20 +370,22 @@ export class ReadinessService {
     }).length;
   }
 
-  private async calculateTrend(studentId: string, currentScore: number, scopeId?: string) {
-    const snapshot = await this.getHistoricalReadiness(studentId, scopeId);
+  private async calculateTrend(_studentId: string, currentScore: number, _scopeId?: string) {
+    const snapshot = await this.getHistoricalReadiness(_studentId, _scopeId);
     if (snapshot === null) return 'stable';
     if (currentScore >= snapshot + 5) return 'improving';
     if (snapshot >= currentScore + 5) return 'declining';
     return 'stable';
   }
 
-  private async getHistoricalReadiness(studentId: string, scopeId?: string) {
+  private async getHistoricalReadiness(_studentId: string, _scopeId?: string) {
+    void _studentId;
+    void _scopeId;
     return null;
   }
 
   private async findStrongTopics(studentId: string, limit: number, moduleId?: string, topicId?: string, context?: MasteryRequestContext) {
-    const allTopics = await this.kg.listNodes({ type: 'topic' } as any);
+    const allTopics = await this.kg.listNodes({ type: 'topic' });
     const masteryScores = await Promise.all(
       allTopics
         .filter((topic) => {
@@ -406,7 +402,7 @@ export class ReadinessService {
   }
 
   private async findWeakTopics(studentId: string, limit: number, moduleId?: string, topicId?: string, context?: MasteryRequestContext) {
-    const allTopics = await this.kg.listNodes({ type: 'topic' } as any);
+    const allTopics = await this.kg.listNodes({ type: 'topic' });
     const masteryScores = await Promise.all(
       allTopics
         .filter((topic) => {

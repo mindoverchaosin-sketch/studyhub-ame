@@ -7,6 +7,7 @@
 3. Verify the database connection string is valid.
 4. Check whether the build artifact or dependencies were updated incorrectly.
 5. Use `/api/health` to confirm whether the process is healthy.
+6. Run `npm run check:env` in the deployment environment to confirm the runtime config is valid.
 
 ## Database unavailable
 

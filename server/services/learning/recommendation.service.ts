@@ -11,11 +11,8 @@ import type {
   RecommendationInput,
   RecommendationSource,
   RecommendationSummary,
-  RecommendationType,
   ReadinessResult,
   MasteryResult,
-  GraphNode,
-  StudyPlannerConfig,
 } from '@/types/learning';
 import type { KnowledgeGraphService } from './knowledge-graph.service';
 
@@ -161,15 +158,15 @@ export class RecommendationService {
   private async findWeakTopics(studentId: string, context: RecommendationRequestContext): Promise<MasteryResult[]> {
     if (context.weakTopics) return context.weakTopics;
 
-    const topics = await this.kg.listNodes({ type: 'topic' } as any);
+    const topics = await this.kg.listNodes({ type: 'topic' });
     const scores = await Promise.all(topics.map((topic) => this.mastery.getTopicMastery(studentId, topic.id, context.masteryContext)));
     return scores.filter((score) => score.score < this.config.weakTopicThreshold);
   }
 
-  private async getRecentSignalsFromGraph(studentGraph: any, days: number) {
+  private async getRecentSignalsFromGraph(studentGraph: { nodes: Record<string, { nodeId: string; signals: Array<{ kind: string; timestamp: number; correct?: boolean; score?: number; maxScore?: number }> }> }, days: number) {
     const since = Date.now() - days * 24 * 60 * 60 * 1000;
-    return Object.values(studentGraph.nodes).flatMap((node: any) =>
-      node.signals.filter((signal: any) => signal.timestamp >= since).map((signal: any) => ({ nodeId: node.nodeId, signal })),
+    return Object.values(studentGraph.nodes).flatMap((node) =>
+      node.signals.filter((signal) => signal.timestamp >= since).map((signal) => ({ nodeId: node.nodeId, signal })),
     );
   }
 

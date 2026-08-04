@@ -35,6 +35,14 @@ Example commands:
 npx prisma migrate deploy
 ```
 
+## Environment validation
+
+Before build or deploy, validate runtime configuration using the included environment validator.
+
+```bash
+npm run check:env
+```
+
 ## Build commands
 
 ```bash

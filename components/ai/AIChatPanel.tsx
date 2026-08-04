@@ -93,7 +93,7 @@ export default function AIChatPanel() {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let assistantMessage: AIMessage = {
+      const assistantMessage: AIMessage = {
         id: `${Date.now()}-assistant`,
         role: 'assistant',
         content: '',

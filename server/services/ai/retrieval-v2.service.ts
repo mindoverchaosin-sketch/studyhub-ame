@@ -12,8 +12,20 @@ import type {
   AIContentSource,
   AIContentChunk,
   RetrievalCandidate,
-  RetrievalMetrics,
 } from '@/types/ai';
+
+type QuestionRecord = {
+  id: string;
+  prompt?: string;
+  question?: string;
+  explanation?: string;
+  difficulty?: string;
+  createdAt?: Date | string;
+};
+
+type LessonMetadata = {
+  tags?: unknown;
+};
 
 const embeddingProvider = createEmbeddingProvider();
 const vectorStore = createVectorStore();
@@ -37,9 +49,9 @@ function buildRecencyScore(chunk: AIContentChunk): number {
 }
 
 function buildCitation(chunk: AIContentChunk) {
-  const allowed: Array<import('@/types/ai').RetrievedCitation['sourceType']> = ['lesson', 'module', 'question', 'mockTest'];
-  const sourceType = allowed.includes(chunk.sourceType as any)
-    ? (chunk.sourceType as import('@/types/ai').RetrievedCitation['sourceType'])
+  const allowed: Array<import('@/types/ai').AIContentSourceType | 'mockTest'> = ['lesson', 'module', 'question', 'note', 'mockTest'];
+  const sourceType = allowed.includes(chunk.sourceType)
+    ? chunk.sourceType
     : 'lesson';
 
   return {
@@ -76,36 +88,39 @@ function toChunkFromSource(source: AIContentSource): AIContentChunk[] {
 
 async function keywordSearch(query: string): Promise<RetrievalCandidate[]> {
   const results: RetrievalCandidate[] = [];
-  const lessons = await lessonRepository.list({ search: query, take: 10 });
-  const questions = await questionRepository.findForAdmin({ search: query, take: 10 });
 
-  for (const lesson of lessons) {
-    let moduleTitle: string | undefined = undefined;
-    try {
-      if (lesson.moduleId) {
-        const mod = await moduleRepository.findById(lesson.moduleId);
-        moduleTitle = mod?.title;
+  try {
+    const lessons = await lessonRepository.list({ search: query, take: 10 });
+    const questions = await questionRepository.findForAdmin({ search: query, take: 10 });
+
+    for (const lesson of lessons) {
+      let moduleTitle: string | undefined = undefined;
+      try {
+        if (lesson.moduleId) {
+          const mod = await moduleRepository.findById(lesson.moduleId);
+          moduleTitle = mod?.title;
+        }
+      } catch {
+        // ignore module lookup failures
       }
-    } catch (e) {
-      // ignore module lookup failures
-    }
 
-    const source: AIContentSource = {
-      id: lesson.id,
-      type: 'lesson',
-      title: lesson.title,
-      excerpt: lesson.description ?? '',
-      metadata: {
-        lessonId: lesson.id,
-        moduleId: lesson.moduleId,
-        lessonTitle: lesson.title,
-        moduleTitle: moduleTitle,
-        difficulty: lesson.status,
-        tags: Array.isArray((lesson.metadata as any)?.tags) ? (lesson.metadata as any).tags : [],
-        contentType: 'lesson',
-        updatedAt: lesson.updatedAt,
-      },
-    };
+      const lessonMetadata = lesson.metadata as LessonMetadata | undefined;
+      const source: AIContentSource = {
+        id: lesson.id,
+        type: 'lesson',
+        title: lesson.title,
+        excerpt: lesson.description ?? '',
+        metadata: {
+          lessonId: lesson.id,
+          moduleId: lesson.moduleId,
+          lessonTitle: lesson.title,
+          moduleTitle: moduleTitle,
+          difficulty: lesson.status,
+          tags: Array.isArray(lessonMetadata?.tags) ? lessonMetadata.tags : [],
+          contentType: 'lesson',
+          updatedAt: lesson.updatedAt,
+        },
+      };
 
     const chunk = toChunkFromSource(source)[0];
     results.push({
@@ -120,36 +135,43 @@ async function keywordSearch(query: string): Promise<RetrievalCandidate[]> {
     });
   }
 
-  questions.forEach((question) => {
-    const source: AIContentSource = {
-      id: question.id,
+    questions.forEach((question) => {
+      const questionRecord = question as unknown as QuestionRecord;
+      const source: AIContentSource = {
+      id: questionRecord.id,
       type: 'question',
-      title: (question as any).prompt ?? (question as any).question ?? 'Question',
-      excerpt: (question as any).explanation ?? (question as any).prompt ?? (question as any).question ?? '',
+      title: questionRecord.prompt ?? questionRecord.question ?? 'Question',
+      excerpt: questionRecord.explanation ?? questionRecord.prompt ?? questionRecord.question ?? '',
       metadata: {
         lessonId: undefined,
         moduleId: undefined,
         lessonTitle: undefined,
         moduleTitle: undefined,
-        difficulty: question.difficulty,
+        difficulty: questionRecord.difficulty,
         tags: [],
         contentType: 'question',
-        updatedAt: question.createdAt,
+        updatedAt: questionRecord.createdAt,
       },
     };
 
-    const chunk = toChunkFromSource(source)[0];
-    results.push({
-      chunk,
-      keywordScore: 1,
-      semanticScore: 0,
-      metadataScore: buildMetadataScores(chunk),
-      recencyScore: buildRecencyScore(chunk),
-      lessonPriority: 0,
-      moduleRelevance: 0,
-      citation: buildCitation(chunk),
+      const chunk = toChunkFromSource(source)[0];
+      results.push({
+        chunk,
+        keywordScore: 1,
+        semanticScore: 0,
+        metadataScore: buildMetadataScores(chunk),
+        recencyScore: buildRecencyScore(chunk),
+        lessonPriority: 0,
+        moduleRelevance: 0,
+        citation: buildCitation(chunk),
+      });
     });
-  });
+  } catch (error) {
+    logger.warn('retrieval.keyword_search.failure', {
+      query,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+  }
 
   retrievalMetricsCollector.keywordHits += results.length;
   return results;
@@ -200,7 +222,7 @@ export class RetrievalV2Service {
       const queryType = safeInput.query?.trim() ? 'explicit' : 'fallback';
 
       const query = timeSync('retrieval', 'query_normalization', () => {
-        return (safeInput.query?.trim && safeInput.query.trim()) || this.buildFallbackQuery(safeInput as any);
+        return (safeInput.query?.trim && safeInput.query.trim()) || this.buildFallbackQuery(safeInput);
       });
 
       const idResults = await timeAsync('retrieval', 'cache_lookup', async () => {
@@ -216,10 +238,11 @@ export class RetrievalV2Service {
                   const mod = await moduleRepository.findById(lesson.moduleId);
                   moduleTitle = mod?.title;
                 }
-              } catch (e) {
+              } catch {
                 // ignore module lookup failures
               }
 
+              const lessonMetadata = lesson.metadata as LessonMetadata | undefined;
               const source: AIContentSource = {
                 id: lesson.id,
                 type: 'lesson',
@@ -229,9 +252,9 @@ export class RetrievalV2Service {
                   lessonId: lesson.id,
                   moduleId: lesson.moduleId,
                   lessonTitle: lesson.title,
-                  moduleTitle: moduleTitle,
+                  moduleTitle,
                   difficulty: lesson.status,
-                  tags: Array.isArray((lesson.metadata as any)?.tags) ? (lesson.metadata as any).tags : [],
+                  tags: Array.isArray(lessonMetadata?.tags) ? lessonMetadata.tags : [],
                   contentType: 'lesson',
                   updatedAt: lesson.updatedAt,
                 },
@@ -257,20 +280,21 @@ export class RetrievalV2Service {
           try {
             const question = await questionRepository.findById(safeInput.questionId);
             if (question) {
+              const questionRecord = question as unknown as QuestionRecord;
               const source: AIContentSource = {
-                id: question.id,
+                id: questionRecord.id,
                 type: 'question',
-                title: (question as any).prompt ?? (question as any).question ?? 'Question',
-                excerpt: (question as any).explanation ?? (question as any).prompt ?? (question as any).question ?? '',
+                title: questionRecord.prompt ?? questionRecord.question ?? 'Question',
+                excerpt: questionRecord.explanation ?? questionRecord.prompt ?? questionRecord.question ?? '',
                 metadata: {
                   lessonId: undefined,
                   moduleId: undefined,
                   lessonTitle: undefined,
                   moduleTitle: undefined,
-                  difficulty: question.difficulty,
+                  difficulty: questionRecord.difficulty,
                   tags: [],
                   contentType: 'question',
-                  updatedAt: question.createdAt,
+                  updatedAt: questionRecord.createdAt,
                 },
               };
               const chunk = toChunkFromSource(source)[0];
