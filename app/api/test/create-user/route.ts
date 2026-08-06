@@ -35,13 +35,13 @@ export async function POST(req: Request) {
     }
 
     const passwordHash = await bcrypt.hash(password, 10)
-    const studentRole = await roleRepository.findByName('STUDENT')
+    let studentRole = await roleRepository.findByName('STUDENT')
 
     if (!studentRole) {
-      const response = NextResponse.json({ error: 'student role missing' }, { status: 500 })
-      const requestId = getRequestId()
-      if (requestId) response.headers.set('x-request-id', requestId)
-      return response
+      studentRole = await roleRepository.create({
+        name: 'STUDENT',
+        description: 'Student role',
+      })
     }
 
     const user = await userRepository.createUser({
