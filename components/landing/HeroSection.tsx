@@ -1,117 +1,144 @@
 import Link from "next/link";
-import { FiBookOpen, FiCpu, FiPlayCircle, FiShield, FiStar, FiTrendingUp } from "react-icons/fi";
-import Badge from "@/components/ui/Badge";
-import Button from "@/components/ui/Button";
-import Container from "@/components/ui/Container";
-import Heading from "@/components/ui/Heading";
-import Section from "@/components/ui/Section";
+import {
+  FiArrowRight,
+  FiPlayCircle,
+  FiCpu,
+  FiTrendingUp,
+  FiCheckCircle,
+} from "react-icons/fi";
 
-const highlights = [
-  { icon: FiStar, title: "AI Tutor" },
-  { icon: FiTrendingUp, title: "Progress" },
-  { icon: FiPlayCircle, title: "Today's Quiz" },
-  { icon: FiBookOpen, title: "Study Notes" },
-  { icon: FiShield, title: "Mock Exams" },
-] as const;
-
-const metricCards = [
-  { title: "14+", label: "DGCA Modules" },
-  { title: "17+", label: "EASA Modules" },
-  { title: "5000+", label: "Practice Questions" },
-  { title: "10K+", label: "Students" },
-] as const;
+const metrics = [
+  { value: "14+", label: "DGCA Modules" },
+  { value: "17", label: "EASA Modules" },
+  { value: "5,000+", label: "Practice Questions" },
+  { value: "10K+", label: "Engineers Trained" },
+];
 
 export default function HeroSection() {
   return (
-    <Section className="relative overflow-hidden border-b border-slate-200/80 bg-[radial-gradient(circle_at_top_left,_rgba(37,99,235,0.16),_transparent_42%),radial-gradient(circle_at_88%_12%,_rgba(56,189,248,0.16),_transparent_32%),linear-gradient(135deg,_#f8fbff_0%,_#ffffff_50%,_#eef6ff_100%)] py-24 sm:py-28 lg:py-32">
-      <div className="absolute inset-0 bg-[linear-gradient(110deg,transparent_0%,rgba(255,255,255,0.84)_44%,transparent_100%)]" />
-      <div className="absolute left-[-4rem] top-[-5rem] h-56 w-56 rounded-full bg-blue-400/25 blur-3xl" />
-      <div className="absolute right-[-3rem] top-6 h-72 w-72 rounded-full bg-cyan-400/25 blur-3xl" />
+    <section className="relative overflow-hidden pt-32 pb-20 sm:pt-40 sm:pb-28">
+      {/* Aviation blueprint backdrop */}
+      <div
+        aria-hidden
+        className="absolute inset-0 -z-20 bg-cover bg-center opacity-[0.16] dark:opacity-[0.34]"
+        style={{ backgroundImage: "url(/images/aviation-blueprint.png)" }}
+      />
+      <div aria-hidden className="absolute inset-0 -z-20 grid-lines" />
+      <div
+        aria-hidden
+        className="absolute inset-0 -z-10"
+        style={{ background: "var(--hero-overlay)" }}
+      />
+      {/* Cloud / runway glows */}
+      <div
+        aria-hidden
+        className="absolute -left-24 top-24 -z-10 h-72 w-72 rounded-full bg-primary/20 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="absolute right-[-6rem] top-10 -z-10 h-80 w-80 rounded-full bg-accent/20 blur-3xl"
+      />
 
-      <Container className="relative grid gap-16 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-        <div className="max-w-2xl">
-          <Badge variant="accent">✈ India&apos;s Modern DGCA & EASA Learning Platform</Badge>
-          <Heading as="h1" size="xl" className="mt-6 max-w-3xl leading-[0.95] text-slate-950">
-            Master DGCA & EASA
-            <span className="mt-3 block text-slate-700">Aircraft Maintenance Engineering</span>
-          </Heading>
-          <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600 sm:text-xl">
-            Structured learning, AI-powered practice, revision notes, realistic mock exams and progress tracking designed to help future Aircraft Maintenance Engineers succeed.
+      <div className="mx-auto grid max-w-7xl items-center gap-14 px-4 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
+        <div className="max-w-2xl animate-fade-up">
+          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-primary backdrop-blur">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+            AI-Powered AME Learning
+          </span>
+
+          <h1 className="mt-6 text-balance text-4xl font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+            Master DGCA &amp; EASA Exams{" "}
+            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              with AI
+            </span>
+          </h1>
+
+          <p className="mt-6 max-w-xl text-pretty text-lg leading-8 text-muted-foreground">
+            AI Tutor, Mock Exams, Question Bank, Study Planner and personalized
+            learning for Aircraft Maintenance Engineers.
           </p>
 
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Button asChild variant="primary" size="lg">
-              <Link href="/modules">Start Learning</Link>
-            </Button>
-            <Button asChild variant="secondary" size="lg">
-              <Link href="/quiz">Browse Courses</Link>
-            </Button>
+          <div className="mt-9 flex flex-wrap items-center gap-3">
+            <Link
+              href="/modules"
+              className="group inline-flex items-center gap-2 rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground shadow-[0_20px_45px_-18px_var(--primary)] transition-transform hover:-translate-y-0.5"
+            >
+              Start Learning
+              <FiArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+            </Link>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-6 py-3.5 text-sm font-semibold text-foreground backdrop-blur transition-colors hover:border-primary/40"
+            >
+              <FiPlayCircle className="h-5 w-5 text-primary" aria-hidden />
+              Watch Demo
+            </button>
           </div>
 
-          <div className="mt-10 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {metricCards.map((item) => (
-              <div key={item.label} className="rounded-[1.25rem] border border-slate-200/80 bg-white/85 px-4 py-4 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.24)] backdrop-blur">
-                <p className="text-xl font-semibold tracking-tight text-slate-950">{item.title}</p>
-                <p className="mt-1 text-sm font-medium uppercase tracking-[0.2em] text-slate-600">{item.label}</p>
+          <dl className="mt-12 grid max-w-lg grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-4">
+            {metrics.map((m) => (
+              <div key={m.label}>
+                <dt className="sr-only">{m.label}</dt>
+                <dd className="text-2xl font-bold tracking-tight text-foreground">
+                  {m.value}
+                </dd>
+                <p className="mt-1 text-xs font-medium text-muted-foreground">
+                  {m.label}
+                </p>
               </div>
             ))}
-          </div>
+          </dl>
         </div>
 
-        <div className="relative flex items-center justify-center">
-          <div className="absolute inset-6 rounded-full bg-[radial-gradient(circle,_rgba(37,99,235,0.18),_transparent_72%)] blur-3xl" />
-          <div className="relative w-full max-w-[560px] rounded-[2rem] border border-white/80 bg-white/70 p-4 shadow-[0_40px_140px_-44px_rgba(37,99,235,0.32)] backdrop-blur-xl sm:p-6 lg:p-7">
-            <div className="relative overflow-hidden rounded-[1.5rem] border border-white/30 bg-[linear-gradient(145deg,_#071A3D_0%,_#2563eb_42%,_#38BDF8_100%)] p-6 sm:p-8">
-              <div className="absolute left-4 top-4 rounded-2xl border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium text-white backdrop-blur">
-                Live Revision
-              </div>
-              <div className="absolute right-4 top-16 rounded-2xl border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium text-white backdrop-blur">
-                AI Study Coach
-              </div>
-
-              <div className="relative mx-auto mt-8 grid max-w-[460px] gap-3 rounded-[1.5rem] border border-white/20 bg-slate-950/20 p-4 backdrop-blur md:grid-cols-[0.9fr_1.1fr] md:p-5">
-                <div className="rounded-[1.25rem] border border-white/20 bg-white/20 p-3 text-white shadow-lg">
-                  <div className="flex items-center gap-2 text-sm font-semibold">
-                    <FiCpu className="h-4 w-4" />
-                    AI Tutor
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-slate-100">Personalized coaching for weak topics and exam confidence.</p>
-                </div>
-                <div className="space-y-3">
-                  <div className="rounded-[1.25rem] border border-white/20 bg-white/15 p-4 text-white">
-                    <div className="text-sm font-semibold">Today&apos;s Quiz</div>
-                    <div className="mt-2 text-2xl font-semibold">12 questions</div>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-[1.25rem] border border-white/20 bg-white/15 p-3 text-white">
-                      <div className="text-sm font-medium">Progress</div>
-                      <div className="mt-1 text-xl font-semibold">84%</div>
-                    </div>
-                    <div className="rounded-[1.25rem] border border-white/20 bg-white/15 p-3 text-white">
-                      <div className="text-sm font-medium">Mock Exams</div>
-                      <div className="mt-1 text-xl font-semibold">3/5</div>
-                    </div>
-                  </div>
+        {/* Glass HUD dashboard preview */}
+        <div className="relative animate-fade-up [animation-delay:120ms]">
+          <div className="glass animate-float rounded-3xl p-5 shadow-[0_50px_120px_-45px_rgba(8,15,35,0.6)]">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                  <FiCpu className="h-5 w-5" aria-hidden />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">AI Study Coach</p>
+                  <p className="text-xs text-muted-foreground">Module 7 · Electrical Fundamentals</p>
                 </div>
               </div>
+              <span className="rounded-full bg-accent/15 px-2.5 py-1 text-[11px] font-semibold text-accent">
+                Live
+              </span>
+            </div>
 
-              <div className="mt-6 flex flex-wrap justify-center gap-3 px-2">
-                {highlights.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <div key={item.title} className="rounded-full border border-white/20 bg-white/15 px-3 py-2 text-xs font-medium text-white shadow-[0_10px_30px_rgba(2,6,23,0.18)] backdrop-blur sm:px-4">
-                      <div className="flex items-center gap-2">
-                        <Icon className="h-3.5 w-3.5" />
-                        {item.title}
-                      </div>
-                    </div>
-                  );
-                })}
+            <div className="mt-5 rounded-2xl border border-border bg-background/50 p-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium text-foreground">Today&apos;s Quiz</span>
+                <span className="font-mono text-muted-foreground">12 questions</span>
+              </div>
+              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div className="h-full w-[84%] rounded-full bg-gradient-to-r from-primary to-accent" />
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">84% mastery · keep the streak going</p>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-border bg-background/50 p-4">
+                <FiTrendingUp className="h-5 w-5 text-primary" aria-hidden />
+                <p className="mt-3 text-xl font-bold text-foreground">3 / 5</p>
+                <p className="text-xs text-muted-foreground">Mock exams passed</p>
+              </div>
+              <div className="rounded-2xl border border-border bg-background/50 p-4">
+                <FiCheckCircle className="h-5 w-5 text-accent" aria-hidden />
+                <p className="mt-3 text-xl font-bold text-foreground">27 day</p>
+                <p className="text-xs text-muted-foreground">Learning streak</p>
               </div>
             </div>
           </div>
+
+          <div className="glass absolute -bottom-6 -left-4 hidden w-52 rounded-2xl p-4 shadow-xl sm:block">
+            <p className="text-xs font-medium text-muted-foreground">Next milestone</p>
+            <p className="mt-1 text-sm font-semibold text-foreground">EASA Module 9 unlocked</p>
+          </div>
         </div>
-      </Container>
-    </Section>
+      </div>
+    </section>
   );
 }

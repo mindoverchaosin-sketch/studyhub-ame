@@ -1,37 +1,25 @@
-import Navbar from "@/components/layout/Navbar";
-import CtaSection from "@/components/landing/CtaSection";
-import ExperienceSection from "@/components/landing/ExperienceSection";
-import FaqSection from "@/components/landing/FaqSection";
-import FooterSection from "@/components/landing/FooterSection";
+import Navbar from "@/components/landing/Navbar";
 import HeroSection from "@/components/landing/HeroSection";
-import HowItWorksSection from "@/components/landing/HowItWorksSection";
-import ModulesSection from "@/components/landing/ModulesSection";
+import LearningPathsSection from "@/components/landing/LearningPathsSection";
+import FeaturesSection from "@/components/landing/FeaturesSection";
 import PricingSection from "@/components/landing/PricingSection";
-import StatsSection from "@/components/landing/StatsSection";
 import TestimonialsSection from "@/components/landing/TestimonialsSection";
-import TrustSection from "@/components/landing/TrustSection";
-
-const sections = [
-  { id: "hero", Component: HeroSection },
-  { id: "trust", Component: TrustSection },
-  { id: "stats", Component: StatsSection },
-  { id: "modules", Component: ModulesSection },
-  { id: "experience", Component: ExperienceSection },
-  { id: "how-it-works", Component: HowItWorksSection },
-  { id: "testimonials", Component: TestimonialsSection },
-  { id: "pricing", Component: PricingSection },
-  { id: "faq", Component: FaqSection },
-  { id: "cta", Component: CtaSection },
-];
+import FaqSection from "@/components/landing/FaqSection";
+import CtaSection from "@/components/landing/CtaSection";
+import FooterSection from "@/components/landing/FooterSection";
 
 export default function Home() {
   return (
     <>
       <Navbar />
       <main id="main-content" className="flex-1">
-        {sections.map(({ Component, id }) => (
-          <Component key={id} />
-        ))}
+        <HeroSection />
+        <LearningPathsSection />
+        <FeaturesSection />
+        <PricingSection />
+        <TestimonialsSection />
+        <FaqSection />
+        <CtaSection />
       </main>
       <FooterSection />
     </>

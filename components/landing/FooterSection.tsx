@@ -1,63 +1,79 @@
 import Link from "next/link";
-import Container from "@/components/ui/Container";
+import { PiAirplaneTiltFill } from "react-icons/pi";
 
 const columns = [
   {
-    title: "Product",
+    title: "Learning",
     links: [
-      { label: "Modules", href: "/modules" },
+      { label: "DGCA Path", href: "/modules?path=dgca" },
+      { label: "EASA Path", href: "/modules?path=easa" },
       { label: "Mock Exams", href: "/quiz" },
-      { label: "Flashcards", href: "/student/dashboard" },
-      { label: "Pricing", href: "/pricing" },
+      { label: "Question Bank", href: "/modules" },
     ],
   },
   {
-    title: "Resources",
+    title: "Platform",
     links: [
-      { label: "Study Notes", href: "/modules" },
-      { label: "Previous Papers", href: "/quiz" },
-      { label: "FAQ", href: "/about" },
-      { label: "Support", href: "/about" },
+      { label: "AI Tutor", href: "#features" },
+      { label: "Study Planner", href: "#features" },
+      { label: "Analytics", href: "#features" },
+      { label: "Pricing", href: "#pricing" },
     ],
   },
   {
     title: "Company",
     links: [
       { label: "About", href: "/about" },
-      { label: "Careers", href: "/register" },
-      { label: "Contact", href: "/register" },
+      { label: "FAQ", href: "#faq" },
+      { label: "Contact", href: "/about" },
       { label: "Privacy", href: "/about" },
     ],
   },
-] as const;
+];
 
 export default function FooterSection() {
   return (
-    <footer className="border-t border-slate-200 bg-[linear-gradient(180deg,_#020617_0%,_#0f172a_100%)] text-slate-300">
-      <Container className="grid gap-10 py-16 lg:grid-cols-[1.2fr_0.8fr_0.8fr_0.8fr] lg:py-20">
+    <footer className="border-t border-border bg-card/50 backdrop-blur">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr] lg:px-8">
         <div>
-          <p className="text-xl font-semibold text-white">AeroPrep</p>
-          <p className="mt-4 max-w-sm text-sm leading-7 text-slate-400">
-            Premium aviation education for DGCA and EASA aspirants preparing for high-stakes maintenance exams.
+          <Link href="/" className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <PiAirplaneTiltFill className="h-5 w-5" aria-hidden />
+            </span>
+            <span className="text-lg font-bold tracking-tight text-foreground">
+              Aero<span className="text-primary">Prep</span>
+            </span>
+          </Link>
+          <p className="mt-4 max-w-sm text-sm leading-7 text-muted-foreground">
+            The AI-powered learning platform for Aircraft Maintenance Engineers
+            preparing for DGCA and EASA exams.
           </p>
         </div>
         {columns.map((column) => (
-          <div key={column.title}>
-            <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-white">{column.title}</h3>
-            <ul className="mt-4 space-y-3 text-sm text-slate-400">
+          <nav key={column.title} aria-label={column.title}>
+            <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-foreground">
+              {column.title}
+            </h3>
+            <ul className="mt-4 space-y-3 text-sm">
               {column.links.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950">
+                  <Link
+                    href={link.href}
+                    className="text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  >
                     {link.label}
                   </Link>
                 </li>
               ))}
             </ul>
-          </div>
+          </nav>
         ))}
-      </Container>
-      <div className="border-t border-white/10 px-6 py-6 text-center text-sm text-slate-500 lg:px-8">
-        © 2026 AeroPrep. All rights reserved.
+      </div>
+      <div className="border-t border-border px-6 py-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 text-sm text-muted-foreground sm:flex-row">
+          <p>© 2026 AeroPrep. All rights reserved.</p>
+          <p className="font-mono text-xs">Built for future Aircraft Maintenance Engineers.</p>
+        </div>
       </div>
     </footer>
   );
