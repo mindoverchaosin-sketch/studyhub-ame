@@ -151,9 +151,76 @@ body {
   animation: aero-float 6s ease-in-out infinite;
 }
 
+/* ----------------------------------------------------------------------------
+   Cinematic hero background layers
+--------------------------------------------------------------------------- */
+
+/* Slowly drifting aurora gradient */
+@keyframes aero-aurora {
+  0% {
+    transform: translate3d(-6%, -3%, 0) scale(1.1) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(6%, 4%, 0) scale(1.25) rotate(8deg);
+  }
+  100% {
+    transform: translate3d(-6%, -3%, 0) scale(1.1) rotate(0deg);
+  }
+}
+
+/* Horizontal cloud drift */
+@keyframes aero-cloud-drift {
+  from {
+    transform: translateX(-12%);
+  }
+  to {
+    transform: translateX(12%);
+  }
+}
+
+/* Runway centreline light pulse */
+@keyframes aero-runway-pulse {
+  0%, 100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+/* Subtle HUD ring rotation */
+@keyframes aero-hud-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-aurora {
+  animation: aero-aurora 26s ease-in-out infinite;
+}
+
+.animate-cloud {
+  animation: aero-cloud-drift 32s ease-in-out infinite alternate;
+}
+
+.animate-hud-spin {
+  animation: aero-hud-spin 40s linear infinite;
+}
+
+.animate-hud-spin-reverse {
+  animation: aero-hud-spin 30s linear infinite reverse;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
-  .animate-float {
+  .animate-float,
+  .animate-aurora,
+  .animate-cloud,
+  .animate-hud-spin,
+  .animate-hud-spin-reverse {
     animation: none;
   }
   html {

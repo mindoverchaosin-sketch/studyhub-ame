@@ -1,144 +1,176 @@
-import Link from "next/link";
-import {
-  FiArrowRight,
-  FiPlayCircle,
-  FiCpu,
-  FiTrendingUp,
-  FiCheckCircle,
-} from "react-icons/fi";
+"use client"
 
-const metrics = [
-  { value: "14+", label: "DGCA Modules" },
-  { value: "17", label: "EASA Modules" },
-  { value: "5,000+", label: "Practice Questions" },
-  { value: "10K+", label: "Engineers Trained" },
-];
+import type React from "react"
+import { useRef } from "react"
+import Link from "next/link"
+import {
+  motion,
+  useMotionValue,
+  useSpring,
+  useScroll,
+  useTransform,
+  useReducedMotion,
+  type Variants,
+} from "motion/react"
+import { FiArrowRight, FiCompass } from "react-icons/fi"
+import { HeroBackground } from "./hero/HeroBackground"
+import { CinematicComposition } from "./hero/CinematicComposition"
+
+const trustItems = ["DGCA", "EASA", "AI Powered", "Personalized Learning"]
+
+const container: Variants = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.09, delayChildren: 0.1 },
+  },
+}
+
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 24 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] },
+  },
+}
 
 export default function HeroSection() {
+  const sectionRef = useRef<HTMLElement>(null)
+  const reduceMotion = useReducedMotion()
+
+  // Pointer parallax
+  const mouseX = useMotionValue(0)
+  const mouseY = useMotionValue(0)
+  const springX = useSpring(mouseX, { stiffness: 60, damping: 20 })
+  const springY = useSpring(mouseY, { stiffness: 60, damping: 20 })
+
+  // Background moves a little, composition moves more (opposite for depth)
+  const bgX = useTransform(springX, [-0.5, 0.5], [-12, 12])
+  const bgY = useTransform(springY, [-0.5, 0.5], [-12, 12])
+  const compX = useTransform(springX, [-0.5, 0.5], [26, -26])
+  const compY = useTransform(springY, [-0.5, 0.5], [22, -22])
+
+  // Scroll-driven fade of the whole hero content
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end start"],
+  })
+  const contentOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0])
+  const contentY = useTransform(scrollYProgress, [0, 0.7], [0, 80])
+
+  function handlePointerMove(e: React.PointerEvent<HTMLElement>) {
+    if (reduceMotion) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    mouseX.set((e.clientX - rect.left) / rect.width - 0.5)
+    mouseY.set((e.clientY - rect.top) / rect.height - 0.5)
+  }
+
   return (
-    <section className="relative overflow-hidden pt-32 pb-20 sm:pt-40 sm:pb-28">
-      {/* Aviation blueprint backdrop */}
-      <div
-        aria-hidden
-        className="absolute inset-0 -z-20 bg-cover bg-center opacity-[0.16] dark:opacity-[0.34]"
-        style={{ backgroundImage: "url(/images/aviation-blueprint.png)" }}
-      />
-      <div aria-hidden className="absolute inset-0 -z-20 grid-lines" />
-      <div
-        aria-hidden
-        className="absolute inset-0 -z-10"
-        style={{ background: "var(--hero-overlay)" }}
-      />
-      {/* Cloud / runway glows */}
-      <div
-        aria-hidden
-        className="absolute -left-24 top-24 -z-10 h-72 w-72 rounded-full bg-primary/20 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="absolute right-[-6rem] top-10 -z-10 h-80 w-80 rounded-full bg-accent/20 blur-3xl"
-      />
+    <section
+      ref={sectionRef}
+      onPointerMove={handlePointerMove}
+      className="relative flex min-h-[100svh] items-center overflow-hidden"
+    >
+      <HeroBackground parallaxX={bgX} parallaxY={bgY} />
 
-      <div className="mx-auto grid max-w-7xl items-center gap-14 px-4 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
-        <div className="max-w-2xl animate-fade-up">
-          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-primary backdrop-blur">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-            AI-Powered AME Learning
-          </span>
-
-          <h1 className="mt-6 text-balance text-4xl font-extrabold leading-[1.05] tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-            Master DGCA &amp; EASA Exams{" "}
-            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              with AI
+      <motion.div
+        style={{ opacity: contentOpacity, y: contentY }}
+        className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-12 px-4 pt-28 pb-16 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8 lg:px-8 lg:pt-24"
+      >
+        {/* Left — copy */}
+        <motion.div variants={container} initial="hidden" animate="show" className="max-w-2xl">
+          <motion.span
+            variants={fadeUp}
+            className="glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-primary"
+          >
+            <span className="relative flex size-1.5">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent opacity-75" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-accent" />
             </span>
-          </h1>
+            AI-Powered Aviation Learning
+          </motion.span>
 
-          <p className="mt-6 max-w-xl text-pretty text-lg leading-8 text-muted-foreground">
-            AI Tutor, Mock Exams, Question Bank, Study Planner and personalized
-            learning for Aircraft Maintenance Engineers.
-          </p>
+          <motion.h1
+            variants={fadeUp}
+            className="mt-6 text-balance text-4xl font-extrabold leading-[1.03] tracking-tight text-foreground sm:text-5xl lg:text-6xl xl:text-7xl"
+          >
+            Master DGCA &amp; EASA{" "}
+            <span className="bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent">
+              With AI
+            </span>
+          </motion.h1>
 
-          <div className="mt-9 flex flex-wrap items-center gap-3">
-            <Link
-              href="/modules"
-              className="group inline-flex items-center gap-2 rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground shadow-[0_20px_45px_-18px_var(--primary)] transition-transform hover:-translate-y-0.5"
-            >
-              Start Learning
-              <FiArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
-            </Link>
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-6 py-3.5 text-sm font-semibold text-foreground backdrop-blur transition-colors hover:border-primary/40"
-            >
-              <FiPlayCircle className="h-5 w-5 text-primary" aria-hidden />
-              Watch Demo
-            </button>
-          </div>
+          <motion.p
+            variants={fadeUp}
+            className="mt-6 max-w-xl text-pretty text-lg leading-8 text-muted-foreground"
+          >
+            Learn with structured lessons, AI tutoring, mock exams, adaptive study plans, and
+            performance analytics&mdash;all in one premium platform.
+          </motion.p>
 
-          <dl className="mt-12 grid max-w-lg grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-4">
-            {metrics.map((m) => (
-              <div key={m.label}>
-                <dt className="sr-only">{m.label}</dt>
-                <dd className="text-2xl font-bold tracking-tight text-foreground">
-                  {m.value}
-                </dd>
-                <p className="mt-1 text-xs font-medium text-muted-foreground">
-                  {m.label}
-                </p>
-              </div>
-            ))}
-          </dl>
-        </div>
+          <motion.div variants={fadeUp} className="mt-9 flex flex-wrap items-center gap-3">
+            <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
+              <Link
+                href="/modules"
+                className="group inline-flex items-center gap-2 rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground shadow-[0_20px_45px_-18px_var(--primary)] transition-colors"
+              >
+                Start Learning
+                <FiArrowRight
+                  className="size-4 transition-transform group-hover:translate-x-0.5"
+                  aria-hidden
+                />
+              </Link>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
+              <Link
+                href="/modules"
+                className="glass inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-sm font-semibold text-foreground transition-colors hover:text-primary"
+              >
+                <FiCompass className="size-5 text-accent" aria-hidden />
+                Explore Courses
+              </Link>
+            </motion.div>
+          </motion.div>
 
-        {/* Glass HUD dashboard preview */}
-        <div className="relative animate-fade-up [animation-delay:120ms]">
-          <div className="glass animate-float rounded-3xl p-5 shadow-[0_50px_120px_-45px_rgba(8,15,35,0.6)]">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15 text-primary">
-                  <FiCpu className="h-5 w-5" aria-hidden />
+          {/* Trust row */}
+          <motion.ul
+            variants={fadeUp}
+            className="mt-12 flex flex-wrap items-center gap-x-6 gap-y-3"
+          >
+            {trustItems.map((item, i) => (
+              <li key={item} className="flex items-center gap-3">
+                {i > 0 && <span aria-hidden className="hidden h-4 w-px bg-border sm:block" />}
+                <span className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  {item}
                 </span>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">AI Study Coach</p>
-                  <p className="text-xs text-muted-foreground">Module 7 · Electrical Fundamentals</p>
-                </div>
-              </div>
-              <span className="rounded-full bg-accent/15 px-2.5 py-1 text-[11px] font-semibold text-accent">
-                Live
-              </span>
-            </div>
+              </li>
+            ))}
+          </motion.ul>
+        </motion.div>
 
-            <div className="mt-5 rounded-2xl border border-border bg-background/50 p-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-medium text-foreground">Today&apos;s Quiz</span>
-                <span className="font-mono text-muted-foreground">12 questions</span>
-              </div>
-              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
-                <div className="h-full w-[84%] rounded-full bg-gradient-to-r from-primary to-accent" />
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">84% mastery · keep the streak going</p>
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-2xl border border-border bg-background/50 p-4">
-                <FiTrendingUp className="h-5 w-5 text-primary" aria-hidden />
-                <p className="mt-3 text-xl font-bold text-foreground">3 / 5</p>
-                <p className="text-xs text-muted-foreground">Mock exams passed</p>
-              </div>
-              <div className="rounded-2xl border border-border bg-background/50 p-4">
-                <FiCheckCircle className="h-5 w-5 text-accent" aria-hidden />
-                <p className="mt-3 text-xl font-bold text-foreground">27 day</p>
-                <p className="text-xs text-muted-foreground">Learning streak</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="glass absolute -bottom-6 -left-4 hidden w-52 rounded-2xl p-4 shadow-xl sm:block">
-            <p className="text-xs font-medium text-muted-foreground">Next milestone</p>
-            <p className="mt-1 text-sm font-semibold text-foreground">EASA Module 9 unlocked</p>
-          </div>
+        {/* Right — cinematic composition */}
+        <div className="relative">
+          <CinematicComposition parallaxX={compX} parallaxY={compY} />
         </div>
-      </div>
+      </motion.div>
+
+      {/* Scroll cue */}
+      {!reduceMotion && (
+        <motion.div
+          className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.4, duration: 0.8 }}
+        >
+          <div className="flex h-9 w-5 items-start justify-center rounded-full border border-border p-1">
+            <motion.span
+              className="size-1.5 rounded-full bg-accent"
+              animate={{ y: [0, 12, 0], opacity: [1, 0.2, 1] }}
+              transition={{ duration: 1.8, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+            />
+          </div>
+        </motion.div>
+      )}
     </section>
-  );
+  )
 }
