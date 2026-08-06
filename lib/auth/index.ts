@@ -5,14 +5,12 @@ import { env } from '@/lib/env'
 import { getUserByEmail } from '@/server/services/user.service'
 import { userRepository } from '@/server/repositories/user.repository'
 import { roleRepository } from '@/server/repositories/role.repository'
-import { permissionService } from '@/server/services/permission.service'
+import { permissionService, type PermissionName } from '@/server/services/permission.service'
 import { auditLogService } from '@/server/services/audit-log.service'
 import type { Session, User } from 'next-auth'
 import type { JWT } from 'next-auth/jwt'
 
 export type UserRole = 'STUDENT' | 'ADMIN' | 'INSTRUCTOR' | 'SUPER_ADMIN' | 'CONTENT_MANAGER' | 'STUDENT_MANAGER' | 'FINANCE_MANAGER' | 'SUPPORT_AGENT' | 'QUESTION_REVIEWER'
-
-const AUTH_ROLE_VALUES = ['STUDENT', 'ADMIN', 'INSTRUCTOR', 'SUPER_ADMIN', 'CONTENT_MANAGER', 'STUDENT_MANAGER', 'FINANCE_MANAGER', 'SUPPORT_AGENT', 'QUESTION_REVIEWER'] as const
 
 export type AuthSession = Session & {
   user: Session['user'] & {
@@ -170,7 +168,7 @@ export function requireOwnership(resourceUserId: string, currentUserId: string, 
 export async function requirePermission(permission: string): Promise<AuthSession> {
   const session = await requireAuth()
 
-  if (permissionService.hasPermission(session.user.role, permission as any)) {
+  if (permissionService.hasPermission(session.user.role, permission as PermissionName)) {
     return session
   }
 
@@ -201,6 +199,7 @@ export const authOptions: NextAuthOptions = {
 
   pages: {
     signIn: '/login',
+    error: '/login',
   },
 
   secret: env.NEXTAUTH_SECRET,

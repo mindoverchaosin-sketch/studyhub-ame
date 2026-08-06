@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import Container from "@/components/ui/Container";
 import Heading from "@/components/ui/Heading";
 import Section from "@/components/ui/Section";
@@ -28,7 +30,12 @@ const modules = [
   },
 ] as const;
 
-export default function ModulesPage() {
+export default async function ModulesPage() {
+  const session = await getServerSession(authOptions)
+  const role = session?.user?.role
+  const isAuthenticated = Boolean(session?.user?.id)
+  const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN'
+
   return (
     <Section className="bg-[linear-gradient(135deg,_#f8fbff_0%,_#ffffff_100%)]">
       <Container className="space-y-10">
@@ -54,12 +61,29 @@ export default function ModulesPage() {
         <div className="rounded-[2rem] border border-blue-100 bg-blue-50/70 p-7">
           <p className="text-sm font-semibold uppercase tracking-[0.3em] text-blue-700">Ready to continue?</p>
           <div className="mt-4 flex flex-wrap gap-3">
-            <Link href="/register" className="rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700">
-              Create account
-            </Link>
-            <Link href="/student/dashboard" className="rounded-full border border-blue-200 bg-white px-5 py-3 text-sm font-semibold text-blue-700 transition hover:bg-slate-50">
-              Open dashboard
-            </Link>
+            {!isAuthenticated ? (
+              <>
+                <Link href="/register" className="rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700">
+                  Get Started
+                </Link>
+                <Link href="/login" className="rounded-full border border-blue-200 bg-white px-5 py-3 text-sm font-semibold text-blue-700 transition hover:bg-slate-50">
+                  Sign In
+                </Link>
+              </>
+            ) : isAdmin ? (
+              <Link href="/admin/dashboard" className="rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700">
+                Admin Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link href="/student/courses" className="rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700">
+                  Continue learning
+                </Link>
+                <Link href="/student/dashboard" className="rounded-full border border-blue-200 bg-white px-5 py-3 text-sm font-semibold text-blue-700 transition hover:bg-slate-50">
+                  Open dashboard
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </Container>
