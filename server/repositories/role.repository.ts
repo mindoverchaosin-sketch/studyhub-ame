@@ -1,8 +1,13 @@
 import prisma from '@/lib/prisma'
+import type { Prisma } from '@prisma/client'
 
 export class RoleRepository {
   async findByName(name: string) {
-    return prisma.role.findUnique({ where: { name: name as any } })
+    return prisma.role.findUnique({ where: { name: name as Prisma.RoleWhereUniqueInput['name'] } })
+  }
+
+  async create(input: Prisma.RoleCreateInput) {
+    return prisma.role.create({ data: input })
   }
 
   async getPermissionsForUser(userId: string) {

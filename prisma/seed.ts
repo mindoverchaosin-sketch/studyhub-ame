@@ -106,6 +106,12 @@ async function main() {
     if (!existingAdmin) {
       const hashedPassword = await bcrypt.default.hash(defaultPassword, 10)
 
+      await prisma.role.upsert({
+        where: { name: 'STUDENT' },
+        update: {},
+        create: { name: 'STUDENT', description: 'Student role' },
+      })
+
       const adminRole = await prisma.role.upsert({
         where: { name: 'ADMIN' },
         update: {},
