@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { signIn, getSession } from "next-auth/react";
 import { FiChrome, FiEye, FiEyeOff } from "react-icons/fi";
 import { z } from "zod";
@@ -23,8 +23,6 @@ type FormValues = {
 };
 
 type FormErrors = Partial<Record<keyof FormValues, string>>;
-
-type AuthActionResult = { success?: boolean; error?: string } | void;
 
 const signInSchema = z.object({
   name: z.string().optional(),
@@ -47,6 +45,29 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [formMessage, setFormMessage] = useState<string | null>(null);
+
+  const getFriendlyAuthError = (error?: string) => {
+    switch (error) {
+      case 'CredentialsSignin':
+        return 'Invalid email or password.';
+      case 'SessionRequired':
+        return 'Please sign in to continue.';
+      case 'AccessDenied':
+        return 'Unable to sign in. Please try again.';
+      default:
+        return undefined;
+    }
+  };
+
+  const authPageMessage = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const errorCode = searchParams.get('error') ?? undefined;
+    return getFriendlyAuthError(errorCode) ?? null;
+  }, []);
 
   const handleFieldChange = (field: keyof Omit<FormValues, "rememberMe">, value: string) => {
     setValues((current) => ({ ...current, [field]: value }));
@@ -104,9 +125,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
       });
 
       if (!signInResult?.ok) {
-        setFormMessage(
-          signInResult?.error ?? "Registration succeeded, but sign-in failed."
-        );
+        const signInError = signInResult?.error as string | undefined;
+        const errorMessage = getFriendlyAuthError(signInError);
+        setFormMessage(errorMessage ?? "Registration succeeded, but sign-in failed.");
         setIsSubmitting(false);
         setSubmitted(false);
         return;
@@ -127,7 +148,6 @@ export default function AuthForm({ mode }: AuthFormProps) {
     });
 
     if (!signInResult?.ok) {
-      setFormMessage(signInResult?.error ?? "Invalid email or password.");
       setIsSubmitting(false);
       setSubmitted(false);
       return;
@@ -255,9 +275,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
         </p>
       ) : null}
 
-      {formMessage ? (
+      {(authPageMessage || formMessage) ? (
         <p className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {formMessage}
+          {formMessage ?? authPageMessage}
         </p>
       ) : null}
 
