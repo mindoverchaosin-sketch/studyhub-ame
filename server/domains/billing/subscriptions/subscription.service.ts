@@ -61,11 +61,20 @@ export class SubscriptionService {
       throw new Error(`Plan not found: ${newPlanId}`)
     }
 
-    // Update subscription with new plan
-    const upgraded = await subscriptionRepository.update(currentSubscription.id, {
+    const updateData: any = {
       subscriptionPlan: { connect: { id: newPlanId } },
-      // Keep current period, charge difference on next renewal
-    })
+    }
+
+    const subscriptionExpired = new Date() > currentSubscription.currentPeriodEnd
+    if (currentSubscription.status !== 'ACTIVE' || subscriptionExpired) {
+      const renewalStart = new Date()
+      updateData.status = 'ACTIVE'
+      updateData.currentPeriodStart = renewalStart
+      updateData.currentPeriodEnd = this.calculatePeriodEnd(renewalStart, newPlan.interval)
+      updateData.renewalAttempts = 0
+    }
+
+    const upgraded = await subscriptionRepository.update(currentSubscription.id, updateData)
 
     return this.mapToDTO(upgraded)
   }
@@ -96,18 +105,18 @@ export class SubscriptionService {
   /**
    * Renew an expired subscription
    */
-  async renewSubscription(userId: string): Promise<SubscriptionDTO> {
+  async renewSubscription(userId: string, effectiveDate?: Date): Promise<SubscriptionDTO> {
     const subscription = await subscriptionRepository.findByUserId(userId)
     if (!subscription) {
       throw new Error(`No subscription for user: ${userId}`)
     }
 
-    const now = new Date()
-    const periodEnd = this.calculatePeriodEnd(now, subscription.subscriptionPlan.interval)
+    const renewalStart = effectiveDate ?? new Date()
+    const periodEnd = this.calculatePeriodEnd(renewalStart, subscription.subscriptionPlan.interval)
 
     const renewed = await subscriptionRepository.update(subscription.id, {
       status: 'ACTIVE',
-      currentPeriodStart: now,
+      currentPeriodStart: renewalStart,
       currentPeriodEnd: periodEnd,
       renewalAttempts: 0,
     })

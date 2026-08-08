@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { HTMLAttributes } from "react";
+import AeroPrepLogo from "@/components/brand/AeroPrepLogo";
 
 const columns = [
   {
@@ -23,7 +24,7 @@ const columns = [
     links: [
       { href: "/privacy", label: "Privacy" },
       { href: "/terms", label: "Terms" },
-      { href: "/cookies", label: "Cookies" },
+      { href: "/refund-policy", label: "Refund Policy" },
     ],
   },
   {
@@ -31,7 +32,7 @@ const columns = [
     links: [
       { href: "mailto:support@aeroprep.com", label: "support@aeroprep.com" },
       { href: "tel:+15551234567", label: "+1 (555) 123-4567" },
-      { href: "/auth/register", label: "Book a demo" },
+      { href: "/contact", label: "Contact" },
     ],
   },
 ] as const;
@@ -45,7 +46,9 @@ export default function Footer({ compact = false, className = "", ...props }: Fo
     <footer className={["border-t border-slate-200 bg-slate-950 text-slate-300", compact ? "mt-0" : "mt-16", className].filter(Boolean).join(" ")} aria-labelledby="footer-heading" {...props}>
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-4 lg:px-8 lg:py-20">
         <div className="lg:col-span-1">
-          <h2 id="footer-heading" className="text-xl font-semibold text-white">AeroPrep</h2>
+          <div className="flex items-center gap-3">
+            <AeroPrepLogo variant="horizontal" invert className="text-white" />
+          </div>
           <p className="mt-4 max-w-sm text-sm leading-7 text-slate-400">Premium aviation education for DGCA and EASA aspirants preparing for high-stakes maintenance exams.</p>
         </div>
 

@@ -5,7 +5,10 @@ import { requireStudent, requirePermission, requireOwnership } from '@/auth'
 import { billingDashboardService } from '@/server/services/billing-dashboard.service'
 import { billingFacadeService } from '@/server/services/billing-facade.service'
 import { planManagementService } from '@/server/services/plan-management.service'
+import { paymentService } from '@/server/domains/billing/payments/payment.service'
+import { env } from '@/lib/env'
 import { subscriptionManagementService } from '@/server/services/subscription-management.service'
+import { subscriptionService } from '@/server/domains/billing/subscriptions/subscription.service'
 import { invoiceManagementService } from '@/server/services/invoice-management.service'
 import type { PlanManagementActor, PlanManagementQueryDTO, UpdatePlanInput } from '@/server/services/plan-management.service'
 import type { SubscriptionManagementActor, SubscriptionManagementQueryDTO } from '@/server/services/subscription-management.service'
@@ -162,6 +165,46 @@ export async function getStudentBillingOverviewAction(studentId: string) {
   const session = await requireStudent()
   requireOwnership(studentId, session.user.id)
   return billingFacadeService.getStudentBillingOverview(studentId)
+}
+
+export async function createCheckoutSession(formData: FormData) {
+  'use server'
+  const planId = formData.get('planId')?.toString().trim()
+  if (!planId) {
+    throw new Error('Please select a plan before continuing.')
+  }
+
+  const session = await requireStudent()
+  const plan = await planManagementService.getPlan(planId)
+  if (!plan) {
+    throw new Error('Selected plan not found.')
+  }
+
+  const checkout = await paymentService.createCheckout({
+    userId: session.user.id as string,
+    planId,
+    amount: plan.price,
+    currency: plan.currency,
+    description: `AeroPrep checkout for ${plan.name}`,
+    metadata: { userId: session.user.id, planName: plan.name, interval: plan.interval },
+    redirectUrl: `${env.NEXTAUTH_URL}/student/dashboard/billing?checkout=success`,
+    cancelUrl: `${env.NEXTAUTH_URL}/student/dashboard/billing?checkout=cancel`,
+  })
+
+  redirect(checkout.url)
+}
+
+export async function cancelStudentSubscription() {
+  'use server'
+  const session = await requireStudent()
+  const subscription = await subscriptionService.getUserSubscription(session.user.id as string)
+
+  if (!subscription) {
+    throw new Error('You do not have an active subscription to cancel.')
+  }
+
+  await subscriptionService.cancelSubscription(subscription.id)
+  redirect('/student/dashboard/billing?cancel=success')
 }
 
 export async function markPaid(id: string) {

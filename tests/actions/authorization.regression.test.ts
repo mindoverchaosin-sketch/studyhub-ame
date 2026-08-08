@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const requireStudentMock = vi.fn()
 const requirePermissionMock = vi.fn()
+const requireAdminMock = vi.fn()
 const requireOwnershipMock = vi.fn((resourceUserId: string, currentUserId: string, allowAdmin = false, currentUserRole?: string) => {
   if (allowAdmin && currentUserRole === 'ADMIN') {
     return
@@ -28,12 +29,22 @@ class UnauthorizedError extends Error {
   }
 }
 
+class NotFoundError extends Error {
+  constructor(message = 'Resource not found.') {
+    super(message)
+    this.name = 'NotFoundError'
+    ;(this as any).status = 404
+  }
+}
+
 vi.mock('@/auth', () => ({
   requireStudent: requireStudentMock,
+  requireAdmin: requireAdminMock,
   requirePermission: requirePermissionMock,
   requireOwnership: requireOwnershipMock,
   ForbiddenError,
   UnauthorizedError,
+  NotFoundError,
 }))
 
 const getDashboardSummaryMock = vi.fn()
@@ -54,6 +65,38 @@ const getAchievementsMock = vi.fn()
 const getProgressInsightsMock = vi.fn()
 const getContinueLearningMock = vi.fn()
 const generateDailyPlanMock = vi.fn()
+const processCompletedAttemptMock = vi.fn()
+
+const editorialWorkflowServiceMocks = {
+  addLessonReviewComment: vi.fn(),
+  addReviewComment: vi.fn(),
+  approveLessonReview: vi.fn(),
+  archiveQuestion: vi.fn(),
+  assignLessonReviewer: vi.fn(),
+  assignReviewer: vi.fn(),
+  bulkAssignReviewerToQuestions: vi.fn(),
+  bulkApproveWorkflowQuestions: vi.fn(),
+  bulkUpdateLessonReviewQueue: vi.fn(),
+  bulkUpdateReviewQueue: vi.fn(),
+  compareVersions: vi.fn(),
+  createLessonVersionSnapshot: vi.fn(),
+  createVersionSnapshot: vi.fn(),
+  EditorialStatus: {},
+  getEditorialWorkflow: vi.fn(),
+  getLessonEditorialWorkflow: vi.fn(),
+  publishLesson: vi.fn(),
+  publishQuestion: vi.fn(),
+  rejectLessonReview: vi.fn(),
+  restoreArchivedQuestion: vi.fn(),
+  restoreLessonVersion: vi.fn(),
+  restoreVersion: vi.fn(),
+  sendLessonBackToDraft: vi.fn(),
+  submitLessonForReview: vi.fn(),
+  unpublishLesson: vi.fn(),
+  unpublishQuestion: vi.fn(),
+  updateEditorialStatus: vi.fn(),
+  updateLessonEditorialStatus: vi.fn(),
+}
 
 vi.mock('@/server/services/dashboard.service', () => ({
   getDashboardSummary: getDashboardSummaryMock,
@@ -68,6 +111,9 @@ vi.mock('@/server/services/exam-attempt.service', () => ({
   submitAttempt: submitAttemptMock,
   listExamHistory: listExamHistoryMock,
 }))
+vi.mock('@/server/services/exam-completion.service', () => ({
+  processCompletedAttempt: processCompletedAttemptMock,
+}))
 vi.mock('@/server/services/exam-template.service', () => ({
   createTemplate: createTemplateMock,
   activateTemplate: activateTemplateMock,
@@ -75,6 +121,7 @@ vi.mock('@/server/services/exam-template.service', () => ({
 vi.mock('@/server/services/question.service', () => ({
   bulkUpdateQuestionStatus: bulkUpdateQuestionStatusMock,
 }))
+vi.mock('@/server/services/editorial-workflow.service', () => editorialWorkflowServiceMocks)
 vi.mock('@/server/services/goal-tracking.service', () => ({
   getGoalProgress: getGoalProgressMock,
   updateGoals: updateGoalsMock,
@@ -92,9 +139,8 @@ vi.mock('@/server/services/study-planner.service', () => ({
   generateDailyPlan: generateDailyPlanMock,
 }))
 
-describe('authorization regression tests', () => {
+describe.sequential('authorization regression tests', () => {
   beforeEach(() => {
-    vi.resetModules()
     vi.clearAllMocks()
   })
 
@@ -140,7 +186,10 @@ describe('authorization regression tests', () => {
   })
 
   it('should deny anonymous admin workflow action requests', async () => {
-    requirePermissionMock.mockRejectedValue(new UnauthorizedError())
+    requirePermissionMock.mockImplementation(async () => {
+      console.log('requirePermissionMock called')
+      throw new UnauthorizedError()
+    })
     const { bulkPublishQuestionsAction } = await import('../../features/admin/actions/editorial-workflow.actions')
 
     await expect(bulkPublishQuestionsAction(['q1'])).rejects.toThrow(UnauthorizedError)
@@ -165,11 +214,15 @@ describe('authorization regression tests', () => {
   })
 
   it('should forbid cross-user exam attempt loading', async () => {
+    console.log('before import loadAttemptAction')
     requireStudentMock.mockResolvedValue({ user: { id: 'student-1', role: 'STUDENT' } })
     loadAttemptMock.mockResolvedValue({ id: 'attempt-1', studentId: 'student-2' })
     const { loadAttemptAction } = await import('../../server/actions/exam-attempt.actions')
+    console.log('after import loadAttemptAction')
 
+    console.log('before call loadAttemptAction')
     await expect(loadAttemptAction('attempt-1')).rejects.toThrow(ForbiddenError)
+    console.log('after expect loadAttemptAction')
     expect(loadAttemptMock).toHaveBeenCalledWith('attempt-1')
   }, 10000)
 

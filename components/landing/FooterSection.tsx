@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Container from "@/components/ui/Container";
+import AeroPrepLogo from "@/components/brand/AeroPrepLogo";
 
 const columns = [
   {
@@ -36,7 +37,7 @@ export default function FooterSection() {
     <footer className="border-t border-slate-200 bg-[linear-gradient(180deg,_#020617_0%,_#0f172a_100%)] text-slate-300">
       <Container className="grid gap-10 py-16 lg:grid-cols-[1.2fr_0.8fr_0.8fr_0.8fr] lg:py-20">
         <div>
-          <p className="text-xl font-semibold text-white">AeroPrep</p>
+          <AeroPrepLogo variant="horizontal" invert className="text-white" />
           <p className="mt-4 max-w-sm text-sm leading-7 text-slate-400">
             Premium aviation education for DGCA and EASA aspirants preparing for high-stakes maintenance exams.
           </p>

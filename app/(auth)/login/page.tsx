@@ -7,7 +7,7 @@ export default function LoginPage() {
       title="Welcome back to AeroPrep"
       subtitle="Pick up where you left off with focused study blocks, revision notes, and exam prep guidance."
     >
-      <AuthForm mode="signin" />
+      <AuthForm mode="signin" role="student" />
     </AuthLayout>
   );
 }

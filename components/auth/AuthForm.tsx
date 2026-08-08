@@ -13,6 +13,7 @@ import { registerWithCredentials } from "@/app/(auth)/register/actions";
 
 type AuthFormProps = {
   mode: "signin" | "signup";
+  role?: "student" | "admin";
 };
 
 type FormValues = {
@@ -38,7 +39,7 @@ const signUpSchema = z.object({
   rememberMe: z.boolean().optional(),
 });
 
-export default function AuthForm({ mode }: AuthFormProps) {
+export default function AuthForm({ mode, role }: AuthFormProps) {
   const [values, setValues] = useState<FormValues>({ name: "", email: "", password: "", rememberMe: true });
   const [errors, setErrors] = useState<FormErrors>({});
   const [showPassword, setShowPassword] = useState(false);
@@ -76,6 +77,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
   const router = useRouter();
   const isSignUp = mode === "signup";
+  const isAdminLogin = role === "admin";
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -170,6 +172,8 @@ export default function AuthForm({ mode }: AuthFormProps) {
         <p className="mt-3 text-sm leading-7 text-slate-600">
           {isSignUp
             ? "Set up a premium study routine with structured lessons, revision plans, and exam-ready insights."
+            : isAdminLogin
+            ? "Sign in with your admin credentials to manage AeroPrep operations, members, and content."
             : "Access your notes, progress, and lesson plans in a calm, focused workspace."}
         </p>
       </div>
@@ -209,7 +213,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
           type="email"
           value={values.email}
           onChange={(event) => handleFieldChange("email", event.target.value)}
-          placeholder="student@aeroprep.com"
+          placeholder={isAdminLogin ? "admin@aeroprep.com" : "student@aeroprep.com"}
           autoComplete="email"
           required
           error={errors.email}
@@ -265,7 +269,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
         </div>
 
         <Button type="submit" fullWidth disabled={isSubmitting}>
-          {isSubmitting ? (isSignUp ? "Creating account..." : "Signing you in...") : isSignUp ? "Create account" : "Sign in"}
+          {isSubmitting ? (isSignUp ? "Creating account..." : "Signing you in...") : isSignUp ? "Create account" : isAdminLogin ? "Sign in as admin" : "Sign in"}
         </Button>
       </form>
 

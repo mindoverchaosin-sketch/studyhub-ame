@@ -10,6 +10,10 @@ const rawEnvSchema = z.object({
   NEXTAUTH_SECRET: z.string().trim().min(32).optional(),
   AUTH_SECRET: z.string().trim().min(32).optional(),
   AI_PROVIDER: aiProviderSchema.optional(),
+  PAYMENT_PROVIDER: z.enum(['mock', 'razorpay', 'stripe']).optional(),
+  RAZORPAY_KEY_ID: z.string().trim().min(1).optional(),
+  RAZORPAY_KEY_SECRET: z.string().trim().min(1).optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().trim().min(1).optional(),
   OPENAI_API_KEY: z.string().trim().min(1).optional(),
   OPENAI_MODEL: z.string().trim().min(1).optional(),
   ANTHROPIC_API_KEY: z.string().trim().min(1).optional(),
@@ -48,6 +52,10 @@ const env = {
   NEXTAUTH_URL: parsed.NEXTAUTH_URL ?? 'http://localhost:3000',
   NEXTAUTH_SECRET: parsed.NEXTAUTH_SECRET ?? parsed.AUTH_SECRET,
   AI_PROVIDER: parsed.AI_PROVIDER ?? 'mock',
+  PAYMENT_PROVIDER: parsed.PAYMENT_PROVIDER ?? 'mock',
+  RAZORPAY_KEY_ID: parsed.RAZORPAY_KEY_ID,
+  RAZORPAY_KEY_SECRET: parsed.RAZORPAY_KEY_SECRET,
+  RAZORPAY_WEBHOOK_SECRET: parsed.RAZORPAY_WEBHOOK_SECRET,
   OPENAI_API_KEY: parsed.OPENAI_API_KEY,
   OPENAI_MODEL: parsed.OPENAI_MODEL ?? 'gpt-4.1-mini',
   ANTHROPIC_API_KEY: parsed.ANTHROPIC_API_KEY,
@@ -78,6 +86,10 @@ const validatedEnvSchema = z
     GOOGLE_GEMINI_MODEL: z.string().trim().min(1),
     GOOGLE_API_KEY: z.string().trim().min(1).optional(),
     GOOGLE_CLOUD_API_KEY: z.string().trim().min(1).optional(),
+    PAYMENT_PROVIDER: z.enum(['mock', 'razorpay', 'stripe']),
+    RAZORPAY_KEY_ID: z.string().trim().min(1).optional(),
+    RAZORPAY_KEY_SECRET: z.string().trim().min(1).optional(),
+    RAZORPAY_WEBHOOK_SECRET: z.string().trim().min(1).optional(),
     AUTH_SECRET: z.string().trim().min(32).optional(),
     MAX_MEDIA_UPLOAD_SIZE_BYTES: z.number().int().positive(),
     PORT: z.number().int().positive().optional(),
@@ -109,6 +121,19 @@ const validatedEnvSchema = z
         code: z.ZodIssueCode.custom,
         message: 'GOOGLE_GEMINI_API_KEY, GOOGLE_API_KEY or GOOGLE_CLOUD_API_KEY is required when AI_PROVIDER is gemini or google-gemini.',
       })
+    }
+
+    const paymentProvider = parsedEnv.PAYMENT_PROVIDER
+    if (paymentProvider === 'razorpay') {
+      if (!parsedEnv.RAZORPAY_KEY_ID) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'RAZORPAY_KEY_ID is required when PAYMENT_PROVIDER=razorpay.' })
+      }
+      if (!parsedEnv.RAZORPAY_KEY_SECRET) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'RAZORPAY_KEY_SECRET is required when PAYMENT_PROVIDER=razorpay.' })
+      }
+      if (!parsedEnv.RAZORPAY_WEBHOOK_SECRET) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'RAZORPAY_WEBHOOK_SECRET is required when PAYMENT_PROVIDER=razorpay.' })
+      }
     }
   })
 

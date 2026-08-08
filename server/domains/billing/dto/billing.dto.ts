@@ -90,6 +90,7 @@ export interface EntitlementListDTO {
   subscriptionStatus: SubscriptionStatus | null
   planName?: string
   expiresAt?: Date | null
+  hasPremiumAccess?: boolean
 }
 
 // ============================================================

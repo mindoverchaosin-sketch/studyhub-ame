@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireStudent } from '@/auth'
 import Sidebar from '@/components/dashboard/Sidebar'
-import { getStudentBillingOverviewAction } from '@/server/actions/billing.actions'
+import { cancelStudentSubscription, createCheckoutSession, getStudentBillingOverviewAction } from '@/server/actions/billing.actions'
 import type { InvoiceDTO, PlanDTO } from '@/server/domains/billing/dto/billing.dto'
 
 function formatCurrency(amount: number, currency: string) {
@@ -36,7 +36,11 @@ function InvoiceStatusBadge({ status }: { status: string }) {
   )
 }
 
-export default async function StudentBillingPage() {
+interface StudentBillingPageProps {
+  searchParams?: { interval?: string | string[]; checkout?: string | string[]; cancel?: string | string[] }
+}
+
+export default async function StudentBillingPage({ searchParams }: StudentBillingPageProps) {
   let sessionUser
 
   try {
@@ -46,6 +50,25 @@ export default async function StudentBillingPage() {
   }
 
   const billing = await getStudentBillingOverviewAction(sessionUser.user.id as string)
+  const intervalFilter = Array.isArray(searchParams?.interval) ? searchParams.interval[0] : searchParams?.interval
+  const checkoutParam = Array.isArray(searchParams?.checkout) ? searchParams.checkout[0] : searchParams?.checkout
+  const filteredPlans = billing.availablePlans.filter((plan) => {
+    if (!intervalFilter || intervalFilter === 'all') {
+      return true
+    }
+    return plan.interval === intervalFilter
+  })
+
+  const cancelParam = Array.isArray(searchParams?.cancel) ? searchParams.cancel[0] : searchParams?.cancel
+
+  const checkoutMessage =
+    checkoutParam === 'success'
+      ? { title: 'Payment started', description: 'Your checkout is complete and we are confirming payment. Check this page shortly for billing updates.' }
+      : checkoutParam === 'cancel'
+      ? { title: 'Payment cancelled', description: 'Your checkout was cancelled. Select a plan again when you are ready to continue.' }
+      : cancelParam === 'success'
+      ? { title: 'Subscription cancelled', description: 'Your subscription has been cancelled. You can still access premium content until the end of the current billing period.' }
+      : null
 
   return (
     <div className="min-h-screen bg-[linear-gradient(135deg,_#f8fbff_0%,_#f8fafc_100%)] px-4 py-6 sm:px-6 lg:px-8">
@@ -53,6 +76,12 @@ export default async function StudentBillingPage() {
         <Sidebar />
 
         <main>
+          {checkoutMessage ? (
+            <div className="mb-4 rounded-[2rem] border border-emerald-100 bg-emerald-50 p-6 text-slate-900 shadow-sm">
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-700">{checkoutMessage.title}</p>
+              <p className="mt-2 text-sm leading-7 text-slate-700">{checkoutMessage.description}</p>
+            </div>
+          ) : null}
           <div className="mb-8 rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
             <h1 className="text-3xl font-semibold tracking-tight text-slate-950">Billing</h1>
             <p className="mt-2 text-sm text-slate-600">Review your current subscription, active entitlements, and billing invoices.</p>
@@ -179,35 +208,72 @@ export default async function StudentBillingPage() {
           </section>
 
           <section id="available-plans" className="mt-6 rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-            <div>
-              <h2 className="text-xl font-semibold text-slate-950">Available plans</h2>
-              <p className="mt-2 text-sm text-slate-600">Choose a plan that matches your study goals. This is a read-only billing page.</p>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-950">Available plans</h2>
+                <p className="mt-2 text-sm text-slate-600">Choose a plan that matches your study goals and billing interval.</p>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                {['all', 'monthly', 'yearly'].map((interval) => (
+                  <Link
+                    key={interval}
+                    href={`/student/dashboard/billing${interval === 'all' ? '' : `?interval=${interval}`}`}
+                    className={`inline-flex rounded-full border px-4 py-2 text-sm font-semibold transition ${intervalFilter === interval ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'}`}
+                  >
+                    {interval === 'all' ? 'All billing' : interval === 'monthly' ? 'Monthly' : 'Annual'}
+                  </Link>
+                ))}
+              </div>
             </div>
 
             <div className="mt-6 grid gap-4 xl:grid-cols-2">
-              {billing.availablePlans.map((plan: PlanDTO) => (
-                <div key={plan.id} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-6">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-slate-950">{plan.name}</h3>
-                      <p className="mt-1 text-sm text-slate-600">{plan.interval}</p>
+              {filteredPlans.map((plan: PlanDTO) => {
+                const isCurrentPlan = billing.currentSubscription?.planId === plan.id
+                const isFreePlan = plan.price === 0
+
+                return (
+                  <div key={plan.id} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-6">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-950">{plan.name}</h3>
+                        <p className="mt-1 text-sm text-slate-600">{plan.interval}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-semibold text-slate-950">{formatCurrency(plan.price, plan.currency)}</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-semibold text-slate-950">{formatCurrency(plan.price, plan.currency)}</p>
+
+                    <p className="mt-4 text-sm text-slate-600">{plan.description}</p>
+
+                    {plan.features.length > 0 ? (
+                      <div className="mt-5 space-y-2">
+                        {plan.features.map((feature) => (
+                          <div key={feature} className="rounded-2xl bg-white px-4 py-2 text-sm text-slate-700 shadow-sm">{feature}</div>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    <div className="mt-6">
+                      {isCurrentPlan ? (
+                        <span className="inline-flex rounded-full bg-emerald-100 px-4 py-2 text-sm font-semibold text-emerald-700">Current plan</span>
+                      ) : isFreePlan ? (
+                        <span className="inline-flex rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700">Free tier</span>
+                      ) : (
+                        <form action={createCheckoutSession} className="mt-2">
+                          <input type="hidden" name="planId" value={plan.id} />
+                          <button
+                            type="submit"
+                            className="inline-flex w-full items-center justify-center rounded-full bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                          >
+                            {billing.currentSubscription ? 'Switch to this plan' : 'Subscribe'}
+                          </button>
+                        </form>
+                      )}
                     </div>
                   </div>
-
-                  <p className="mt-4 text-sm text-slate-600">{plan.description}</p>
-
-                  {plan.features.length > 0 ? (
-                    <div className="mt-5 space-y-2">
-                      {plan.features.map((feature) => (
-                        <div key={feature} className="rounded-2xl bg-white px-4 py-2 text-sm text-slate-700 shadow-sm">{feature}</div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              ))}
+                )
+              })}
             </div>
           </section>
         </main>

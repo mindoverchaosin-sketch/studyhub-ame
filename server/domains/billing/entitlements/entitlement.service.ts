@@ -116,9 +116,17 @@ export class EntitlementService {
   /**
    * Check: Can use AI tools (future feature)
    */
-  async canUseFutureAITools(userId: string): Promise<boolean> {
+  async canUseAITutor(userId: string): Promise<boolean> {
     const check = await this.hasFeatureAccess(userId, 'aiTools')
     return check.hasAccess
+  }
+
+  async canViewAds(userId: string): Promise<boolean> {
+    return !(await this.hasActiveSubscription(userId))
+  }
+
+  async hasPremiumAccess(userId: string): Promise<boolean> {
+    return this.hasActiveSubscription(userId)
   }
 
   /**
@@ -164,6 +172,7 @@ export class EntitlementService {
       subscriptionStatus: subscription.status as SubscriptionStatus,
       planName: plan.name,
       expiresAt: subscription.currentPeriodEnd,
+      hasPremiumAccess: true,
     }
   }
 

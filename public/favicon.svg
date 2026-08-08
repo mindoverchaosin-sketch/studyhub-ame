@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="aeroprep-favicon-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#aeroprep-favicon-gradient)" />
+  <path d="M21 44 L32 20 L43 44 L36 44 L32 32 L28 44 Z" fill="#ffffff" />
+  <path d="M19 36 L45 36 L49 30 L15 30 Z" fill="#ffffff" opacity="0.8" />
+</svg>
