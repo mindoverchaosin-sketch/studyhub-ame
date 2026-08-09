@@ -3,7 +3,10 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { env } from '@/lib/env'
 import { normalizeRoleName } from '@/server/services/authorization.service'
-import { entitlementService } from '@/server/domains/billing/entitlements/entitlement.service'
+// Note: entitlementService depends on Prisma (Node-only) and cannot be imported
+// into Edge runtime middleware. Premium entitlement checks are enforced in
+// server-side page handlers (e.g. student modules) instead. Avoid importing
+// server-only modules here to keep middleware Edge-compatible.
 
 const adminRoutes = ['/admin', '/admin/analytics', '/admin/audit-logs', '/admin/billing', '/admin/courses', '/admin/lessons', '/admin/materials', '/admin/mock-tests', '/admin/modules', '/admin/questions', '/admin/students', '/admin/users', '/admin/settings']
 const studentRoutes = ['/student']
@@ -47,20 +50,10 @@ export async function middleware(request: NextRequest) {
       return redirectResponse
     }
 
-    const normalizedPath = pathname.replace(/\/+$/, '')
-    const matchesPremiumRoute = premiumRoutes.some((route) => normalizedPath === route || normalizedPath.startsWith(`${route}/`))
-
-    if (matchesPremiumRoute) {
-      const userId = typeof token?.id === 'string' ? token.id : typeof token?.sub === 'string' ? token.sub : undefined
-      if (userId) {
-        const hasPremium = await entitlementService.canAccessPremiumModules(userId)
-        if (!hasPremium) {
-          const redirectResponse = NextResponse.redirect(new URL('/student/dashboard/billing', request.url))
-          redirectResponse.headers.set('x-request-id', requestId)
-          return redirectResponse
-        }
-      }
-    }
+    // Premium entitlement checks require server-side DB access and are handled
+    // within server components/routes (for example, in
+    // app/(student)/student/modules/page.tsx). Middleware should avoid
+    // importing Node-only modules (Prisma) so it remains Edge-compatible.
   }
 
   if (pathname === '/admin/login' || pathname === '/admin/login/') {

@@ -13,8 +13,6 @@ vi.mock('@/server/services/module-management.service', () => ({
   })),
 }))
 
-import { createModuleAction } from '../../server/actions/content-management.actions'
-
 describe('audit logging for admin actions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -23,6 +21,8 @@ describe('audit logging for admin actions', () => {
   })
 
   it('records an audit event for module creation', async () => {
+    const { createModuleAction } = await import('../../server/actions/content-management.actions')
+
     await createModuleAction({ title: 'New Module' } as any)
 
     expect(requirePermissionMock).toHaveBeenCalledWith('manageModules')
