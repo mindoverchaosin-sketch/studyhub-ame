@@ -1,5 +1,7 @@
 import { requireStudent } from '@/auth'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { FiArrowLeft } from 'react-icons/fi'
 import { getAdaptiveLearningData } from '@/server/services/adaptive-learning.service'
 
 export default async function AdaptiveLearningPage() {
@@ -16,6 +18,18 @@ export default async function AdaptiveLearningPage() {
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-10 text-slate-950 sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
+        <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-600">Student workspace</p>
+              <h1 className="mt-2 text-3xl font-semibold">Adaptive Learning</h1>
+              <p className="mt-3 text-sm leading-7 text-slate-600">Focused revision for your next strong study block.</p>
+            </div>
+            <Link href="/student/dashboard" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50">
+              <FiArrowLeft className="mr-2 h-4 w-4" /> Back to dashboard
+            </Link>
+          </div>
+        </div>
         <header className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
           <p className="text-sm font-semibold uppercase tracking-[0.3em] text-blue-600">Adaptive learning</p>
           <h1 className="mt-3 text-3xl font-semibold">Focused revision for your next strong study block</h1>

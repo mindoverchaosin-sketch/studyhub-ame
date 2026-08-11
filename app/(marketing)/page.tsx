@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/auth";
 import Navbar from "@/components/layout/Navbar";
 import CtaSection from "@/components/landing/CtaSection";
 import ExperienceSection from "@/components/landing/ExperienceSection";
@@ -24,7 +26,17 @@ const sections = [
   { id: "cta", Component: CtaSection },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const currentUser = await getCurrentUser();
+
+  if (currentUser?.user.role === "STUDENT") {
+    redirect("/student/dashboard");
+  }
+
+  if (currentUser?.user.role) {
+    redirect("/admin/dashboard");
+  }
+
   return (
     <>
       <Navbar />

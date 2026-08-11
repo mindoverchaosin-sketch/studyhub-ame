@@ -70,7 +70,7 @@ export class HealthService {
       const result = await Promise.race([
         probe(),
         new Promise<boolean>((_, reject) => {
-          setTimeout(() => reject(new Error('database-check-timeout')), 300)
+          setTimeout(() => reject(new Error('database-check-timeout')), 3000)
         }),
       ])
 

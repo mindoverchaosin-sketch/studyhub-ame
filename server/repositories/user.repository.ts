@@ -103,7 +103,12 @@ export class UserRepository {
       where: { id },
       include: {
         studentProfile: true,
-        enrollments: true,
+        role: true,
+        enrollments: {
+          include: {
+            course: true,
+          },
+        },
         progress: true,
         moduleProgress: true,
         lessonProgress: true,

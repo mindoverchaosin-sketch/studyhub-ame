@@ -2,20 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FiBookOpen, FiCompass, FiGrid, FiMoon, FiSearch, FiSettings, FiStar, FiTarget, FiTrendingUp, FiZap } from "react-icons/fi";
-import { FaPlane } from "react-icons/fa6";
+import { FiBookOpen, FiCompass, FiGrid, FiMoon, FiSearch, FiSettings, FiStar, FiTarget, FiTrendingUp, FiHelpCircle, FiZap } from "react-icons/fi";
+import { FaPlane, FaCircle } from "react-icons/fa6";
 
 const navItems = [
   { href: "/student/dashboard", label: "Dashboard", icon: FiGrid },
-  { href: "/student/courses", label: "My Courses", icon: FiBookOpen },
-  { href: "/student/modules", label: "DGCA Modules", icon: FiCompass },
-  { href: "/student/modules", label: "EASA Modules", icon: FiCompass },
+  { href: "/student/profile", label: "Profile", icon: FaCircle },
+  { href: "/student/courses", label: "Courses", icon: FiBookOpen },
+  { href: "/student/modules", label: "Modules", icon: FiCompass },
   { href: "/student/mock-exams", label: "Mock Tests", icon: FiTarget },
-  { href: "/student/search", label: "Question Bank", icon: FiSearch },
-  { href: "/student/modules", label: "Revision Notes", icon: FiBookOpen },
+  { href: "/student/question-bank", label: "Question Bank", icon: FiSearch },
+  { href: "/student/progress", label: "Progress", icon: FiTrendingUp },
   { href: "/student/adaptive-learning", label: "AI Tutor", icon: FiStar },
-  { href: "/student/dashboard", label: "Progress", icon: FiTrendingUp },
-  { href: "/student/dashboard", label: "Settings", icon: FiSettings },
+  { href: "/student/settings", label: "Settings", icon: FiSettings },
+  { href: "/student/help", label: "Help & Support", icon: FiHelpCircle },
 ] as const;
 
 type DashboardSidebarProps = {
@@ -29,7 +29,7 @@ export default function DashboardSidebar({ mobile = false, onNavigate }: Dashboa
   return (
     <aside className={mobile ? "flex h-full flex-col rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-[0_20px_70px_rgba(15,23,42,0.06)]" : "hidden h-full flex-col rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-[0_20px_70px_rgba(15,23,42,0.06)] lg:flex"}>
       <div>
-        <Link href="/" className="flex items-center gap-3 text-lg font-semibold text-slate-950" onClick={onNavigate}>
+        <Link href="/student/dashboard" className="flex items-center gap-3 text-lg font-semibold text-slate-950" onClick={onNavigate}>
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-white">
             <FaPlane className="h-5 w-5" />
           </span>
