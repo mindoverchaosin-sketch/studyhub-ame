@@ -1,6 +1,6 @@
 import { FiBookOpen, FiHelpCircle, FiLayers, FiPieChart, FiUsers } from "react-icons/fi"
 import { redirect } from "next/navigation"
-import { requirePermission } from "@/auth"
+import { requireApprovedRole } from "@/auth"
 import PageHeader from "@/features/admin/components/PageHeader"
 import StatsCard from "@/features/admin/components/StatsCard"
 import Container from "@/components/ui/Container"
@@ -9,9 +9,9 @@ import { getDashboardSummaryAction } from "@/server/actions/admin-dashboard.acti
 
 export default async function AdminDashboardPage() {
   try {
-    await requirePermission('viewAnalytics')
+    await requireApprovedRole('ADMIN')
   } catch {
-    redirect('/login')
+    redirect('/admin/login')
   }
 
   const dashboard = await getDashboardSummaryAction()
