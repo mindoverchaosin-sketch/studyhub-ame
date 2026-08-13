@@ -18,7 +18,7 @@ export type PermissionMatrix = Record<AppRole, PermissionName[]>;
 const PERMISSION_MATRIX: PermissionMatrix = {
   SUPER_ADMIN: ['manageUsers', 'manageStudents', 'manageCourses', 'manageLessons', 'manageQuestions', 'publishContent', 'viewAnalytics', 'viewOwnAnalytics', 'accessAiTutor', 'attemptMockTests', 'viewStudentContent'],
   ADMIN: ['manageUsers', 'manageStudents', 'manageCourses', 'manageLessons', 'manageQuestions', 'viewAnalytics', 'viewOwnAnalytics', 'accessAiTutor', 'attemptMockTests', 'viewStudentContent'],
-  INSTRUCTOR: ['manageLessons', 'viewOwnAnalytics', 'accessAiTutor', 'attemptMockTests', 'viewStudentContent'],
+  INSTRUCTOR: ['viewOwnAnalytics', 'accessAiTutor', 'attemptMockTests', 'viewStudentContent'],
   CONTENT_EDITOR: ['manageLessons', 'manageQuestions', 'publishContent', 'viewOwnAnalytics', 'accessAiTutor', 'attemptMockTests', 'viewStudentContent'],
   STUDENT: ['viewOwnAnalytics', 'accessAiTutor', 'attemptMockTests', 'viewStudentContent'],
 };

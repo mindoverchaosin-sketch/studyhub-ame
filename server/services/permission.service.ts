@@ -28,7 +28,7 @@ const ROLE_PERMISSIONS: Record<EnterpriseRole, PermissionName[]> = {
   SUPPORT_AGENT: ['manageUsers', 'viewAnalytics'],
   QUESTION_REVIEWER: ['manageQuestions', 'publishContent'],
   ADMIN: ['manageStudents', 'manageModules', 'manageResources', 'manageQuestions', 'publishContent', 'viewAnalytics', 'manageBilling', 'viewBillingAnalytics', 'manageInvoices', 'manageUsers', 'manageAuditLogs', 'manageCourses', 'manageLessons', 'viewOwnAnalytics', 'accessAiTutor', 'attemptMockTests', 'viewStudentContent'],
-  INSTRUCTOR: ['manageLessons', 'viewAnalytics', 'viewOwnAnalytics', 'accessAiTutor', 'attemptMockTests', 'viewStudentContent'],
+  INSTRUCTOR: ['viewOwnAnalytics', 'accessAiTutor', 'attemptMockTests', 'viewStudentContent'],
   STUDENT: ['viewOwnAnalytics', 'accessAiTutor', 'attemptMockTests', 'viewStudentContent'],
 }
 
