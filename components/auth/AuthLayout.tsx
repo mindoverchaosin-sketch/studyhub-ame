@@ -1,6 +1,6 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 import AeroPrepLogo from "@/components/brand/AeroPrepLogo";
+import RoleAwareHomeLink from "@/components/brand/RoleAwareHomeLink";
 import { FiCheckCircle } from "react-icons/fi";
 
 type AuthLayoutProps = {
@@ -32,9 +32,9 @@ export default function AuthLayout({ children, title, subtitle, theme = "default
       <div className="mx-auto flex max-w-7xl flex-col overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)] lg:flex-row">
         <section className="flex flex-1 flex-col justify-between bg-slate-950 p-8 text-white sm:p-10 lg:w-[46%] lg:p-12">
           <div>
-            <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold tracking-[0.2em] text-slate-300 transition hover:text-white">
+            <RoleAwareHomeLink className="inline-flex items-center gap-2 text-sm font-semibold tracking-[0.2em] text-slate-300 transition hover:text-white">
               <AeroPrepLogo variant="horizontal" invert />
-            </Link>
+            </RoleAwareHomeLink>
 
             <div className="mt-10 max-w-md">
               <p className={`text-sm font-semibold uppercase tracking-[0.3em] ${accentClass}`}>{panelLabel}</p>

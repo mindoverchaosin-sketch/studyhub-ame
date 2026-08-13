@@ -7,10 +7,11 @@ import { userRepository } from '@/server/repositories/user.repository'
 import { roleRepository } from '@/server/repositories/role.repository'
 import { permissionService, type PermissionName } from '@/server/services/permission.service'
 import { auditLogService } from '@/server/services/audit-log.service'
+import { normalizeRoleName } from '@/server/services/authorization.service'
 import type { Session, User } from 'next-auth'
 import type { JWT } from 'next-auth/jwt'
 
-export type UserRole = 'STUDENT' | 'ADMIN' | 'INSTRUCTOR' | 'SUPER_ADMIN' | 'CONTENT_MANAGER' | 'STUDENT_MANAGER' | 'FINANCE_MANAGER' | 'SUPPORT_AGENT' | 'QUESTION_REVIEWER'
+export type UserRole = 'STUDENT' | 'ADMIN' | 'INSTRUCTOR' | 'CONTENT_EDITOR' | 'SUPER_ADMIN'
 
 export type AuthSession = Session & {
   user: Session['user'] & {
@@ -22,10 +23,11 @@ export type AuthSession = Session & {
 type AuthUser = User & { role?: UserRole | string }
 type AuthSessionUser = Session['user'] & { id?: string; role?: UserRole }
 
-const VALID_ROLES = new Set<UserRole>(['STUDENT', 'ADMIN', 'INSTRUCTOR', 'SUPER_ADMIN', 'CONTENT_MANAGER', 'STUDENT_MANAGER', 'FINANCE_MANAGER', 'SUPPORT_AGENT', 'QUESTION_REVIEWER'])
+const VALID_ROLES = new Set<UserRole>(['STUDENT', 'ADMIN', 'INSTRUCTOR', 'CONTENT_EDITOR', 'SUPER_ADMIN'])
 
 function isValidRole(role: string | undefined): role is UserRole {
-  return typeof role === 'string' && VALID_ROLES.has(role as UserRole)
+  const normalizedRole = normalizeRoleName(role)
+  return VALID_ROLES.has(normalizedRole)
 }
 
 export class AppError extends Error {
@@ -77,6 +79,26 @@ export class UnexpectedError extends AppError {
   }
 }
 
+async function getApprovedStatusForRole(user: { isActive?: boolean | null; role?: { name?: string | null } | null; adminProfile?: { status?: string | null } | null; instructorProfile?: { status?: string | null } | null }, role: UserRole): Promise<boolean> {
+  if (!user.isActive) {
+    return false
+  }
+
+  if (role === 'ADMIN') {
+    return user.adminProfile?.status === 'APPROVED'
+  }
+
+  if (role === 'INSTRUCTOR') {
+    return user.instructorProfile?.status === 'APPROVED'
+  }
+
+  if (role === 'SUPER_ADMIN' || role === 'CONTENT_EDITOR' || role === 'STUDENT') {
+    return true
+  }
+
+  return false
+}
+
 async function getValidatedSession(): Promise<AuthSession | null> {
   const session = await auth()
 
@@ -84,7 +106,7 @@ async function getValidatedSession(): Promise<AuthSession | null> {
     return null
   }
 
-  const sessionRole = session.user.role
+  const sessionRole = normalizeRoleName(session.user.role)
 
   if (!isValidRole(sessionRole)) {
     return null
@@ -96,13 +118,26 @@ async function getValidatedSession(): Promise<AuthSession | null> {
     return null
   }
 
-  const databaseRole = dbUser.role?.name
+  const databaseRole = normalizeRoleName(dbUser.role?.name)
 
-  if (!isValidRole(databaseRole) || databaseRole !== sessionRole) {
+  if (databaseRole !== sessionRole) {
     return null
   }
 
-  return session as AuthSession
+  const isApproved = await getApprovedStatusForRole(dbUser, sessionRole)
+
+  if (!isApproved) {
+    return null
+  }
+
+  return {
+    ...session,
+    user: {
+      ...session.user,
+      id: session.user.id,
+      role: sessionRole,
+    },
+  } as AuthSession
 }
 
 export async function getCurrentUser(): Promise<AuthSession | null> {
@@ -153,8 +188,40 @@ export async function requireRole(role: UserRole): Promise<AuthSession> {
   return session
 }
 
+export async function requireApprovedRole(role: UserRole): Promise<AuthSession> {
+  const session = await requireAuth()
+
+  if (session.user.role !== role) {
+    throw new ForbiddenError(`${role} access required.`)
+  }
+
+  const dbUser = await userRepository.findById(session.user.id as string)
+
+  if (!dbUser || !dbUser.isActive) {
+    throw new ForbiddenError(`${role} account is inactive.`)
+  }
+
+  if (role === 'ADMIN' && dbUser.adminProfile?.status !== 'APPROVED') {
+    throw new ForbiddenError('Admin access is pending approval or suspended.')
+  }
+
+  if (role === 'INSTRUCTOR' && dbUser.instructorProfile?.status !== 'APPROVED') {
+    throw new ForbiddenError('Instructor access is pending approval or suspended.')
+  }
+
+  if (role === 'CONTENT_EDITOR' && !dbUser.isActive) {
+    throw new ForbiddenError('Content editor account is inactive.')
+  }
+
+  if (role === 'SUPER_ADMIN' && !dbUser.isActive) {
+    throw new ForbiddenError('Super admin account is inactive.')
+  }
+
+  return session
+}
+
 export function requireOwnership(resourceUserId: string, currentUserId: string, allowAdmin = false, currentUserRole?: string): void {
-  const normalizedRole = typeof currentUserRole === 'string' ? currentUserRole.toUpperCase() : undefined
+  const normalizedRole = typeof currentUserRole === 'string' ? normalizeRoleName(currentUserRole) : undefined
 
   if (allowAdmin && (normalizedRole === 'ADMIN' || normalizedRole === 'SUPER_ADMIN')) {
     return

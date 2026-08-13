@@ -20,11 +20,11 @@ type StudentAdminQueryParams = {
 
 export class UserRepository {
   async findByEmail(email: string) {
-    return prisma.user.findUnique({ where: { email }, include: { studentProfile: true, adminProfile: true, role: true } })
+    return prisma.user.findUnique({ where: { email }, include: { studentProfile: true, adminProfile: true, instructorProfile: true, role: true } })
   }
 
   async findById(id: string) {
-    return prisma.user.findUnique({ where: { id }, include: { studentProfile: true, adminProfile: true, role: true } })
+    return prisma.user.findUnique({ where: { id }, include: { studentProfile: true, adminProfile: true, instructorProfile: true, role: true } })
   }
 
   async findStudentProfile(userId: string) {

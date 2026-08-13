@@ -10,6 +10,7 @@
     "test:ci": "vitest run",
     "check:env": "tsx -e \"import('./lib/env')\"",
     "validate:ci": "npm run check:env && npm run lint && npx tsc --noEmit && npm run build && npm run test:ci",
+    "db:bootstrap-super-admin": "tsx scripts/bootstrap-super-admin.ts",
     "start": "next start",
     "lint": "eslint"
   },

@@ -13,7 +13,7 @@ import { registerWithCredentials } from "@/app/(auth)/register/actions";
 
 type AuthFormProps = {
   mode: "signin" | "signup";
-  role?: "student" | "admin";
+  role?: "student" | "admin" | "instructor" | "content-editor" | "super-admin";
 };
 
 type FormValues = {
@@ -77,7 +77,24 @@ export default function AuthForm({ mode, role }: AuthFormProps) {
 
   const router = useRouter();
   const isSignUp = mode === "signup";
-  const isAdminLogin = role === "admin";
+  const isAdminLogin = role === "admin" || role === "instructor" || role === "content-editor" || role === "super-admin";
+
+  const getRoleDestination = (userRole?: string | null) => {
+    switch (userRole) {
+      case "STUDENT":
+        return "/student/dashboard";
+      case "INSTRUCTOR":
+        return "/instructor/dashboard";
+      case "CONTENT_EDITOR":
+        return "/content-editor/dashboard";
+      case "ADMIN":
+        return "/admin/dashboard";
+      case "SUPER_ADMIN":
+        return "/super-admin/dashboard";
+      default:
+        return "/student/dashboard";
+    }
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -136,8 +153,7 @@ export default function AuthForm({ mode, role }: AuthFormProps) {
       }
 
       const session = await getSession();
-      const role = session?.user?.role;
-      const destination = role === "ADMIN" ? "/admin/dashboard" : "/student/dashboard";
+      const destination = getRoleDestination(session?.user?.role);
 
       router.push(destination);
       return;
@@ -156,8 +172,7 @@ export default function AuthForm({ mode, role }: AuthFormProps) {
     }
 
     const session = await getSession();
-    const role = session?.user?.role;
-    const destination = role === "ADMIN" ? "/admin/dashboard" : "/student/dashboard";
+    const destination = getRoleDestination(session?.user?.role);
 
     router.push(destination);
   };

@@ -41,6 +41,8 @@ const rawEnvSchema = z.object({
     }, z.number().int().positive())
     .optional(),
   ADMIN_PASSWORD: z.string().trim().min(8).optional(),
+  SUPER_ADMIN_EMAIL: z.string().trim().email().optional(),
+  SUPER_ADMIN_PASSWORD: z.string().trim().min(8).optional(),
   VITEST: z.enum(['true', 'false']).optional(),
 })
 
@@ -67,6 +69,8 @@ const env = {
   MAX_MEDIA_UPLOAD_SIZE_BYTES: parsed.MAX_MEDIA_UPLOAD_SIZE_BYTES ?? 10 * 1024 * 1024,
   PORT: parsed.PORT,
   ADMIN_PASSWORD: parsed.ADMIN_PASSWORD,
+  SUPER_ADMIN_EMAIL: parsed.SUPER_ADMIN_EMAIL,
+  SUPER_ADMIN_PASSWORD: parsed.SUPER_ADMIN_PASSWORD,
   VITEST: parsed.VITEST,
 }
 
@@ -94,6 +98,8 @@ const validatedEnvSchema = z
     MAX_MEDIA_UPLOAD_SIZE_BYTES: z.number().int().positive(),
     PORT: z.number().int().positive().optional(),
     ADMIN_PASSWORD: z.string().trim().min(8).optional(),
+    SUPER_ADMIN_EMAIL: z.string().trim().email().optional(),
+    SUPER_ADMIN_PASSWORD: z.string().trim().min(8).optional(),
     VITEST: z.enum(['true', 'false']).optional(),
   })
   .superRefine((parsedEnv, ctx) => {

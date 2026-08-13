@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import SessionProvider from "@/components/providers/SessionProvider";
 import "./globals.css";
 
 const fontClassName = "font-sans";
@@ -53,13 +54,15 @@ export default function RootLayout({
       className={`${fontClassName} h-full antialiased`}
     >
       <body className="flex min-h-screen flex-col bg-white text-slate-950">
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-full focus:bg-blue-600 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-        >
-          Skip to content
-        </a>
-        {children}
+        <SessionProvider>
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-full focus:bg-blue-600 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            Skip to content
+          </a>
+          {children}
+        </SessionProvider>
       </body>
     </html>
   );

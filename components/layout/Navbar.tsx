@@ -4,8 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import type { HTMLAttributes } from "react";
+import { useSession } from "next-auth/react";
 import { FiMenu, FiX } from "react-icons/fi";
 import AeroPrepLogo from "@/components/brand/AeroPrepLogo";
+import RoleAwareHomeLink from "@/components/brand/RoleAwareHomeLink";
 
 const navigation = [
   { href: "/", label: "Home" },
@@ -22,6 +24,19 @@ type NavbarProps = HTMLAttributes<HTMLElement> & {
 export default function Navbar({ compact = false, className = "", ...props }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
+  const { data: session } = useSession();
+
+  const homeHref = session?.user?.role === "STUDENT"
+    ? "/student/dashboard"
+    : session?.user?.role === "INSTRUCTOR"
+      ? "/instructor/dashboard"
+      : session?.user?.role === "CONTENT_EDITOR"
+        ? "/content-editor/dashboard"
+        : session?.user?.role === "ADMIN"
+          ? "/admin/dashboard"
+          : session?.user?.role === "SUPER_ADMIN"
+            ? "/super-admin/dashboard"
+            : "/";
 
   const isActive = (href: string) => pathname === href || (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
@@ -48,9 +63,9 @@ export default function Navbar({ compact = false, className = "", ...props }: Na
   return (
     <header className={["sticky top-0 z-50 border-b border-white/70 bg-white/75 shadow-[0_1px_0_rgba(15,23,42,0.05)] backdrop-blur-2xl", compact ? "py-2" : "py-3", className].filter(Boolean).join(" ")} {...props}>
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" aria-label="AeroPrep home" className="flex items-center gap-2 text-lg font-semibold text-slate-950 transition duration-200 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
+        <RoleAwareHomeLink className="flex items-center gap-2 text-lg font-semibold text-slate-950 transition duration-200 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2" aria-label="AeroPrep home">
           <AeroPrepLogo />
-        </Link>
+        </RoleAwareHomeLink>
 
         <nav className="hidden items-center gap-1 md:flex" aria-label="Primary navigation">
           {navigation.map((item) => (
@@ -63,9 +78,6 @@ export default function Navbar({ compact = false, className = "", ...props }: Na
         <div className="flex items-center gap-3">
           <Link href="/login" className="hidden rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition duration-200 hover:-translate-y-0.5 hover:border-slate-400 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:inline-flex">
             Student Login
-          </Link>
-          <Link href="/admin/login" className="hidden rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition duration-200 hover:-translate-y-0.5 hover:border-slate-400 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:inline-flex">
-            Admin Login
           </Link>
           <Link href="/register" className="hidden rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition duration-200 hover:-translate-y-0.5 hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:inline-flex">
             Get Started
@@ -88,9 +100,6 @@ export default function Navbar({ compact = false, className = "", ...props }: Na
             <div className="mt-3 flex flex-col gap-2 border-t border-slate-200 pt-3">
               <Link href="/login" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 text-center transition hover:border-slate-400 hover:bg-slate-50" onClick={() => setIsMenuOpen(false)}>
                 Student Login
-              </Link>
-              <Link href="/admin/login" className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 text-center transition hover:border-slate-400 hover:bg-slate-50" onClick={() => setIsMenuOpen(false)}>
-                Admin Login
               </Link>
               <Link href="/register" className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white text-center transition hover:bg-blue-700" onClick={() => setIsMenuOpen(false)}>
                 Get Started

@@ -33,8 +33,20 @@ export default async function Home() {
     redirect("/student/dashboard");
   }
 
-  if (currentUser?.user.role) {
+  if (currentUser?.user.role === "INSTRUCTOR") {
+    redirect("/instructor/dashboard");
+  }
+
+  if (currentUser?.user.role === "CONTENT_EDITOR") {
+    redirect("/content-editor/dashboard");
+  }
+
+  if (currentUser?.user.role === "ADMIN") {
     redirect("/admin/dashboard");
+  }
+
+  if (currentUser?.user.role === "SUPER_ADMIN") {
+    redirect("/super-admin/dashboard");
   }
 
   return (

@@ -14,6 +14,13 @@ enum RoleName {
   SUPER_ADMIN
 }
 
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
 enum Difficulty {
   BEGINNER
   INTERMEDIATE
@@ -108,11 +115,14 @@ model User {
   updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
 
-  role             Role?             @relation(fields: [roleId], references: [id], onDelete: Restrict)
-  studentProfile   StudentProfile?
-  adminProfile     AdminProfile?
-  sessions         Session[]
-  notifications    Notification[]
+  role                       Role?               @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  studentProfile             StudentProfile?
+  adminProfile               AdminProfile?       @relation("UserToAdminProfile")
+  instructorProfile          InstructorProfile?  @relation("UserToInstructorProfile")
+  approvedAdminProfiles      AdminProfile[]      @relation("AdminProfileApprovedBy")
+  approvedInstructorProfiles InstructorProfile[] @relation("InstructorProfileApprovedBy")
+  sessions                   Session[]
+  notifications              Notification[]
   auditLogs        AuditLog[]
   enrollments      Enrollment[]
   progress         Progress[]
@@ -189,18 +199,40 @@ model StudentProfile {
 }
 
 model AdminProfile {
-  id          String    @id @default(uuid())
-  userId      String    @unique
-  fullName    String
-  department  String?
-  permissions Json?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  id           String         @id @default(uuid())
+  userId       String         @unique
+  fullName     String
+  department   String?
+  permissions  Json?
+  status       ApprovalStatus @default(PENDING)
+  approvedById String?
+  approvedBy   User?          @relation("AdminProfileApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt   DateTime?
+  notes        Json?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  deletedAt    DateTime?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation("UserToAdminProfile", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model InstructorProfile {
+  id           String         @id @default(uuid())
+  userId       String         @unique
+  fullName     String?
+  bio          String?
+  status       ApprovalStatus @default(PENDING)
+  approvedById String?
+  approvedBy   User?          @relation("InstructorProfileApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt   DateTime?
+  notes        Json?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  deletedAt    DateTime?
+
+  user User @relation("UserToInstructorProfile", fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Session {
