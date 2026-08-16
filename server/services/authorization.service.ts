@@ -3,11 +3,17 @@ export type AppRole = 'SUPER_ADMIN' | 'ADMIN' | 'INSTRUCTOR' | 'CONTENT_EDITOR' 
 export type PermissionName =
   | 'manageUsers'
   | 'manageStudents'
-  | 'manageCourses'
-  | 'manageLessons'
+  | 'manageModules'
+  | 'manageResources'
   | 'manageQuestions'
   | 'publishContent'
   | 'viewAnalytics'
+  | 'manageBilling'
+  | 'viewBillingAnalytics'
+  | 'manageInvoices'
+  | 'manageAuditLogs'
+  | 'manageCourses'
+  | 'manageLessons'
   | 'viewOwnAnalytics'
   | 'accessAiTutor'
   | 'attemptMockTests'
@@ -16,10 +22,46 @@ export type PermissionName =
 export type PermissionMatrix = Record<AppRole, PermissionName[]>;
 
 const PERMISSION_MATRIX: PermissionMatrix = {
-  SUPER_ADMIN: ['manageUsers', 'manageStudents', 'manageCourses', 'manageLessons', 'manageQuestions', 'publishContent', 'viewAnalytics', 'viewOwnAnalytics', 'accessAiTutor', 'attemptMockTests', 'viewStudentContent'],
-  ADMIN: ['manageUsers', 'manageStudents', 'manageCourses', 'manageLessons', 'manageQuestions', 'viewAnalytics', 'viewOwnAnalytics', 'accessAiTutor', 'attemptMockTests', 'viewStudentContent'],
+  SUPER_ADMIN: [
+    'manageUsers',
+    'manageStudents',
+    'manageModules',
+    'manageResources',
+    'manageQuestions',
+    'publishContent',
+    'viewAnalytics',
+    'manageBilling',
+    'viewBillingAnalytics',
+    'manageInvoices',
+    'manageAuditLogs',
+    'manageCourses',
+    'manageLessons',
+    'viewOwnAnalytics',
+    'accessAiTutor',
+    'attemptMockTests',
+    'viewStudentContent',
+  ],
+  ADMIN: [
+    'manageUsers',
+    'manageStudents',
+    'manageModules',
+    'manageResources',
+    'manageQuestions',
+    'publishContent',
+    'viewAnalytics',
+    'manageBilling',
+    'viewBillingAnalytics',
+    'manageInvoices',
+    'manageAuditLogs',
+    'manageCourses',
+    'manageLessons',
+    'viewOwnAnalytics',
+    'accessAiTutor',
+    'attemptMockTests',
+    'viewStudentContent',
+  ],
   INSTRUCTOR: ['viewOwnAnalytics', 'accessAiTutor', 'attemptMockTests', 'viewStudentContent'],
-  CONTENT_EDITOR: ['manageLessons', 'manageQuestions', 'publishContent', 'viewOwnAnalytics', 'accessAiTutor', 'attemptMockTests', 'viewStudentContent'],
+  CONTENT_EDITOR: ['manageModules', 'manageResources', 'manageQuestions', 'publishContent', 'manageLessons', 'viewOwnAnalytics', 'accessAiTutor', 'attemptMockTests', 'viewStudentContent'],
   STUDENT: ['viewOwnAnalytics', 'accessAiTutor', 'attemptMockTests', 'viewStudentContent'],
 };
 

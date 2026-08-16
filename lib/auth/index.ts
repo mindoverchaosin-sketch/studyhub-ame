@@ -5,9 +5,8 @@ import { env } from '@/lib/env'
 import { getUserByEmail } from '@/server/services/user.service'
 import { userRepository } from '@/server/repositories/user.repository'
 import { roleRepository } from '@/server/repositories/role.repository'
-import { permissionService, type PermissionName } from '@/server/services/permission.service'
 import { auditLogService } from '@/server/services/audit-log.service'
-import { normalizeRoleName } from '@/server/services/authorization.service'
+import { getPermissionMatrix, normalizeRoleName, type PermissionName } from '@/server/services/authorization.service'
 import type { Session, User } from 'next-auth'
 import type { JWT } from 'next-auth/jwt'
 
@@ -234,28 +233,22 @@ export function requireOwnership(resourceUserId: string, currentUserId: string, 
 
 export async function requirePermission(permission: string): Promise<AuthSession> {
   const session = await requireAuth()
+  const normalizedRole = normalizeRoleName(session.user.role)
 
-  if (permissionService.hasPermission(session.user.role, permission as PermissionName)) {
-    return session
-  }
-
-  const userWithPerms = await roleRepository.getPermissionsForUser(session.user.id)
-
-  const hasPermission =
-    userWithPerms?.role?.permissions?.some(
-      (
-        permissionRecord: {
-          permission: {
-            name: string
-          }
-        }
-      ) => permissionRecord.permission.name === permission
-    ) ?? false
-
-  if (!hasPermission) {
+  if (!VALID_ROLES.has(normalizedRole)) {
     throw new ForbiddenError(`Permission required: ${permission}`)
   }
 
+  const canonicalPermissions = getPermissionMatrix()[normalizedRole] ?? []
+  const hasCanonicalPermission = canonicalPermissions.includes(permission as PermissionName)
+
+  if (!hasCanonicalPermission) {
+    throw new ForbiddenError(`Permission required: ${permission}`)
+  }
+
+  // Legacy DB permission records are intentionally ignored here. The canonical
+  // five-role matrix is the authoritative policy and cannot be expanded by the
+  // database fallback.
   return session
 }
 

@@ -8,31 +8,33 @@ import { permissionService } from '@/server/services/permission.service'
  */
 
 describe('Billing Authorization', () => {
-  describe('FINANCE_MANAGER role permissions', () => {
-    it('should have permission to manage billing', () => {
-      const hasPerm = permissionService.hasPermission('FINANCE_MANAGER', 'manageBilling')
-      // This test will depend on whether manageBilling is in the permission service
-      // For now, we're testing the pattern
-      expect(typeof hasPerm).toBe('boolean')
-    })
-  })
-
   describe('SUPER_ADMIN role permissions', () => {
     it('should have permission to manage billing', () => {
       const hasPerm = permissionService.hasPermission('SUPER_ADMIN', 'manageBilling')
-      expect(typeof hasPerm).toBe('boolean')
+      expect(hasPerm).toBe(true)
     })
 
     it('should have permission to view billing analytics', () => {
       const hasPerm = permissionService.hasPermission('SUPER_ADMIN', 'viewBillingAnalytics')
-      expect(typeof hasPerm).toBe('boolean')
+      expect(hasPerm).toBe(true)
+    })
+  })
+
+  describe('ADMIN role permissions', () => {
+    it('should have permission to manage billing', () => {
+      const hasPerm = permissionService.hasPermission('ADMIN', 'manageBilling')
+      expect(hasPerm).toBe(true)
+    })
+
+    it('should have permission to view billing analytics', () => {
+      const hasPerm = permissionService.hasPermission('ADMIN', 'viewBillingAnalytics')
+      expect(hasPerm).toBe(true)
     })
   })
 
   describe('STUDENT role permissions', () => {
     it('should not have permission to manage billing', () => {
       const hasPerm = permissionService.hasPermission('STUDENT', 'manageBilling')
-      // Students should not be able to manage billing
       expect(hasPerm).toBe(false)
     })
 
@@ -49,10 +51,10 @@ describe('Billing Authorization', () => {
     })
   })
 
-  describe('ADMIN role permissions', () => {
-    it('may have permission to manage billing (depends on configuration)', () => {
-      const hasPerm = permissionService.hasPermission('ADMIN', 'manageBilling')
-      expect(typeof hasPerm).toBe('boolean')
+  describe('CONTENT_EDITOR role permissions', () => {
+    it('should not have permission to manage billing', () => {
+      const hasPerm = permissionService.hasPermission('CONTENT_EDITOR', 'manageBilling')
+      expect(hasPerm).toBe(false)
     })
   })
 })
