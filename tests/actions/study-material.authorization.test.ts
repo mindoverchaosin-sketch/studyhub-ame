@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 describe('study material authorization', () => {
   it('requires permission for study material actions', async () => {
+    vi.resetModules()
     const requirePermission = vi.fn().mockRejectedValue(new Error('no'))
     vi.doMock('@/auth', () => ({ requirePermission }))
 
