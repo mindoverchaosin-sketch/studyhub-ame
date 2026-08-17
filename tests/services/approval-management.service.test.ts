@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockRequireAuth = vi.fn()
 const mockRequirePermission = vi.fn()
+const mockRequireApprovedRole = vi.fn()
 const mockForbiddenError = vi.fn()
 const mockValidationError = vi.fn()
 const mockNotFoundError = vi.fn()
@@ -9,6 +10,7 @@ const mockNotFoundError = vi.fn()
 vi.mock('@/auth', () => ({
   requireAuth: mockRequireAuth,
   requirePermission: mockRequirePermission,
+  requireApprovedRole: mockRequireApprovedRole,
   ForbiddenError: class ForbiddenError extends Error {
     constructor(message = 'Forbidden') {
       super(message)
@@ -52,6 +54,9 @@ describe('approval management backend', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockRequirePermission.mockReset()
+    mockRequireApprovedRole.mockReset()
+    // Default: requireApprovedRole succeeds
+    mockRequireApprovedRole.mockResolvedValue({ user: { id: 'super-1', role: 'SUPER_ADMIN' } })
   })
 
   it('allows a super admin to approve an admin', async () => {
@@ -378,7 +383,7 @@ describe('approval management backend', () => {
 
   it('blocks direct server-action invocation when permission checks fail', async () => {
     mockRequireAuth.mockResolvedValue({ user: { id: 'super-1', role: 'SUPER_ADMIN' } })
-    mockRequirePermission.mockRejectedValue(new Error('Permission required'))
+    mockRequireApprovedRole.mockRejectedValue(new Error('Permission required'))
 
     const { approveAdminAction, approveInstructorAction } = await import('@/server/actions/approval-management.actions')
     await expect(approveAdminAction('admin-2')).rejects.toThrow('Permission required')

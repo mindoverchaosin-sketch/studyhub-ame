@@ -1,12 +1,14 @@
 import * as templateService from '@/server/services/exam-template.service'
 import * as attemptService from '@/server/services/exam-attempt.service'
-import { requireStudent, requirePermission, requireOwnership } from '@/auth'
+import { requireStudent, requirePermission, requireOwnership, requireAuth } from '@/auth'
 
 export async function listExamTemplates(params: { search?: string; active?: boolean; page?: number; pageSize?: number } = {}) {
+  await requireAuth() // Ensure user is authenticated before allowing template enumeration
   return templateService.listTemplates(params)
 }
 
 export async function getExamTemplate(id: string) {
+  await requireAuth() // Ensure user is authenticated before allowing template access
   return templateService.getTemplate(id)
 }
 

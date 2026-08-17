@@ -1,6 +1,6 @@
 'use server'
 
-import { ForbiddenError, requireAuth } from '@/auth'
+import { ForbiddenError, requireAuth, requireApprovedRole } from '@/auth'
 import { withAuditLogging } from '@/server/actions/audit-helpers'
 import {
   approveAdmin,
@@ -16,22 +16,31 @@ import {
 } from '@/server/services/approval-management.service'
 import type { ApprovalStatus } from '@prisma/client'
 
-function requireSuperAdmin() {
-  return requireAuth().then((session) => {
-    if (session.user.role !== 'SUPER_ADMIN') {
-      throw new ForbiddenError('Only SUPER_ADMIN may manage ADMIN approval status.')
-    }
-    return session
-  })
+/**
+ * Validates that the actor is SUPER_ADMIN with approval.
+ * SUPER_ADMIN is the only role that can manage ADMIN approval states.
+ */
+async function requireSuperAdmin() {
+  return requireApprovedRole('SUPER_ADMIN')
 }
 
-function requireAdminOrSuperAdmin() {
-  return requireAuth().then((session) => {
-    if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
-      throw new ForbiddenError('Only ADMIN or SUPER_ADMIN may manage instructor approval.')
-    }
-    return session
-  })
+/**
+ * Validates that the actor is either an APPROVED ADMIN or SUPER_ADMIN.
+ * Used for instructor approval management.
+ * ADMIN must be APPROVED; SUPER_ADMIN does not require approval profile.
+ */
+async function requireAdminOrSuperAdmin() {
+  const session = await requireAuth()
+
+  if (session.user.role === 'ADMIN') {
+    // ADMIN must be APPROVED to manage instructors
+    return requireApprovedRole('ADMIN')
+  } else if (session.user.role === 'SUPER_ADMIN') {
+    // SUPER_ADMIN can manage instructors without approval restriction
+    return requireApprovedRole('SUPER_ADMIN')
+  } else {
+    throw new ForbiddenError('Only ADMIN or SUPER_ADMIN may manage instructor approval.')
+  }
 }
 
 export async function getAdminsByStatusAction(status: ApprovalStatus | 'ALL' = 'ALL') {

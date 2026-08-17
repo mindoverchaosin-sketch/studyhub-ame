@@ -1,6 +1,6 @@
 import * as attemptService from '@/server/services/exam-attempt.service'
 import * as completionService from '@/server/services/exam-completion.service'
-import { requireStudent, requireAdmin, requireOwnership, NotFoundError, ForbiddenError } from '@/auth'
+import { requireStudent, requireAdmin, requireOwnership, requirePermission, NotFoundError, ForbiddenError } from '@/auth'
 
 export async function loadAttemptAction(attemptId: string) {
   const session = await requireStudent()
@@ -67,7 +67,14 @@ export async function loadAttemptResultsAction(attemptId: string) {
 
 export async function listExamHistoryAction(studentId: string) {
   const session = await requireStudent()
-  if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
+
+  // Admin/SUPER_ADMIN roles require viewAnalytics permission (which includes approval-state validation)
+  // Other roles must own the student record
+  if (session.user.role === 'ADMIN' || session.user.role === 'SUPER_ADMIN') {
+    // Validate approval state via canonical permission matrix
+    await requirePermission('viewAnalytics')
+  } else {
+    // Non-admin user must own this record
     requireOwnership(studentId, session.user.id)
   }
 
