@@ -123,22 +123,22 @@ model User {
   approvedInstructorProfiles InstructorProfile[] @relation("InstructorProfileApprovedBy")
   sessions                   Session[]
   notifications              Notification[]
-  auditLogs        AuditLog[]
-  enrollments      Enrollment[]
-  progress         Progress[]
-  lessonProgress   LessonProgress[]
-  moduleProgress   ModuleProgress[]
-  quizAttempts     QuizAttempt[]
-  mockTestAttempts MockTestAttempt[]
-  bookmarks        Bookmark[]
-  studyStreak      StudyStreak?
-  achievements     Achievement[]
-  certificates     Certificate[]
-  purchases        Purchase[]
-  orders           Order[]
-  entitlements     Entitlement[]
-  subscriptions    Subscription[]      @relation("userSubscriptions")
-  aiConversations  AIConversation[]
+  auditLogs                  AuditLog[]
+  enrollments                Enrollment[]
+  progress                   Progress[]
+  lessonProgress             LessonProgress[]
+  moduleProgress             ModuleProgress[]
+  quizAttempts               QuizAttempt[]
+  mockTestAttempts           MockTestAttempt[]
+  bookmarks                  Bookmark[]
+  studyStreak                StudyStreak?
+  achievements               Achievement[]
+  certificates               Certificate[]
+  purchases                  Purchase[]
+  orders                     Order[]
+  entitlements               Entitlement[]
+  subscriptions              Subscription[]      @relation("userSubscriptions")
+  aiConversations            AIConversation[]
 
   @@index([email])
   @@index([isActive])
@@ -268,13 +268,13 @@ model Notification {
 }
 
 model AIConversation {
-  id         String      @id @default(uuid())
-  userId     String?
-  title      String
-  metadata   Json?
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  deletedAt  DateTime?
+  id        String    @id @default(uuid())
+  userId    String?
+  title     String
+  metadata  Json?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   user     User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
   messages AIMessage[]
@@ -284,7 +284,7 @@ model AIConversation {
 }
 
 model AIMessage {
-  id             String      @id @default(uuid())
+  id             String   @id @default(uuid())
   conversationId String
   role           String
   content        String
@@ -292,7 +292,7 @@ model AIMessage {
   usage          Json?
   model          String?
   metadata       Json?
-  createdAt      DateTime    @default(now())
+  createdAt      DateTime @default(now())
 
   conversation AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
@@ -351,6 +351,7 @@ model Course {
   categoryId  String?
   status      Status    @default(DRAFT)
   publishedAt DateTime?
+  isPremium   Boolean   @default(false)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
@@ -389,6 +390,7 @@ model Module {
   displayOrder   Int        @default(0)
   status         Status     @default(DRAFT)
   publishedAt    DateTime?
+  isPremium      Boolean    @default(false)
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   deletedAt      DateTime?
@@ -477,6 +479,7 @@ model MockTest {
   description String?
   status      Status    @default(DRAFT)
   publishedAt DateTime?
+  isPremium   Boolean   @default(false)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
@@ -493,6 +496,7 @@ model QuestionBank {
   title       String
   description String?
   status      Status    @default(DRAFT)
+  isPremium   Boolean   @default(false)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
@@ -526,39 +530,40 @@ model Question {
 }
 
 model ExamTemplate {
-  id                     String    @id @default(uuid())
+  id                     String   @id @default(uuid())
   name                   String
   description            String?
   questionBankId         String?
   moduleId               String?
   courseId               String?
-  durationMinutes        Int       @default(60)
-  questionCount          Int       @default(20)
-  passingPercentage      Int       @default(60)
-  shuffleQuestions       Boolean   @default(false)
-  shuffleAnswers         Boolean   @default(false)
-  negativeMarkingEnabled Boolean   @default(false)
-  active                 Boolean   @default(false)
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
+  durationMinutes        Int      @default(60)
+  questionCount          Int      @default(20)
+  passingPercentage      Int      @default(60)
+  shuffleQuestions       Boolean  @default(false)
+  shuffleAnswers         Boolean  @default(false)
+  negativeMarkingEnabled Boolean  @default(false)
+  active                 Boolean  @default(false)
+  isPremium              Boolean  @default(false)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   @@index([questionBankId])
   @@index([active])
 }
 
 model ExamAttempt {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   studentId   String
   templateId  String
-  status      Status   @default(DRAFT)
+  status      Status    @default(DRAFT)
   startedAt   DateTime?
   submittedAt DateTime?
   expiresAt   DateTime?
   score       Float?
   percentage  Float?
   passed      Boolean?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([studentId])
   @@index([templateId])
@@ -575,11 +580,11 @@ model ExamAttemptQuestion {
 }
 
 model ExamAttemptAnswer {
-  id                String @id @default(uuid())
+  id                String    @id @default(uuid())
   attemptQuestionId String
   selectedOption    Int?
-  bookmarked        Boolean @default(false)
-  markedForReview   Boolean @default(false)
+  bookmarked        Boolean   @default(false)
+  markedForReview   Boolean   @default(false)
   answeredAt        DateTime?
 
   @@index([attemptQuestionId])
@@ -859,8 +864,8 @@ model SubscriptionPlan {
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
-  productPrice   ProductPrice   @relation(fields: [productPriceId], references: [id], onDelete: Restrict)
-  subscriptions  Subscription[]
+  productPrice  ProductPrice   @relation(fields: [productPriceId], references: [id], onDelete: Restrict)
+  subscriptions Subscription[]
 
   @@index([slug])
 }
@@ -955,21 +960,21 @@ model AccessPolicy {
 }
 
 model Subscription {
-  id                 String               @id @default(uuid())
+  id                 String             @id @default(uuid())
   userId             String
   subscriptionPlanId String
-  status             SubscriptionStatus   @default(ACTIVE)
+  status             SubscriptionStatus @default(ACTIVE)
   currentPeriodStart DateTime
   currentPeriodEnd   DateTime
-  renewalAttempts    Int                  @default(0)
+  renewalAttempts    Int                @default(0)
   cancelledAt        DateTime?
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
   deletedAt          DateTime?
 
-  user               User                 @relation("userSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
-  subscriptionPlan   SubscriptionPlan     @relation(fields: [subscriptionPlanId], references: [id], onDelete: Restrict)
-  invoices           Invoice[]
+  user             User             @relation("userSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
+  subscriptionPlan SubscriptionPlan @relation(fields: [subscriptionPlanId], references: [id], onDelete: Restrict)
+  invoices         Invoice[]
 
   @@index([userId])
   @@index([subscriptionPlanId])
@@ -977,19 +982,19 @@ model Subscription {
 }
 
 model Invoice {
-  id              String        @id @default(uuid())
-  subscriptionId  String
-  invoiceNumber   String        @unique
-  status          InvoiceStatus @default(DRAFT)
-  dueDate         DateTime?
-  paidAt          DateTime?
-  amount          Decimal       @db.Decimal(10, 2)
-  currency        String        @default("INR")
-  description     String?
-  metadata        Json?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  deletedAt       DateTime?
+  id             String        @id @default(uuid())
+  subscriptionId String
+  invoiceNumber  String        @unique
+  status         InvoiceStatus @default(DRAFT)
+  dueDate        DateTime?
+  paidAt         DateTime?
+  amount         Decimal       @db.Decimal(10, 2)
+  currency       String        @default("INR")
+  description    String?
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
 
   subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
@@ -997,4 +1002,3 @@ model Invoice {
   @@index([status])
   @@index([invoiceNumber])
 }
-
