@@ -84,6 +84,7 @@ export function MockTestsManager() {
           questionCount: draft.questionCount || 20,
           randomized: draft.randomized ?? false,
           status: draft.status || 'Draft',
+          isPremium: draft.isPremium ?? false,
         })
       : await adminContentService.createMockTest({
           title: draft.title?.trim() || '',
@@ -92,6 +93,7 @@ export function MockTestsManager() {
           questionCount: draft.questionCount || 20,
           randomized: draft.randomized ?? false,
           status: draft.status || 'Draft',
+          isPremium: draft.isPremium ?? false,
         });
 
     setSubmitting(false);

@@ -74,6 +74,6 @@ export const moduleWizardDefaults: ModuleWizardState = {
   learningObjectives: "",
   prerequisites: "",
   status: "Draft",
-  access: "Free",
+  isPremium: false,
   productMapping: "",
 };

@@ -65,6 +65,64 @@ describe('ModuleManagementService', () => {
     expect(detail.status).toBe('DRAFT')
   })
 
+  it('creates and updates modules with the premium flag', async () => {
+    const moduleRepository = {
+      findModulesForAdmin: vi.fn(),
+      countModulesForAdmin: vi.fn(),
+      create: vi.fn().mockResolvedValue({ id: 'm4', status: 'DRAFT', isPremium: true }),
+      update: vi.fn().mockResolvedValue({ id: 'm4', status: 'PUBLISHED', isPremium: false }),
+      setPublishState: vi.fn(),
+      getModuleDetail: vi.fn(),
+    }
+
+    vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository }))
+
+    const { ModuleManagementService } = await import('../../server/services/module-management.service')
+    const service = new ModuleManagementService()
+
+    const created = await service.createModule({
+      title: 'Premium Module',
+      slug: 'premium-module',
+      moduleNumber: '04',
+      courseId: 'course-1',
+      isPremium: true,
+    } as any)
+
+    const updated = await service.updateModule('m4', { isPremium: false })
+
+    expect(moduleRepository.create).toHaveBeenCalledWith(expect.objectContaining({ isPremium: true }))
+    expect(moduleRepository.update).toHaveBeenCalledWith('m4', expect.objectContaining({ isPremium: false }))
+    expect(created.id).toBe('m4')
+    expect(updated.id).toBe('m4')
+  })
+
+  it('supports premium create and update for mock tests through admin CMS', async () => {
+    const mockTestRepository = {
+      create: vi.fn().mockResolvedValue({ id: 'mt-1', title: 'Premium Mock', status: 'DRAFT', durationMinutes: 60, questionCount: 20, passingPercentage: 60, shuffleQuestions: false, isPremium: true, updatedAt: new Date() }),
+      update: vi.fn().mockResolvedValue({ id: 'mt-1', title: 'Premium Mock', status: 'DRAFT', durationMinutes: 60, questionCount: 20, passingPercentage: 60, shuffleQuestions: false, isPremium: false, updatedAt: new Date() }),
+      findById: vi.fn().mockResolvedValue({ id: 'mt-1', title: 'Premium Mock', status: 'DRAFT', durationMinutes: 60, questionCount: 20, passingPercentage: 60, shuffleQuestions: false, isPremium: true, updatedAt: new Date() }),
+      delete: vi.fn(),
+      list: vi.fn(),
+      count: vi.fn(),
+      duplicate: vi.fn(),
+    }
+
+    const auditRepository = { recordEvent: vi.fn() }
+
+    vi.doMock('@/server/repositories/mock-test.repository', () => ({ mockTestRepository }))
+    vi.doMock('@/server/repositories/audit.repository', () => ({ auditRepository }))
+
+    const { createMockTest, updateMockTest } = await import('../../server/services/admin-cms.service')
+
+    const created = await createMockTest({ title: 'Premium Mock', durationMinutes: 60, questionCount: 20, passingPercentage: 60, isPremium: true }, 'admin-1')
+    const updated = await updateMockTest('mt-1', { isPremium: false }, 'admin-1')
+
+    expect(created.success).toBe(true)
+    expect(updated.success).toBe(true)
+    expect(mockTestRepository.create).toHaveBeenCalledWith(expect.objectContaining({ isPremium: true }))
+    expect(mockTestRepository.update).toHaveBeenCalledWith('mt-1', expect.objectContaining({ isPremium: false }))
+  })
+
   it('archives and unarchives modules without deleting them', async () => {
     const moduleRepository = {
       findModulesForAdmin: vi.fn(),

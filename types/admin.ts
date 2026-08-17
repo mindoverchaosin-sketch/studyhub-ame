@@ -93,6 +93,7 @@ export interface AdminMockTest {
   questionCount: number;
   randomized: boolean;
   status: AdminContentStatus;
+  isPremium?: boolean;
   updatedAt?: string;
 }
 

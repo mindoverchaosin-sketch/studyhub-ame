@@ -12,6 +12,7 @@ export type ExamTemplateDTO = {
   shuffleAnswers: boolean
   negativeMarkingEnabled: boolean
   active: boolean
+  isPremium?: boolean
   createdAt: string
   updatedAt: string
 }

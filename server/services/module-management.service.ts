@@ -90,7 +90,7 @@ export class ModuleManagementService {
     }
   }
 
-  async createModule(input: { title: string; slug: string; moduleNumber: string; description?: string; courseId: string; status?: string; difficulty?: string; estimatedHours?: number; displayOrder?: number }) {
+  async createModule(input: { title: string; slug: string; moduleNumber: string; description?: string; courseId: string; status?: string; difficulty?: string; estimatedHours?: number; displayOrder?: number; isPremium?: boolean }) {
     const created = await moduleRepository.create({
       title: input.title,
       slug: input.slug,
@@ -101,12 +101,13 @@ export class ModuleManagementService {
       difficulty: (input.difficulty as 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED') ?? 'BEGINNER',
       estimatedHours: input.estimatedHours ?? 0,
       displayOrder: input.displayOrder ?? 0,
+      isPremium: input.isPremium ?? false,
     } as any)
 
     return { id: created.id, status: created.status }
   }
 
-  async updateModule(moduleId: string, input: { title?: string; slug?: string; moduleNumber?: string; description?: string; status?: string; difficulty?: string; estimatedHours?: number; displayOrder?: number }) {
+  async updateModule(moduleId: string, input: { title?: string; slug?: string; moduleNumber?: string; description?: string; status?: string; difficulty?: string; estimatedHours?: number; displayOrder?: number; isPremium?: boolean }) {
     const updated = await moduleRepository.update(moduleId, {
       ...(input.title ? { title: input.title } : {}),
       ...(input.slug ? { slug: input.slug } : {}),
@@ -116,6 +117,7 @@ export class ModuleManagementService {
       ...(input.difficulty ? { difficulty: input.difficulty as 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' } : {}),
       ...(input.estimatedHours !== undefined ? { estimatedHours: input.estimatedHours } : {}),
       ...(input.displayOrder !== undefined ? { displayOrder: input.displayOrder } : {}),
+      ...(input.isPremium !== undefined ? { isPremium: input.isPremium } : {}),
     } as any)
 
     return { id: updated.id, status: updated.status }

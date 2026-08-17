@@ -50,6 +50,10 @@ export function MockTestForm({
           Randomize question order
         </label>
       </div>
+      <label className="flex items-center gap-3 rounded-2xl border border-slate-200 px-3 py-3 text-sm font-medium text-slate-700">
+        <input type="checkbox" checked={value.isPremium ?? false} onChange={(event) => onChange({ isPremium: event.target.checked })} />
+        Premium Assessment
+      </label>
       <div className="flex items-center gap-3">
         <input id="mock-published" type="checkbox" checked={value.status === 'Published'} onChange={(event) => onChange({ status: event.target.checked ? 'Published' : 'Draft' })} />
         <label htmlFor="mock-published" className="text-sm text-slate-700">Published</label>

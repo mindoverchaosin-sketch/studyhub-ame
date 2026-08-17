@@ -18,6 +18,7 @@ function readModuleInput(formData: FormData) {
     difficulty: String(formData.get('difficulty') ?? 'BEGINNER'),
     estimatedHours: Number(formData.get('estimatedHours') ?? 0),
     displayOrder: Number(formData.get('displayOrder') ?? 0),
+    isPremium: formData.get('isPremium') === 'on' || formData.get('isPremium') === 'true',
   }
 }
 

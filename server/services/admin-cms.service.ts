@@ -235,6 +235,7 @@ export async function createMockTest(input: Partial<AdminMockTest>, actorUserId:
       questionCount: input.questionCount ?? 20,
       passingPercentage: input.passingPercentage ?? 60,
       shuffleQuestions: input.randomized ?? false,
+      isPremium: input.isPremium ?? false,
     } as any);
 
     await auditRepository.recordEvent({ actorUserId, action: 'CREATE', targetType: 'MOCK_TEST', targetId: created.id, metadata: { title: created.title } });
@@ -259,6 +260,7 @@ export async function updateMockTest(id: string, input: Partial<AdminMockTest>, 
       questionCount: typeof input.questionCount === 'number' ? input.questionCount : undefined,
       passingPercentage: typeof input.passingPercentage === 'number' ? input.passingPercentage : undefined,
       shuffleQuestions: typeof input.randomized === 'boolean' ? input.randomized : undefined,
+      isPremium: typeof input.isPremium === 'boolean' ? input.isPremium : undefined,
     } as any);
 
     await auditRepository.recordEvent({ actorUserId, action: 'UPDATE', targetType: 'MOCK_TEST', targetId: updated.id, metadata: { title: updated.title } });

@@ -35,7 +35,7 @@ export interface ModuleWizardState {
   learningObjectives: string;
   prerequisites: string;
   status: ModuleStatus;
-  access: ModuleAccess;
+  isPremium: boolean;
   productMapping: string;
 }
 

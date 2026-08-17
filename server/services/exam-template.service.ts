@@ -2,6 +2,12 @@ import { examTemplateRepository } from '@/server/repositories/exam-template.repo
 import type { ExamTemplateDTO } from '@/server/application/dto/exam-template.dto'
 import { ValidationError } from '@/auth'
 
+function normalizePremiumFlag(value: unknown): boolean {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'string') return value === 'true' || value === 'on' || value === '1'
+  return Boolean(value)
+}
+
 function mapToDTO(entity: any): ExamTemplateDTO {
   return {
     id: entity.id,
@@ -17,6 +23,7 @@ function mapToDTO(entity: any): ExamTemplateDTO {
     shuffleAnswers: Boolean(entity.shuffleAnswers),
     negativeMarkingEnabled: Boolean(entity.negativeMarkingEnabled),
     active: Boolean(entity.active),
+    isPremium: Boolean(entity.isPremium ?? false),
     createdAt: entity.createdAt?.toISOString?.() ?? new Date().toISOString(),
     updatedAt: entity.updatedAt?.toISOString?.() ?? new Date().toISOString(),
   }
@@ -39,6 +46,8 @@ export async function createTemplate(input: Partial<ExamTemplateDTO>): Promise<E
   if (!input.name) throw new ValidationError('Name is required.')
   if ((input.questionCount ?? 0) <= 0) throw new ValidationError('questionCount must be > 0')
 
+  const isPremium = normalizePremiumFlag(input.isPremium ?? false)
+
   const created = await examTemplateRepository.createTemplate({
     name: input.name,
     description: input.description ?? null,
@@ -52,13 +61,21 @@ export async function createTemplate(input: Partial<ExamTemplateDTO>): Promise<E
     shuffleAnswers: !!input.shuffleAnswers,
     negativeMarkingEnabled: !!input.negativeMarkingEnabled,
     active: !!input.active,
+    isPremium,
   })
 
   return mapToDTO(created)
 }
 
 export async function updateTemplate(id: string, input: Partial<ExamTemplateDTO>): Promise<ExamTemplateDTO> {
-  const updated = await examTemplateRepository.updateTemplate(id, input)
+  const existing = await examTemplateRepository.getTemplate(id)
+  const isPremium = typeof input.isPremium === 'boolean' ? input.isPremium : existing?.isPremium ?? false
+
+  const updated = await examTemplateRepository.updateTemplate(id, {
+    ...input,
+    isPremium,
+  })
+
   return mapToDTO(updated)
 }
 

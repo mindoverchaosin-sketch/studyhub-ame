@@ -100,12 +100,10 @@ export default function ModuleWizard() {
 
           {step === 4 ? (
             <>
-              <label className="block text-sm font-medium text-slate-700">
-                Access
-                <select value={form.access} onChange={(event) => update("access", event.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 outline-none">
-                  <option value="Free">Free</option>
-                  <option value="Premium">Premium</option>
-                </select>
+              <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <input type="checkbox" checked={form.isPremium} onChange={(event) => update("isPremium", event.target.checked ? 1 : 0)} />
+                <span className="text-sm font-medium text-slate-700">Premium Content</span>
+                <span className="text-xs text-slate-500">(Require subscription to access)</span>
               </label>
               <label className="block text-sm font-medium text-slate-700">
                 Product mapping
