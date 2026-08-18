@@ -1,6 +1,7 @@
 import type { QuizWithQuestionBanksEntity, QuizWithQuestionBanksAndQuestionsEntity } from '../../infrastructure/entities/quiz.entity'
 import type { QuizWithQuestionBanksAndQuestionsWithModuleEntity } from '../../infrastructure/entities/quiz.entity'
 import type { QuizDTO } from '../dto/quiz.dto'
+import type { QuestionBankReferenceDTO } from '../dto/question-bank.dto'
 import { mapQuestionEntityToDTO } from './question.mapper'
 
 export function mapQuizEntityToDTO(quiz: QuizWithQuestionBanksEntity, topicId?: string): QuizDTO {
@@ -15,7 +16,7 @@ export function mapQuizEntityToDTO(quiz: QuizWithQuestionBanksEntity, topicId?: 
     publishedAt: quiz.publishedAt,
     createdAt: quiz.createdAt,
     updatedAt: quiz.updatedAt,
-    questionBanks: quiz.questionBanks.map((bank) => ({
+    questionBanks: quiz.questionBanks.map((bank): QuestionBankReferenceDTO => ({
       id: bank.id,
       title: bank.title,
       description: bank.description,

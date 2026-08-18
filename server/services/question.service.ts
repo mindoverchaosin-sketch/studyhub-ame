@@ -5,6 +5,9 @@ import { questionRepository } from '@/server/repositories/question.repository'
 
 export type QuestionStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
 
+// Alias for compatibility
+export type QuestionManagementStatus = QuestionStatus
+
 export type AdminQuestionLibraryFilters = {
   search?: string
   status?: QuestionStatus

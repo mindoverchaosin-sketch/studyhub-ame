@@ -1,4 +1,4 @@
-import type { QuestionBankDTO } from './question-bank.dto'
+import type { QuestionBankReferenceDTO } from './question-bank.dto'
 import type { QuestionDTO } from './question.dto'
 
 export type QuizDTO = {
@@ -12,7 +12,7 @@ export type QuizDTO = {
   publishedAt: Date | null
   createdAt: Date
   updatedAt: Date
-  questionBanks: QuestionBankDTO[]
+  questionBanks: QuestionBankReferenceDTO[]
   questions?: QuestionDTO[]
   topicId: string
   lessonId?: string
