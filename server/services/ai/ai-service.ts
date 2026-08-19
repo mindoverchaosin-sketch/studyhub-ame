@@ -10,6 +10,7 @@ import { personalizationService } from './personalization.service';
 import { AIServiceError, ValidationError } from './ai-error';
 import { metricsService } from '@/server/services/metrics.service';
 import { timeAsync, timeSync } from '@/lib/timing';
+import { contentAccessService } from '@/server/services/content-access.service';
 import type {
   AIRequestPayload,
   AIResponseDTO,
@@ -21,6 +22,13 @@ import type { AnalyticsService } from './analytics.service';
 
 export class AIService {
   constructor(private readonly provider = createAIProvider()) {}
+
+  private async requireAITutorAccess(userId: string): Promise<void> {
+    const access = await contentAccessService.canUseAITutor(userId);
+    if (!access.allowed) {
+      throw new AIServiceError(access.reason ?? 'AI Tutor access requires premium subscription', 403, 'AI_TUTOR_ACCESS_DENIED');
+    }
+  }
 
   private async buildRequestContext(payload: AIRequestPayload, userId: string, conversation: AIRequestContext['conversation']): Promise<AIRequestContext> {
     const contextSnapshot = timeSync('AIService', 'buildContext', () => aiContextBuilderService.buildContext(payload.context ?? {}));
@@ -47,6 +55,7 @@ export class AIService {
   }
 
   async handleChat(payload: AIRequestPayload, userId: string): Promise<AIResponseDTO> {
+    await this.requireAITutorAccess(userId)
     metricsService.recordAIRequest()
 
     if (!payload.prompt?.trim()) {
@@ -75,6 +84,7 @@ export class AIService {
   }
 
   async *streamChat(payload: AIRequestPayload, userId: string, options?: { timeoutMs?: number; attempt?: number; signal?: AbortSignal }): AsyncGenerator<AIStreamChunk> {
+    await this.requireAITutorAccess(userId)
     metricsService.recordAIRequest()
     metricsService.recordAIStreamingStart()
 

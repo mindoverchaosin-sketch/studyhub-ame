@@ -6,6 +6,7 @@ import { getStudentProgress } from "@/server/services/progress.service";
 import { getTopicsBySection } from "@/server/services/topic.service";
 import { getProgressPercent, getStatusFromPercent } from "@/features/courses/utils/course-browser";
 import type { CourseBrowserCourse, CourseBrowserCourseDetail, CourseBrowserModuleDetail } from "@/features/courses/types";
+import { contentAccessService } from "@/server/services/content-access.service";
 
 async function requireStudentId() {
   const session = await auth();
@@ -61,6 +62,11 @@ export async function getCourseDetailPageData(courseSlug: string): Promise<Cours
     notFound();
   }
 
+  const courseAccess = await contentAccessService.canAccessCourse(studentId, course.isPremium);
+  if (!courseAccess.allowed) {
+    redirect(`/student/dashboard/billing?reason=course-access&feature=${courseAccess.requiredFeature ?? "premiumModules"}`);
+  }
+
   const [modules, progressRows] = await Promise.all([getModulesByCourse(course.id), getStudentProgress(studentId)]);
   const completedTopicIds = new Set(progressRows.filter((row) => row.status === "COMPLETED").map((row) => row.topicId));
 
@@ -110,6 +116,13 @@ export async function getModuleDetailPageData(courseSlug: string, moduleSlug: st
 
   if (!course || !moduleRecord || moduleRecord.courseId !== course.id) {
     notFound();
+  }
+
+  const courseAccess = await contentAccessService.canAccessCourse(studentId, course.isPremium);
+  const moduleAccess = await contentAccessService.canAccessModule(studentId, moduleRecord.isPremium);
+  if (!courseAccess.allowed || !moduleAccess.allowed) {
+    const feature = courseAccess.requiredFeature ?? moduleAccess.requiredFeature ?? "premiumModules";
+    redirect(`/student/dashboard/billing?reason=module-access&feature=${feature}`);
   }
 
   const [moduleWithSections, progressRows] = await Promise.all([getModuleWithSections(moduleRecord.id), getStudentProgress(studentId)]);

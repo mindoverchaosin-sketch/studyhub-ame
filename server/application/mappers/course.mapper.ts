@@ -7,6 +7,7 @@ export function mapCourseEntityToDTO(course: any): CourseDTO {
     slug: course.slug,
     title: course.title,
     description: course.description,
+    isPremium: Boolean(course.isPremium),
     categoryId: course.categoryId,
     status: course.status,
     publishedAt: course.publishedAt,

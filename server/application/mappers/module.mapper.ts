@@ -9,6 +9,7 @@ export function mapModuleEntityToDTO(module: ModuleEntity): ModuleDTO {
     title: module.title,
     moduleNumber: module.moduleNumber,
     description: module.description,
+    isPremium: Boolean(module.isPremium),
     difficulty: module.difficulty,
     estimatedHours: module.estimatedHours,
     displayOrder: module.displayOrder,

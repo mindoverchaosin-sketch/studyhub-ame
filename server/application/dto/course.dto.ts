@@ -3,6 +3,7 @@ export type CourseDTO = {
   slug: string
   title: string
   description: string | null
+  isPremium: boolean
   categoryId: string | null
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED" | "SCHEDULED"
   publishedAt: Date | null

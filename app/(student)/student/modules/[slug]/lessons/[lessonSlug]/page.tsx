@@ -1,13 +1,29 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { requireStudent } from "@/auth";
 import { notFound } from "next/navigation";
 import { FiChevronLeft, FiChevronRight, FiDownload, FiFileText, FiFlag, FiList, FiPlayCircle } from "react-icons/fi";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ModuleHeader from "@/components/modules/ModuleHeader";
 import { mockModules } from "@/lib/mock/modules";
+import { getModuleBySlug } from "@/server/services/module.service";
+import { contentAccessService } from "@/server/services/content-access.service";
 
 export default async function StudentLessonPage({ params }: { params: Promise<{ slug: string; lessonSlug: string }> }) {
+  const session = await requireStudent();
   const { slug, lessonSlug } = await params;
+  const persistedModule = await getModuleBySlug(slug);
+
+  if (!persistedModule) {
+    notFound();
+  }
+
+  const access = await contentAccessService.canAccessLesson(session.user.id, persistedModule.isPremium);
+  if (!access.allowed) {
+    redirect(`/student/dashboard/billing?reason=lesson-access&feature=${access.requiredFeature ?? "premiumModules"}`);
+  }
+
   const moduleItem = mockModules.find((item) => item.slug === slug);
 
   if (!moduleItem) {

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { FiArrowLeft } from "react-icons/fi";
 import AIChatPanel from "@/components/ai/AIChatPanel";
+import { entitlementService } from "@/server/domains/billing/entitlements/entitlement.service";
 
 export default async function AITutorPage() {
   let sessionUser;
@@ -11,6 +12,12 @@ export default async function AITutorPage() {
     sessionUser = await requireStudent();
   } catch {
     redirect("/login");
+  }
+
+  // Check AI Tutor entitlement
+  const canUseAITutor = await entitlementService.canUseAITutor(sessionUser.user.id);
+  if (!canUseAITutor) {
+    redirect("/student/dashboard/billing?reason=ai-tutor-required");
   }
 
   return (

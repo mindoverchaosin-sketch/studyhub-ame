@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { getQuizAnalytics, getQuizWithQuestions, submitQuizAttempt } from "@/server/services/quiz.service";
 import { getTopicProgress } from "@/server/services/progress.service";
 import { getTopicById } from "@/server/services/topic.service";
+import { getModuleById } from "@/server/services/module.service";
+import { contentAccessService } from "@/server/services/content-access.service";
 import type { QuizPlayerPageData } from "@/features/quiz/types";
 
 async function requireStudentId() {
@@ -17,9 +19,29 @@ async function requireStudentId() {
   return session.user.id;
 }
 
+async function requireQuizAccess(studentId: string, quizId: string) {
+  const quiz = await getQuizWithQuestions(quizId);
+
+  if (!quiz) {
+    return null;
+  }
+
+  const module = await getModuleById(quiz.moduleId);
+  if (!module) {
+    return null;
+  }
+
+  const access = await contentAccessService.canAccessQuiz(studentId, module.isPremium);
+  if (!access.allowed) {
+    redirect(`/student/dashboard/billing?reason=quiz-access&feature=${access.requiredFeature ?? "premiumModules"}`);
+  }
+
+  return quiz;
+}
+
 export async function getQuizPlayerPageData(quizId: string): Promise<QuizPlayerPageData | null> {
   const studentId = await requireStudentId();
-  const quiz = await getQuizWithQuestions(quizId);
+  const quiz = await requireQuizAccess(studentId, quizId);
 
   if (!quiz) {
     return null;
@@ -71,6 +93,7 @@ export async function submitQuizAction(
   },
 ) {
   const studentId = await requireStudentId();
+  await requireQuizAccess(studentId, quizId);
 
   return submitQuizAttempt({
     studentId,

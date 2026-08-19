@@ -1,6 +1,7 @@
 import * as templateService from '@/server/services/exam-template.service'
 import * as attemptService from '@/server/services/exam-attempt.service'
 import { requireStudent, requirePermission, requireOwnership, requireAuth } from '@/auth'
+import { contentAccessService } from '@/server/services/content-access.service'
 
 function normalizeExamTemplateInput(input: any) {
   if (input instanceof FormData) {
@@ -46,6 +47,22 @@ export async function activateExamTemplate(id: string, active: boolean) {
 export async function generateAttempt(templateId: string, studentId: string) {
   const session = await requireStudent()
   requireOwnership(studentId, session.user.id, true, session.user.role)
+
+  // Check premium access for the exam template
+  const template = await templateService.getTemplate(templateId)
+  if (!template) {
+    throw new Error('Template not found.')
+  }
+
+  if (template.isPremium) {
+    // Determine context: if template is tied to a module, use premiumModules feature
+    // Otherwise, use unlimitedMockExams for standalone templates
+    const context = template.moduleId ? 'module' : 'standalone'
+    const canAccess = await contentAccessService.canAccessExamTemplate(studentId, template.isPremium, context)
+    if (!canAccess.allowed) {
+      throw new Error(canAccess.reason || 'Premium exam template access required')
+    }
+  }
 
   return attemptService.generateExamAttempt(templateId, studentId)
 }

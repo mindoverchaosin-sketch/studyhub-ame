@@ -7,6 +7,7 @@ export type ModuleDTO = {
   title: string
   moduleNumber: string
   description: string | null
+  isPremium: boolean
   difficulty: "BEGINNER" | "INTERMEDIATE" | "ADVANCED"
   estimatedHours: number
   displayOrder: number

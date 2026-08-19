@@ -1,4 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const canUseAITutorMock = vi.hoisted(() => vi.fn().mockResolvedValue(true));
+
+vi.mock('@/server/services/content-access.service', () => ({
+  contentAccessService: {
+    canUseAITutor: canUseAITutorMock,
+  },
+}));
 import { AIService } from '@/server/services/ai/ai-service';
 import { ConversationService } from '@/server/services/ai/conversation.service';
 import { AIContextBuilderService } from '@/server/services/ai/context-builder.service';
@@ -22,6 +30,11 @@ class MockProvider {
 }
 
 describe('AI backend services', () => {
+  beforeEach(() => {
+    canUseAITutorMock.mockReset();
+    canUseAITutorMock.mockResolvedValue({ allowed: true, requiredFeature: 'aiTools' });
+  });
+
   it('creates and continues conversations', async () => {
     const service = new ConversationService();
     const conversation = await service.createConversation('Test chat');
@@ -64,5 +77,28 @@ describe('AI backend services', () => {
     const response = await service.handleChat({ prompt: 'Explain corrosion' }, 'user-1');
     expect(response.success).toBe(true);
     expect(response.message).toContain('mock response');
+  });
+
+  it('denies direct AI service access without aiTools entitlement', async () => {
+    canUseAITutorMock.mockResolvedValueOnce({
+      allowed: false,
+      reason: 'AI Tutor access requires premium subscription',
+      requiredFeature: 'aiTools',
+    });
+    const service = new AIService(new MockProvider() as never);
+
+    await expect(service.handleChat({ prompt: 'Explain corrosion' }, 'free-user')).rejects.toMatchObject({
+      status: 403,
+      code: 'AI_TUTOR_ACCESS_DENIED',
+    });
+  });
+
+  it('allows direct AI service access with aiTools entitlement', async () => {
+    canUseAITutorMock.mockResolvedValueOnce({ allowed: true, requiredFeature: 'aiTools' });
+    const service = new AIService(new MockProvider() as never);
+
+    await expect(service.handleChat({ prompt: 'Explain corrosion' }, 'premium-user')).resolves.toMatchObject({
+      success: true,
+    });
   });
 });
