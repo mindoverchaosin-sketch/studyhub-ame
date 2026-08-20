@@ -12,6 +12,28 @@ export class QuestionBankRepository {
     return prisma.questionBank.findUnique({ where: { id } })
   }
 
+  async findPublishedWithQuestions(search?: string) {
+    return prisma.questionBank.findMany({
+      where: {
+        status: 'PUBLISHED',
+        deletedAt: null,
+        ...(search?.trim() ? {
+          OR: [
+            { title: { contains: search.trim(), mode: 'insensitive' } },
+            { description: { contains: search.trim(), mode: 'insensitive' } },
+          ],
+        } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        questions: {
+          where: { status: 'PUBLISHED', deletedAt: null },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    })
+  }
+
   async findByIdWithCount(id: string) {
     const qb = await prisma.questionBank.findUnique({
       where: { id },

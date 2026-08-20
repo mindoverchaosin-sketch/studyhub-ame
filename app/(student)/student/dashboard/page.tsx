@@ -10,11 +10,12 @@ import ProgressRing from "@/components/dashboard/ProgressRing";
 import { getDashboardSummaryAction, getStudentDashboardDataAction } from '@/server/actions/dashboard.actions';
 import { getGoalProgressAction } from "@/server/actions/progress-insights.actions";
 import { generateDailyPlanAction, getContinueLearningAction } from "@/server/actions/study-planner.actions";
+import StudentContentOverview from "@/components/dashboard/StudentContentOverview";
 
 const quickActions = [
   { title: "Continue Course", description: "Pick up where you left off.", href: "/student/courses", icon: FiBookOpen },
   { title: "Take Mock Test", description: "Practice under exam conditions.", href: "/student/mock-exams", icon: FiTarget },
-  { title: "Ask AI Tutor", description: "Get help with weak topics.", href: "/student/adaptive-learning", icon: FiMessageSquare },
+  { title: "Ask AI Tutor", description: "Get help with weak topics.", href: "/student/ai-tutor", icon: FiMessageSquare },
   { title: "Revision Notes", description: "Review high-impact concepts.", href: "/student/modules", icon: FiBookOpen },
   { title: "Practice Questions", description: "Sharpen your fundamentals.", href: "/student/search", icon: FiPlayCircle },
 ] as const;
@@ -163,6 +164,8 @@ export default async function StudentDashboardPage() {
               <div className="text-sm text-slate-600">Goal: 8h / week</div>
             </Card>
           </section>
+
+          <StudentContentOverview userId={sessionUser.user.id as string} />
 
           <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
             <Card className="p-6 sm:p-7">

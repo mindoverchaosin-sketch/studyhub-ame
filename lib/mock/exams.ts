@@ -15,6 +15,7 @@ export interface MockQuestion {
 
 export interface MockTestTemplate {
   id: string;
+  isPremium?: boolean;
   title: string;
   description: string;
   examType: MockExamType;
