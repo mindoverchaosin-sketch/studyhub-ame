@@ -22,6 +22,22 @@ export type ResourceUpdateInput = {
   displayOrder?: number
 }
 
+export function validateStudyMaterialUrl(value: string): string {
+  const url = value.trim()
+
+  if (!url || !url.startsWith('/media/') || url.startsWith('//') || url.includes('\\') || /[\u0000-\u001f\u007f]/.test(url)) {
+    throw new Error('Study material URL must be a relative /media/ path')
+  }
+
+  const parsed = new URL(url, 'https://study-material.invalid')
+  const decodedPath = decodeURIComponent(parsed.pathname)
+  if (parsed.origin !== 'https://study-material.invalid' || !parsed.pathname.startsWith('/media/') || decodedPath.split('/').includes('..')) {
+    throw new Error('Study material URL must be a relative /media/ path')
+  }
+
+  return url
+}
+
 export class StudyMaterialManagementService {
   async listResources(moduleId: string): Promise<ResourceDTO[]> {
     const resources = await resourceRepository.findByModule(moduleId)
@@ -43,11 +59,12 @@ export class StudyMaterialManagementService {
   }
 
   async createResource(input: ResourceCreateInput): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' }> {
+    const resourceUrl = validateStudyMaterialUrl(input.url)
     const created = await resourceRepository.create({
       moduleId: input.moduleId,
       title: input.title,
       materialType: input.type as any,
-      url: input.url,
+      url: resourceUrl,
       isPremium: input.isPremium ?? false,
       status: input.status ?? 'DRAFT',
     } as any)
@@ -56,10 +73,11 @@ export class StudyMaterialManagementService {
   }
 
   async updateResource(resourceId: string, input: ResourceUpdateInput): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' }> {
+    const resourceUrl = input.url === undefined ? undefined : validateStudyMaterialUrl(input.url)
     const updated = await resourceRepository.update(resourceId, {
       ...(input.title ? { title: input.title } : {}),
       ...(input.type ? { materialType: input.type as any } : {}),
-      ...(input.url ? { url: input.url } : {}),
+      ...(resourceUrl ? { url: resourceUrl } : {}),
       ...(input.isPremium !== undefined ? { isPremium: input.isPremium } : {}),
       ...(input.status ? { status: input.status } : {}),
     } as any)
