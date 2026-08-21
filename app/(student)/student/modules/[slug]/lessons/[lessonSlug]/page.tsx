@@ -6,9 +6,10 @@ import { FiChevronLeft, FiChevronRight, FiDownload, FiFileText, FiFlag, FiList, 
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ModuleHeader from "@/components/modules/ModuleHeader";
-import { mockModules } from "@/lib/mock/modules";
 import { getModuleBySlug } from "@/server/services/module.service";
 import { contentAccessService } from "@/server/services/content-access.service";
+import { getTopicBySlug } from "@/server/services/topic.service";
+import { getTopicLearningPageData } from "@/features/topics/actions/topic-learning";
 
 export default async function StudentLessonPage({ params }: { params: Promise<{ slug: string; lessonSlug: string }> }) {
   const session = await requireStudent();
@@ -24,21 +25,12 @@ export default async function StudentLessonPage({ params }: { params: Promise<{ 
     redirect(`/student/dashboard/billing?reason=lesson-access&feature=${access.requiredFeature ?? "premiumModules"}`);
   }
 
-  const moduleItem = mockModules.find((item) => item.slug === slug);
-
-  if (!moduleItem) {
+  const topic = await getTopicBySlug(lessonSlug);
+  if (!topic || topic.moduleId !== persistedModule.id) {
     notFound();
   }
-
-  const lesson = moduleItem.lessons.find((item) => item.slug === lessonSlug);
-
-  if (!lesson) {
-    notFound();
-  }
-
-  const currentIndex = moduleItem.lessons.findIndex((item) => item.slug === lessonSlug);
-  const previousLesson = currentIndex > 0 ? moduleItem.lessons[currentIndex - 1] : null;
-  const nextLesson = currentIndex < moduleItem.lessons.length - 1 ? moduleItem.lessons[currentIndex + 1] : null;
+  const data = await getTopicLearningPageData(lessonSlug);
+  if (!data) notFound();
 
   return (
     <div className="min-h-screen bg-[linear-gradient(135deg,_#f8fbff_0%,_#f8fafc_100%)] px-4 py-6 text-slate-950 sm:px-6 lg:px-8">
@@ -47,49 +39,37 @@ export default async function StudentLessonPage({ params }: { params: Promise<{ 
           <Card className="space-y-5">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-blue-600">Module outline</p>
-              <h2 className="mt-3 text-xl font-semibold tracking-tight text-slate-950">{moduleItem.title}</h2>
+              <h2 className="mt-3 text-xl font-semibold tracking-tight text-slate-950">{persistedModule.title}</h2>
             </div>
             <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center justify-between text-sm text-slate-600">
                 <span>Overall progress</span>
-                <span className="font-semibold text-slate-950">{moduleItem.progress}%</span>
+                <span className="font-semibold text-slate-950">{data.progress.completed ? "100" : "0"}%</span>
               </div>
               <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-200">
-                <div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-500" style={{ width: `${moduleItem.progress}%` }} />
+                <div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-500" style={{ width: data.progress.completed ? "100%" : "0%" }} />
               </div>
             </div>
-            <div className="space-y-3">
-              {moduleItem.lessons.map((item) => (
-                <Link key={item.id} href={`/student/modules/${moduleItem.slug}/lessons/${item.slug}`} className={`flex items-start justify-between gap-3 rounded-[1.2rem] border p-3 text-left transition ${item.slug === lessonSlug ? "border-blue-200 bg-blue-50" : "border-slate-200 bg-white hover:border-slate-300"}`}>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-950">{item.title}</p>
-                    <p className="mt-1 text-xs text-slate-500">{item.duration}</p>
-                  </div>
-                  <div className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${item.completed ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
-                    {item.completed ? "Done" : "Next"}
-                  </div>
-                </Link>
-              ))}
-            </div>
+            <p className="text-sm text-slate-600">{persistedModule.isPremium ? "Premium module" : "Free module"} · {data.progress.status}</p>
           </Card>
         </aside>
 
         <main className="flex-1 space-y-6">
-          <ModuleHeader title={lesson.title} description={lesson.summary ?? "Continue through this lesson to strengthen your understanding and confidence."} showBackLink={false} />
+          <ModuleHeader title={data.topic.title} description={data.topic.description ?? "Continue through this persisted lesson."} showBackLink={false} />
 
           <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
             <Link href="/student/modules" className="font-semibold text-blue-700">Modules</Link>
             <span>/</span>
-            <Link href={`/student/modules/${moduleItem.slug}`} className="font-semibold text-blue-700">{moduleItem.title}</Link>
+            <Link href={`/student/modules/${persistedModule.slug}`} className="font-semibold text-blue-700">{persistedModule.title}</Link>
             <span>/</span>
-            <span className="text-slate-500">{lesson.title}</span>
+            <span className="text-slate-500">{data.topic.title}</span>
           </nav>
 
           <Card className="space-y-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-blue-600">Lesson content</h2>
-                  <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{lesson.title}</p>
+                  <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{data.topic.title}</p>
                 </div>
               <div className="flex flex-wrap gap-2">
                 <Button variant="secondary" size="sm" type="button">
@@ -106,23 +86,14 @@ export default async function StudentLessonPage({ params }: { params: Promise<{ 
                 <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.24em] text-slate-600">
                   <FiFileText className="h-4 w-4" />Reading content
                 </div>
-                <p className="mt-4 text-sm leading-8 text-slate-700">
-                  This lesson page is intentionally structured as a reusable placeholder so the real instructional content can be dropped in later without changing the experience.
-                </p>
-                <p className="mt-4 text-sm leading-8 text-slate-700">
-                  Use this template for theory, step-by-step guidance, diagrams, and exam-focused notes that students can revisit whenever they need a refresher.
-                </p>
+                <p className="mt-4 text-sm leading-8 text-slate-700">{data.topic.description ?? "This lesson is ready for study and revision."}</p>
               </div>
 
               <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-5">
                 <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.24em] text-slate-600">
                   <FiPlayCircle className="h-4 w-4" />Key points
                 </div>
-                <ul className="mt-4 space-y-3 text-sm text-slate-700">
-                  {(lesson.keyPoints ?? ["Review core principles", "Connect theory to exam scenarios", "Summarize the key takeaway"]).map((point) => (
-                    <li key={point} className="rounded-[1rem] border border-slate-200 bg-white p-3">{point}</li>
-                  ))}
-                </ul>
+                {data.questions.length > 0 ? <ul className="mt-4 space-y-3 text-sm text-slate-700">{data.questions.slice(0, 3).map((question) => <li key={question.id} className="rounded-[1rem] border border-slate-200 bg-white p-3">{question.question}</li>)}</ul> : <p className="mt-4 text-sm text-slate-600">No published practice questions yet.</p>}
               </div>
             </div>
 
@@ -130,28 +101,11 @@ export default async function StudentLessonPage({ params }: { params: Promise<{ 
               <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.24em] text-slate-600">
                 <FiList className="h-4 w-4" />Notes
               </div>
-              <ul className="mt-4 space-y-3 text-sm text-slate-700">
-                {(lesson.notes ?? ["Capture your own summary after studying the lesson.", "Add any follow-up questions for later review."]).map((note) => (
-                  <li key={note} className="rounded-[1rem] border border-slate-200 bg-white p-3">{note}</li>
-                ))}
-              </ul>
+              {data.resources.length > 0 ? <ul className="mt-4 space-y-3 text-sm text-slate-700">{data.resources.map((resource) => <li key={resource.id} className="rounded-[1rem] border border-slate-200 bg-white p-3">{resource.title} · {resource.type}</li>)}</ul> : <p className="mt-4 text-sm text-slate-600">No published resources yet.</p>}
             </div>
 
             <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:justify-between">
-              {previousLesson ? (
-                <Link href={`/student/modules/${moduleItem.slug}/lessons/${previousLesson.slug}`} className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300">
-                  <FiChevronLeft className="h-4 w-4" />Previous lesson
-                </Link>
-              ) : <span />}
-              {nextLesson ? (
-                <Link href={`/student/modules/${moduleItem.slug}/lessons/${nextLesson.slug}`} className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">
-                  Next lesson<FiChevronRight className="h-4 w-4" />
-                </Link>
-              ) : (
-                <Link href={`/student/modules/${moduleItem.slug}`} className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700">
-                  Finish module<FiChevronRight className="h-4 w-4" />
-                </Link>
-              )}
+              <Link href={`/student/modules/${persistedModule.slug}`} className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700">Back to module<FiChevronRight className="h-4 w-4" /></Link>
             </div>
           </Card>
         </main>

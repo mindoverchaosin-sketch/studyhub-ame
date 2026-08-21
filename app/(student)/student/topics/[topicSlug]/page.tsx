@@ -8,19 +8,39 @@ import TopicSectionCard from "@/features/topics/components/TopicSectionCard";
 import ResourceCard from "@/features/topics/components/ResourceCard";
 import QuestionCard from "@/features/topics/components/QuestionCard";
 import { getTopicLearningPageData } from "@/features/topics/actions/topic-learning";
+import { getTopicBySlug } from "@/server/services/topic.service";
+import { getModuleById } from "@/server/services/module.service";
+import { contentAccessService } from "@/server/services/content-access.service";
 
 type TopicLearningPageProps = {
   params: Promise<{ topicSlug: string }>;
 };
 
 export default async function TopicLearningPage({ params }: TopicLearningPageProps) {
+  let sessionUser;
+
   try {
-    await requireStudent();
+    sessionUser = await requireStudent();
   } catch {
     redirect("/login");
   }
 
   const { topicSlug } = await params;
+  const topic = await getTopicBySlug(topicSlug);
+  if (!topic || !topic.moduleId) {
+    return null;
+  }
+
+  const learningModule = await getModuleById(topic.moduleId);
+  if (!learningModule) {
+    return null;
+  }
+
+  const access = await contentAccessService.canAccessModule(sessionUser.user.id, learningModule.isPremium);
+  if (!access.allowed) {
+    redirect(`/student/dashboard/billing?reason=topic-access&feature=${access.requiredFeature ?? "premiumModules"}`);
+  }
+
   const data = await getTopicLearningPageData(topicSlug);
 
   if (!data) {

@@ -13,7 +13,7 @@ const navItems = [
   { href: "/student/mock-exams", label: "Mock Tests", icon: FiTarget },
   { href: "/student/question-bank", label: "Question Bank", icon: FiSearch },
   { href: "/student/progress", label: "Progress", icon: FiTrendingUp },
-  { href: "/student/adaptive-learning", label: "AI Tutor", icon: FiStar },
+  { href: "/student/ai-tutor", label: "AI Tutor", icon: FiStar },
   { href: "/student/settings", label: "Settings", icon: FiSettings },
   { href: "/student/help", label: "Help & Support", icon: FiHelpCircle },
 ] as const;
