@@ -2,6 +2,7 @@ import type { MediaAsset, MediaProvider } from '@/types/media';
 
 export class LocalMediaProvider implements MediaProvider {
   private readonly assets: MediaAsset[] = [];
+  private readonly bytes = new Map<string, { body: Uint8Array; mimeType: string }>();
 
   async list(): Promise<MediaAsset[]> {
     return [...this.assets];
@@ -25,8 +26,18 @@ export class LocalMediaProvider implements MediaProvider {
 
   async delete(id: string): Promise<boolean> {
     const before = this.assets.length;
+    const removed = this.assets.find((asset) => asset.id === id);
     const next = this.assets.filter((asset) => asset.id !== id);
     this.assets.splice(0, this.assets.length, ...next);
+    if (removed?.url) this.bytes.delete(removed.url);
     return this.assets.length < before;
+  }
+
+  async storeBytes(path: string, body: Uint8Array, mimeType: string): Promise<void> {
+    this.bytes.set(path, { body, mimeType });
+  }
+
+  async readBytes(path: string): Promise<{ body: Uint8Array; mimeType: string; redirectPath?: string } | null> {
+    return this.bytes.get(path) ?? null;
   }
 }

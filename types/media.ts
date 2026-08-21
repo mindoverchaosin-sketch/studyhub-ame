@@ -25,6 +25,8 @@ export interface MediaProvider {
   create(asset: MediaAsset): Promise<MediaAsset>;
   update(id: string, updates: Partial<MediaAsset>): Promise<MediaAsset | null>;
   delete(id: string): Promise<boolean>;
+  storeBytes?(path: string, body: Uint8Array, mimeType: string): Promise<void>;
+  readBytes?(path: string): Promise<{ body: Uint8Array; mimeType: string; redirectPath?: string } | null>;
 }
 
 export interface MediaQuery {

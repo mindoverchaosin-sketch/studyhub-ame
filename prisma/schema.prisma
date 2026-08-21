@@ -359,6 +359,7 @@ model Course {
   category    Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   modules     Module[]
   mockTests   MockTest[]
+  previousOfficialPapers PreviousOfficialPaper[]
   enrollments Enrollment[]
   progress    Progress[]
   courseTags  CourseTag[]
@@ -401,6 +402,7 @@ model Module {
   lessonsProgress    ModuleProgress[]
   learningObjectives LearningObjective[]
   quizzes            Quiz[]
+  previousOfficialPapers PreviousOfficialPaper[]
 
   @@index([courseId])
   @@index([displayOrder])
@@ -450,6 +452,31 @@ model StudyMaterial {
   @@index([moduleId])
   @@index([lessonId])
   @@index([materialType])
+}
+
+model PreviousOfficialPaper {
+  id         String   @id @default(uuid())
+  courseId   String
+  moduleId   String
+  year       Int
+  title      String
+  paperType  String
+  mediaPath  String
+  isPremium  Boolean  @default(false)
+  status     Status   @default(DRAFT)
+  publishedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@index([courseId])
+  @@index([moduleId])
+  @@index([year])
+  @@index([status])
+  @@index([isPremium])
 }
 
 model Quiz {

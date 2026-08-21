@@ -16,6 +16,7 @@ const navItems: NavItem[] = [
   { href: '/content-editor/modules', label: 'Modules', icon: <FaBook className="h-5 w-5" /> },
   { href: '/content-editor/lessons', label: 'Lessons', icon: <FaFileLines className="h-5 w-5" /> },
   { href: '/content-editor/materials', label: 'Study Materials', icon: <FaFilePdf className="h-5 w-5" /> },
+  { href: '/content-editor/previous-papers', label: 'Previous Papers', icon: <FaFilePdf className="h-5 w-5" /> },
   { href: '/content-editor/mock-tests', label: 'Mock Tests', icon: <FaClipboardList className="h-5 w-5" /> },
   { href: '/content-editor/questions', label: 'Questions', icon: <FaQuestion className="h-5 w-5" /> },
 ]

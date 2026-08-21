@@ -49,6 +49,9 @@ export class MediaLibraryService {
     };
 
     const created = await this.provider.create(asset);
+    if (this.provider.storeBytes) {
+      await this.provider.storeBytes(asset.url ?? '', new Uint8Array(await file.arrayBuffer()), asset.mimeType)
+    }
     this.cachedAssets = [...this.cachedAssets, created];
     return created;
   }
@@ -79,6 +82,9 @@ export class MediaLibraryService {
     });
 
     if (updated) {
+      if (this.provider.storeBytes) {
+        await this.provider.storeBytes(updated.url ?? '', new Uint8Array(await file.arrayBuffer()), updated.mimeType)
+      }
       this.cachedAssets = this.cachedAssets.map((asset) => (asset.id === id ? updated : asset));
     }
 

@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
 import { requirePermission } from '@/auth';
-import { LocalMediaProvider } from '@/services/media/local-media-provider';
+import { mediaProvider } from '@/services/media/provider';
 import { MediaLibraryService } from '@/server/services/media/media-library.service';
 import { withRequestLogging } from '@/lib/request-logger';
 
-const provider = new LocalMediaProvider();
-const service = new MediaLibraryService(provider);
+const service = new MediaLibraryService(mediaProvider);
 
 function createMediaErrorResponse(error: unknown) {
   if (error instanceof Error) {
@@ -27,7 +26,7 @@ export async function GET(request: Request) {
   return withRequestLogging(request, 'media.listAssets', async () => {
     try {
       await requirePermission('manageResources');
-      const assets = await provider.list();
+      const assets = await mediaProvider.list();
       return NextResponse.json({ assets });
     } catch (error) {
       return createMediaErrorResponse(error);
