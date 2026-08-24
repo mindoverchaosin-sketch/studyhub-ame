@@ -15,6 +15,7 @@
 import { subscriptionRepository } from '@/server/domains/billing/subscriptions/subscription.repository'
 import { invoiceRepository } from '@/server/domains/billing/invoices/invoice.repository'
 import { planRepository } from '@/server/domains/billing/plans/plan.repository'
+import { paymentService } from '@/server/domains/billing/payments/payment.service'
 import { getPlanBySlug, getPlanById } from '@/server/domains/billing/plans/plan.config'
 import type { SubscriptionDTO } from '@/server/domains/billing/dto/billing.dto'
 
@@ -95,8 +96,8 @@ export class SubscriptionService {
 
     // Downgrade effective next renewal
     const downgraded = await subscriptionRepository.update(currentSubscription.id, {
-      subscriptionPlan: { connect: { id: newPlanId } },
-      // Downgrade takes effect at next renewal
+      scheduledPlanId: newPlanId,
+      scheduledPlanEffectiveAt: currentSubscription.currentPeriodEnd,
     })
 
     return this.mapToDTO(downgraded)
@@ -112,13 +113,25 @@ export class SubscriptionService {
     }
 
     const renewalStart = effectiveDate ?? new Date()
-    const periodEnd = this.calculatePeriodEnd(renewalStart, subscription.subscriptionPlan.interval)
+    const scheduledPlan = subscription.scheduledPlanId
+      ? await planRepository.findById(subscription.scheduledPlanId)
+      : null
+    const renewalPlan = scheduledPlan ?? subscription.subscriptionPlan
+    const periodEnd = this.calculatePeriodEnd(renewalStart, renewalPlan.interval)
 
     const renewed = await subscriptionRepository.update(subscription.id, {
       status: 'ACTIVE',
+      ...(scheduledPlan ? { subscriptionPlan: { connect: { id: scheduledPlan.id } } } : {}),
       currentPeriodStart: renewalStart,
       currentPeriodEnd: periodEnd,
       renewalAttempts: 0,
+      cancelAtPeriodEnd: false,
+      scheduledPlanId: null,
+      scheduledPlanEffectiveAt: null,
+      pastDueAt: null,
+      gracePeriodEndsAt: null,
+      lastPaymentAttemptAt: null,
+      retryAttemptCount: 0,
     })
 
     return this.mapToDTO(renewed)
@@ -128,7 +141,17 @@ export class SubscriptionService {
    * Expire a subscription (called when period ends)
    */
   async expireSubscription(subscriptionId: string): Promise<SubscriptionDTO> {
-    const expired = await subscriptionRepository.expire(subscriptionId)
+    const subscription = await subscriptionRepository.findById(subscriptionId)
+    if (!subscription) throw new Error(`Subscription not found: ${subscriptionId}`)
+
+    const expired = subscription.cancelAtPeriodEnd
+      ? await subscriptionRepository.update(subscriptionId, {
+          status: 'CANCELLED',
+          cancelledAt: new Date(),
+          cancelAtPeriodEnd: false,
+          gracePeriodEndsAt: null,
+        })
+      : await subscriptionRepository.expire(subscriptionId)
     return this.mapToDTO(expired)
   }
 
@@ -136,6 +159,18 @@ export class SubscriptionService {
    * Cancel a subscription
    */
   async cancelSubscription(subscriptionId: string): Promise<SubscriptionDTO> {
+    const subscription = await subscriptionRepository.findById(subscriptionId)
+    if (!subscription) {
+      throw new Error(`Subscription not found: ${subscriptionId}`)
+    }
+
+    if (subscription.providerSubscriptionId) {
+      const providerResult = await paymentService.cancelSubscription(subscription.providerSubscriptionId)
+      if (providerResult.status === 'FAILED') {
+        throw new Error('Provider subscription cancellation failed.')
+      }
+    }
+
     const cancelled = await subscriptionRepository.cancel(subscriptionId)
     return this.mapToDTO(cancelled)
   }
@@ -205,6 +240,23 @@ export class SubscriptionService {
     return count
   }
 
+  async markPaymentFailed(subscriptionId: string, attemptedAt = new Date()): Promise<SubscriptionDTO> {
+    const subscription = await subscriptionRepository.findById(subscriptionId)
+    if (!subscription) throw new Error(`Subscription not found: ${subscriptionId}`)
+
+    const gracePeriodEndsAt = new Date(attemptedAt)
+    gracePeriodEndsAt.setDate(gracePeriodEndsAt.getDate() + (subscription.subscriptionPlan.interval.toLowerCase() === 'yearly' ? 7 : 3))
+
+    const updated = await subscriptionRepository.update(subscriptionId, {
+      status: 'PAST_DUE',
+      pastDueAt: subscription.pastDueAt ?? attemptedAt,
+      gracePeriodEndsAt,
+      lastPaymentAttemptAt: attemptedAt,
+      retryAttemptCount: { increment: 1 },
+    })
+    return this.mapToDTO(updated)
+  }
+
   /**
    * Get subscription statistics
    */
@@ -264,6 +316,13 @@ export class SubscriptionService {
       currentPeriodEnd: subscription.currentPeriodEnd,
       renewalAttempts: subscription.renewalAttempts,
       cancelledAt: subscription.cancelledAt,
+      cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+      scheduledPlanId: subscription.scheduledPlanId,
+      scheduledPlanEffectiveAt: subscription.scheduledPlanEffectiveAt,
+      pastDueAt: subscription.pastDueAt,
+      gracePeriodEndsAt: subscription.gracePeriodEndsAt,
+      lastPaymentAttemptAt: subscription.lastPaymentAttemptAt,
+      retryAttemptCount: subscription.retryAttemptCount,
       createdAt: subscription.createdAt,
       updatedAt: subscription.updatedAt,
     }

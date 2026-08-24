@@ -39,7 +39,10 @@ export class EntitlementService {
     }
 
     // Check subscription status
-    if (subscription.status !== 'ACTIVE') {
+    const inGracePeriod = subscription.status === 'PAST_DUE' &&
+      Boolean(subscription.gracePeriodEndsAt && new Date() <= subscription.gracePeriodEndsAt)
+
+    if (subscription.status !== 'ACTIVE' && !inGracePeriod) {
       return {
         userId,
         feature,
@@ -50,7 +53,7 @@ export class EntitlementService {
     }
 
     // Check if period has expired
-    if (new Date() > subscription.currentPeriodEnd) {
+    if (!inGracePeriod && new Date() > subscription.currentPeriodEnd) {
       return {
         userId,
         feature,
@@ -142,8 +145,10 @@ export class EntitlementService {
    */
   async getUserEntitlements(userId: string): Promise<EntitlementListDTO> {
     const subscription = await this.getUserSubscription(userId)
+    const inGracePeriod = subscription?.status === 'PAST_DUE' &&
+      Boolean(subscription.gracePeriodEndsAt && new Date() <= subscription.gracePeriodEndsAt)
 
-    if (!subscription || subscription.status !== 'ACTIVE') {
+    if (!subscription || (subscription.status !== 'ACTIVE' && !inGracePeriod)) {
       return {
         features: [],
         subscriptionStatus: subscription?.status || null,
@@ -151,7 +156,7 @@ export class EntitlementService {
     }
 
     // Check if period has expired
-    if (new Date() > subscription.currentPeriodEnd) {
+    if (!inGracePeriod && new Date() > subscription.currentPeriodEnd) {
       return {
         features: [],
         subscriptionStatus: 'EXPIRED',
@@ -171,7 +176,7 @@ export class EntitlementService {
       features: plan.features,
       subscriptionStatus: subscription.status as SubscriptionStatus,
       planName: plan.name,
-      expiresAt: subscription.currentPeriodEnd,
+      expiresAt: inGracePeriod ? subscription.gracePeriodEndsAt : subscription.currentPeriodEnd,
       hasPremiumAccess: true,
     }
   }
@@ -182,8 +187,11 @@ export class EntitlementService {
   async hasActiveSubscription(userId: string): Promise<boolean> {
     const subscription = await this.getUserSubscription(userId)
     if (!subscription) return false
-    if (subscription.status !== 'ACTIVE') return false
-    if (new Date() > subscription.currentPeriodEnd) return false
+    const inGracePeriod = subscription.status === 'PAST_DUE' &&
+      Boolean(subscription.gracePeriodEndsAt && new Date() <= subscription.gracePeriodEndsAt)
+
+    if (subscription.status !== 'ACTIVE' && !inGracePeriod) return false
+    if (!inGracePeriod && new Date() > subscription.currentPeriodEnd) return false
     return true
   }
 
@@ -195,6 +203,9 @@ export class EntitlementService {
     if (!subscription) return null
 
     // If the active period has expired, mark as expired
+    if (subscription.status === 'PAST_DUE' && subscription.gracePeriodEndsAt && new Date() > subscription.gracePeriodEndsAt) {
+      return 'EXPIRED'
+    }
     if (subscription.status === 'ACTIVE' && new Date() > subscription.currentPeriodEnd) {
       return 'EXPIRED'
     }

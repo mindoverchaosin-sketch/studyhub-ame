@@ -46,7 +46,7 @@ export interface PlanListDTO {
 // Subscription DTOs
 // ============================================================
 
-export type SubscriptionStatus = 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | 'PAUSED'
+export type SubscriptionStatus = 'ACTIVE' | 'PAST_DUE' | 'EXPIRED' | 'CANCELLED' | 'PAUSED'
 
 export interface SubscriptionDTO {
   id: string
@@ -58,6 +58,13 @@ export interface SubscriptionDTO {
   currentPeriodEnd: Date
   renewalAttempts: number
   cancelledAt?: Date | null
+  cancelAtPeriodEnd: boolean
+  scheduledPlanId?: string | null
+  scheduledPlanEffectiveAt?: Date | null
+  pastDueAt?: Date | null
+  gracePeriodEndsAt?: Date | null
+  lastPaymentAttemptAt?: Date | null
+  retryAttemptCount: number
   createdAt: Date
   updatedAt: Date
 }

@@ -134,6 +134,104 @@ describe('SubscriptionService', () => {
     })
   })
 
+  describe('downgradePlan', () => {
+    it('schedules a downgrade for the current period end', async () => {
+      const currentEnd = new Date('2026-09-01')
+      mocks.findByUserId.mockResolvedValue({
+        id: 'sub_123',
+        subscriptionPlan: { name: 'Yearly', slug: 'yearly', interval: 'yearly' },
+        currentPeriodEnd: currentEnd,
+      })
+      mocks.planFindById.mockResolvedValue({ id: 'plan_monthly', interval: 'monthly' })
+      mocks.update.mockResolvedValue({
+        id: 'sub_123',
+        userId: 'user_123',
+        subscriptionPlanId: 'plan_yearly',
+        status: 'ACTIVE',
+        currentPeriodStart: new Date('2026-01-01'),
+        currentPeriodEnd: currentEnd,
+        renewalAttempts: 0,
+        subscriptionPlan: { name: 'Yearly', slug: 'yearly', interval: 'yearly' },
+        scheduledPlanId: 'plan_monthly',
+        scheduledPlanEffectiveAt: currentEnd,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+
+      await service.downgradePlan('user_123', 'plan_monthly')
+
+      expect(mocks.update).toHaveBeenCalledWith('sub_123', expect.objectContaining({
+        scheduledPlanId: 'plan_monthly',
+        scheduledPlanEffectiveAt: currentEnd,
+      }))
+    })
+  })
+
+  describe('renewSubscription', () => {
+    it('applies the scheduled downgrade at renewal', async () => {
+      const renewalStart = new Date('2026-09-01')
+      const scheduledSub = {
+        id: 'sub_123',
+        userId: 'user_123',
+        subscriptionPlanId: 'plan_yearly',
+        scheduledPlanId: 'plan_monthly',
+        subscriptionPlan: { name: 'Yearly', slug: 'yearly', interval: 'yearly' },
+        currentPeriodStart: new Date('2025-09-01'),
+        currentPeriodEnd: renewalStart,
+        status: 'ACTIVE',
+        renewalAttempts: 0,
+      }
+      mocks.findByUserId.mockResolvedValue(scheduledSub)
+      mocks.planFindById.mockResolvedValue({ id: 'plan_monthly', interval: 'monthly' })
+      mocks.update.mockResolvedValue({
+        ...scheduledSub,
+        subscriptionPlanId: 'plan_monthly',
+        subscriptionPlan: { name: 'Monthly', slug: 'monthly', interval: 'monthly' },
+      })
+
+      await service.renewSubscription('user_123', renewalStart)
+
+      expect(mocks.update).toHaveBeenCalledWith('sub_123', expect.objectContaining({
+        subscriptionPlan: { connect: { id: 'plan_monthly' } },
+        scheduledPlanId: null,
+        scheduledPlanEffectiveAt: null,
+      }))
+    })
+  })
+
+  describe('markPaymentFailed', () => {
+    it('marks a monthly subscription past due for three days', async () => {
+      const attemptedAt = new Date('2026-08-22T00:00:00.000Z')
+      mocks.findById.mockResolvedValue({
+        id: 'sub_123',
+        pastDueAt: null,
+        subscriptionPlan: { interval: 'monthly' },
+      })
+      mocks.update.mockResolvedValue({
+        id: 'sub_123',
+        userId: 'user_123',
+        status: 'PAST_DUE',
+        subscriptionPlan: { name: 'Monthly', slug: 'monthly', interval: 'monthly' },
+        currentPeriodStart: attemptedAt,
+        currentPeriodEnd: new Date('2026-09-22'),
+        renewalAttempts: 0,
+        retryAttemptCount: 1,
+        pastDueAt: attemptedAt,
+        gracePeriodEndsAt: new Date('2026-08-25T00:00:00.000Z'),
+        createdAt: attemptedAt,
+        updatedAt: attemptedAt,
+      })
+
+      await service.markPaymentFailed('sub_123', attemptedAt)
+
+      expect(mocks.update).toHaveBeenCalledWith('sub_123', expect.objectContaining({
+        status: 'PAST_DUE',
+        gracePeriodEndsAt: new Date('2026-08-25T00:00:00.000Z'),
+        retryAttemptCount: { increment: 1 },
+      }))
+    })
+  })
+
   describe('cancelSubscription', () => {
     it('should cancel an active subscription', async () => {
       const subId = 'sub_123'
@@ -151,6 +249,7 @@ describe('SubscriptionService', () => {
         updatedAt: new Date(),
       }
 
+      mocks.findById.mockResolvedValue({ ...cancelledSub, providerSubscriptionId: null })
       mocks.cancel.mockResolvedValue(cancelledSub)
 
       const result = await service.cancelSubscription(subId)
@@ -176,6 +275,7 @@ describe('SubscriptionService', () => {
         updatedAt: new Date(),
       }
 
+      mocks.findById.mockResolvedValue({ ...expiredSub, cancelAtPeriodEnd: false })
       mocks.expire.mockResolvedValue(expiredSub)
 
       const result = await service.expireSubscription(subId)

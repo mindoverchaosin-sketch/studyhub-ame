@@ -196,6 +196,13 @@ export class SubscriptionManagementService {
       currentPeriodEnd: subscription.currentPeriodEnd,
       renewalAttempts: subscription.renewalAttempts,
       cancelledAt: subscription.cancelledAt,
+      cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+      scheduledPlanId: subscription.scheduledPlanId,
+      scheduledPlanEffectiveAt: subscription.scheduledPlanEffectiveAt,
+      pastDueAt: subscription.pastDueAt,
+      gracePeriodEndsAt: subscription.gracePeriodEndsAt,
+      lastPaymentAttemptAt: subscription.lastPaymentAttemptAt,
+      retryAttemptCount: subscription.retryAttemptCount,
       createdAt: subscription.createdAt,
       updatedAt: subscription.updatedAt,
     }

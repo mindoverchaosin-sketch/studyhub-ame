@@ -105,6 +105,34 @@ describe('EntitlementService', () => {
       expect(result.reason).toContain('cancelled')
     })
 
+    it('should preserve access during a past-due grace period', async () => {
+      const graceEndsAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
+      mocks.findByUserId.mockResolvedValue({
+        status: 'PAST_DUE',
+        currentPeriodEnd: new Date(Date.now() - 1_000),
+        gracePeriodEndsAt: graceEndsAt,
+        subscriptionPlan: { slug: 'monthly', name: 'Monthly' },
+      })
+
+      const result = await service.hasFeatureAccess('user_123', 'premiumModules')
+
+      expect(result.hasAccess).toBe(true)
+    })
+
+    it('should revoke access after the past-due grace period', async () => {
+      mocks.findByUserId.mockResolvedValue({
+        status: 'PAST_DUE',
+        currentPeriodEnd: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        gracePeriodEndsAt: new Date(Date.now() - 1_000),
+        subscriptionPlan: { slug: 'monthly', name: 'Monthly' },
+      })
+
+      const result = await service.hasFeatureAccess('user_123', 'premiumModules')
+
+      expect(result.hasAccess).toBe(false)
+      expect(result.reason).toContain('past_due')
+    })
+
     it('should deny access if no subscription exists', async () => {
       mocks.findByUserId.mockResolvedValue(null)
 

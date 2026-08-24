@@ -42,8 +42,10 @@ export class SubscriptionRepository {
   async findExpiredSubscriptions() {
     return prisma.subscription.findMany({
       where: { 
-        status: 'ACTIVE' as SubscriptionStatus,
-        currentPeriodEnd: { lt: new Date() },
+        OR: [
+          { status: 'ACTIVE' as SubscriptionStatus, currentPeriodEnd: { lt: new Date() } },
+          { status: 'PAST_DUE' as SubscriptionStatus, gracePeriodEndsAt: { lt: new Date() } },
+        ],
       },
       include: { subscriptionPlan: { include: { productPrice: true } } },
     })
@@ -68,8 +70,7 @@ export class SubscriptionRepository {
     return prisma.subscription.update({
       where: { id },
       data: {
-        status: 'CANCELLED' as SubscriptionStatus,
-        cancelledAt: new Date(),
+        cancelAtPeriodEnd: true,
       },
       include: { subscriptionPlan: { include: { productPrice: true } } },
     })
@@ -78,7 +79,11 @@ export class SubscriptionRepository {
   async expire(id: string) {
     return prisma.subscription.update({
       where: { id },
-      data: { status: 'EXPIRED' as SubscriptionStatus },
+      data: {
+        status: 'EXPIRED' as SubscriptionStatus,
+        cancelAtPeriodEnd: false,
+        gracePeriodEndsAt: null,
+      },
       include: { subscriptionPlan: { include: { productPrice: true } } },
     })
   }
