@@ -174,16 +174,24 @@ export async function POST(request: Request) {
           throw new Error('Missing user metadata for subscription cancellation.')
         }
 
-        const existingSubscription = await tx.subscription.findFirst({
-          where: providerSubscriptionId
-            ? { OR: [{ providerSubscriptionId }, { userId }] }
-            : { userId },
-          orderBy: { createdAt: 'desc' },
-        })
+        // Cancellation scoping: a provider subscription id maps to exactly one
+        // row globally (@@unique on providerSubscriptionId) and must never be
+        // OR-widened with userId — otherwise createdAt desc could select and
+        // cancel an unrelated newer row, possibly owned by another account.
+        const existingSubscription = providerSubscriptionId
+          ? await tx.subscription.findFirst({ where: { providerSubscriptionId } })
+          : await tx.subscription.findFirst({ where: { userId }, orderBy: { createdAt: 'desc' } })
+
+        if (existingSubscription && providerSubscriptionId && existingSubscription.userId !== userId) {
+          // Signed event metadata disagrees with row ownership: fail closed,
+          // roll the transaction back, and leave the webhook event unprocessed.
+          throw new Error('Cancelled provider subscription belongs to a different account.')
+        }
+
         if (existingSubscription) {
           await tx.subscription.update({
             where: { id: existingSubscription.id },
-            data: { cancelAtPeriodEnd: true, providerSubscriptionId },
+            data: { cancelAtPeriodEnd: true },
           })
         }
 

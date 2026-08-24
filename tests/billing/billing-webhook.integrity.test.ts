@@ -220,6 +220,99 @@ describe('billing webhook integrity', () => {
     }))
   })
 
+  it('cancels the provider-scoped row instead of a newer same-user subscription', async () => {
+    mocks.subscriptionFindFirst.mockResolvedValue(subscription)
+
+    const { POST } = await import('@/app/api/billing/webhook/route')
+    const response = await POST(signedRequest({
+      id: 'evt-cancel-provider',
+      event: 'subscription.cancelled',
+      payload: { notes: { userId: 'user-1' }, subscription: { entity: { id: 'rzp-sub-1' } } },
+    }))
+
+    expect(response.status).toBe(200)
+    // Strict provider lookup only: never OR-widened with userId and never
+    // reordered by createdAt, so a newer unrelated row cannot win.
+    expect(mocks.subscriptionFindFirst).toHaveBeenCalledTimes(1)
+    expect(mocks.subscriptionFindFirst).toHaveBeenCalledWith({ where: { providerSubscriptionId: 'rzp-sub-1' } })
+    // No stamping: the update must carry exactly cancelAtPeriodEnd.
+    expect(mocks.subscriptionUpdate).toHaveBeenCalledWith({
+      where: { id: 'sub-1' },
+      data: { cancelAtPeriodEnd: true },
+    })
+  })
+
+  it('fails closed when the cancelled provider subscription belongs to another account', async () => {
+    mocks.subscriptionFindFirst.mockResolvedValue({ ...subscription, userId: 'victim-user' })
+
+    const { POST } = await import('@/app/api/billing/webhook/route')
+
+    await expect(POST(signedRequest({
+      id: 'evt-cancel-foreign',
+      event: 'subscription.cancelled',
+      payload: { notes: { userId: 'user-1' }, subscription: { entity: { id: 'rzp-sub-1' } } },
+    }))).rejects.toThrow('belongs to a different account')
+
+    expect(mocks.subscriptionUpdate).not.toHaveBeenCalled()
+    expect(mocks.eventUpdate).not.toHaveBeenCalled()
+  })
+
+  it('treats an unknown provider subscription as a no-op without falling back to userId', async () => {
+    mocks.subscriptionFindFirst.mockResolvedValue(null)
+
+    const { POST } = await import('@/app/api/billing/webhook/route')
+    const response = await POST(signedRequest({
+      id: 'evt-cancel-unknown',
+      event: 'subscription.cancelled',
+      payload: { notes: { userId: 'user-1' }, subscription: { entity: { id: 'rzp-sub-missing' } } },
+    }))
+    const json = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(json).toMatchObject({ success: true, action: 'subscriptionCancelled' })
+    // Exactly one strict lookup proves no userId fallback query occurred.
+    expect(mocks.subscriptionFindFirst).toHaveBeenCalledTimes(1)
+    expect(mocks.subscriptionFindFirst).toHaveBeenCalledWith({ where: { providerSubscriptionId: 'rzp-sub-missing' } })
+    expect(mocks.subscriptionUpdate).not.toHaveBeenCalled()
+    expect(mocks.eventUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ processingStatus: 'PROCESSED' }),
+    }))
+  })
+
+  it('keeps the newest-by-user fallback when the cancellation carries no provider id', async () => {
+    mocks.subscriptionFindFirst.mockResolvedValue(subscription)
+
+    const { POST } = await import('@/app/api/billing/webhook/route')
+    const response = await POST(signedRequest({
+      id: 'evt-cancel-metadata-only',
+      event: 'subscription.cancelled',
+      payload: { notes: { userId: 'user-1' } },
+    }))
+
+    expect(response.status).toBe(200)
+    expect(mocks.subscriptionFindFirst).toHaveBeenCalledWith({
+      where: { userId: 'user-1' },
+      orderBy: { createdAt: 'desc' },
+    })
+    expect(mocks.subscriptionUpdate).toHaveBeenCalledWith({
+      where: { id: 'sub-1' },
+      data: { cancelAtPeriodEnd: true },
+    })
+  })
+
+  it('rejects a cancellation without user metadata before touching subscriptions', async () => {
+    const { POST } = await import('@/app/api/billing/webhook/route')
+    const response = await POST(signedRequest({
+      id: 'evt-cancel-no-user',
+      event: 'subscription.cancelled',
+      payload: { subscription: { entity: { id: 'rzp-sub-1' } } },
+    }))
+
+    expect(response.status).toBe(400)
+    expect(mocks.subscriptionFindFirst).not.toHaveBeenCalled()
+    expect(mocks.subscriptionUpdate).not.toHaveBeenCalled()
+  })
+
   it('returns a past-due subscription to active on a successful retry', async () => {
     mocks.subscriptionFindFirst.mockResolvedValue({
       ...subscription,
