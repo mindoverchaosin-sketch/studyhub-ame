@@ -91,7 +91,15 @@ export class RazorpayGateway implements PaymentGateway {
   async verifyWebhook(payload: WebhookPayloadDTO): Promise<PaymentVerificationDTO> {
     const event = payload.event?.toLowerCase() ?? ''
     const data = payload.data ?? {}
-    const status = event.includes('captured') ? 'PAID' : event.includes('failed') ? 'FAILED' : 'PENDING'
+    // payment_link.paid and order.paid are successful captures even though
+    // the names carry no "captured" substring — normalize them to PAID so
+    // verification status agrees with the route's capture classification.
+    const status =
+      event.includes('captured') || event === 'payment_link.paid' || event === 'order.paid'
+        ? 'PAID'
+        : event.includes('failed')
+          ? 'FAILED'
+          : 'PENDING'
 
     return {
       checkoutId: String(data['order_id'] ?? ''),

@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   invoiceCreate: vi.fn(),
   transaction: vi.fn(),
   verifyWebhook: vi.fn(),
+  billingWebhookEventUpsert: vi.fn(),
+  captureError: vi.fn(),
 }))
 
 vi.mock('@/lib/env', () => ({ env: { RAZORPAY_WEBHOOK_SECRET: 'webhook-secret' } }))
@@ -19,7 +21,13 @@ vi.mock('@/server/domains/billing/payments/payment.service', () => ({
   paymentService: { verifyWebhook: mocks.verifyWebhook },
 }))
 vi.mock('@/lib/prisma', () => ({
-  default: { $transaction: mocks.transaction },
+  default: {
+    $transaction: mocks.transaction,
+    billingWebhookEvent: { upsert: mocks.billingWebhookEventUpsert },
+  },
+}))
+vi.mock('@/server/services/observability.service', () => ({
+  observabilityService: { captureError: mocks.captureError },
 }))
 vi.mock('@/server/domains/billing/subscriptions/subscription.service', () => ({
   subscriptionService: {},
@@ -64,6 +72,8 @@ function setupTransaction() {
   mocks.eventCreate.mockResolvedValue({ id: 'event-1' })
   mocks.eventUpdate.mockResolvedValue({ id: 'event-1', processingStatus: 'PROCESSED' })
   mocks.subscriptionFindFirst.mockResolvedValue(null)
+  mocks.billingWebhookEventUpsert.mockResolvedValue({ id: 'event-1', processingStatus: 'FAILED' })
+  mocks.captureError.mockReturnValue(undefined)
 }
 
 function signedRequest(body: object, secret = 'webhook-secret') {
@@ -168,12 +178,33 @@ describe('billing webhook integrity', () => {
     expect(mocks.invoiceCreate).toHaveBeenCalledTimes(1)
   })
 
-  it('rolls back processing when invoice creation fails', async () => {
+  it('rolls back processing on invoice failure but persists a durable FAILED marker', async () => {
     mocks.invoiceCreate.mockRejectedValueOnce(new Error('invoice write failed'))
 
     const { POST } = await import('@/app/api/billing/webhook/route')
-    await expect(POST(signedRequest(payload))).rejects.toThrow('invoice write failed')
+    const response = await POST(signedRequest(payload))
+
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual({ success: false })
+    // Transaction rolled back: no PROCESSED transition ever happened.
     expect(mocks.eventUpdate).not.toHaveBeenCalled()
+    // Yet the failure remains durably queryable.
+    expect(mocks.billingWebhookEventUpsert).toHaveBeenCalledTimes(1)
+    expect(mocks.billingWebhookEventUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { provider_providerEventId: { provider: 'razorpay', providerEventId: 'evt-1' } },
+      create: expect.objectContaining({
+        eventType: 'payment.captured',
+        processingStatus: 'FAILED',
+        providerPaymentId: 'pay-1',
+        providerSubscriptionId: 'rzp-sub-1',
+      }),
+      update: expect.objectContaining({ processingStatus: 'FAILED' }),
+    }))
+    expect(mocks.captureError).toHaveBeenCalledOnce()
+    expect(mocks.captureError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'invoice write failed' }),
+      expect.objectContaining({ service: 'billing', operation: 'razorpay-webhook' }),
+    )
   })
 
   it('moves an existing subscription to past due on failed payment', async () => {
@@ -246,13 +277,26 @@ describe('billing webhook integrity', () => {
     mocks.subscriptionFindFirst.mockResolvedValue({ ...subscription, userId: 'victim-user' })
 
     const { POST } = await import('@/app/api/billing/webhook/route')
-
-    await expect(POST(signedRequest({
+    const response = await POST(signedRequest({
       id: 'evt-cancel-foreign',
       event: 'subscription.cancelled',
       payload: { notes: { userId: 'user-1' }, subscription: { entity: { id: 'rzp-sub-1' } } },
-    }))).rejects.toThrow('belongs to a different account')
+    }))
 
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual({ success: false })
+    expect(mocks.captureError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Cancelled provider subscription belongs to a different account.' }),
+      expect.objectContaining({ service: 'billing', operation: 'razorpay-webhook' }),
+    )
+    expect(mocks.billingWebhookEventUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { provider_providerEventId: { provider: 'razorpay', providerEventId: 'evt-cancel-foreign' } },
+      create: expect.objectContaining({
+        processingStatus: 'FAILED',
+        providerSubscriptionId: 'rzp-sub-1',
+      }),
+      update: expect.objectContaining({ processingStatus: 'FAILED' }),
+    }))
     expect(mocks.subscriptionUpdate).not.toHaveBeenCalled()
     expect(mocks.eventUpdate).not.toHaveBeenCalled()
   })
@@ -437,5 +481,195 @@ describe('billing webhook integrity', () => {
 
     expect(response.status).toBe(400)
     expect(mocks.transaction).not.toHaveBeenCalled()
+  })
+
+  it('returns a controlled 500 and FAILED marker when an unexpected error occurs', async () => {
+    mocks.subscriptionFindFirst.mockResolvedValue(subscription)
+    mocks.subscriptionUpdate.mockRejectedValueOnce(new Error('renewal write exploded'))
+
+    const { POST } = await import('@/app/api/billing/webhook/route')
+    const response = await POST(signedRequest(payload))
+
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual({ success: false })
+    expect(mocks.captureError).toHaveBeenCalledOnce()
+    expect(mocks.invoiceCreate).not.toHaveBeenCalled()
+    expect(mocks.billingWebhookEventUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { provider_providerEventId: { provider: 'razorpay', providerEventId: 'evt-1' } },
+      create: expect.objectContaining({ processingStatus: 'FAILED' }),
+      update: expect.objectContaining({ processingStatus: 'FAILED' }),
+    }))
+  })
+
+  it('persists a FAILED marker for missing plan metadata while keeping the 400 contract', async () => {
+    mocks.planFindUnique.mockResolvedValue(null)
+
+    const { POST } = await import('@/app/api/billing/webhook/route')
+    const response = await POST(signedRequest(payload))
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({ error: 'Plan not found: plan-1' })
+    expect(mocks.subscriptionCreate).not.toHaveBeenCalled()
+    expect(mocks.billingWebhookEventUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { provider_providerEventId: { provider: 'razorpay', providerEventId: 'evt-1' } },
+      update: expect.objectContaining({ processingStatus: 'FAILED' }),
+    }))
+  })
+
+  it('resolves entity-level notes for fully nested subscription.cancelled payloads', async () => {
+    mocks.subscriptionFindFirst.mockResolvedValue({ ...subscription, userId: 'user-1' })
+
+    const { POST } = await import('@/app/api/billing/webhook/route')
+    const response = await POST(signedRequest({
+      id: 'evt-cancel-nested',
+      event: 'subscription.cancelled',
+      payload: {
+        subscription: {
+          entity: {
+            id: 'rzp-sub-nested',
+            notes: { userId: 'user-1' },
+          },
+        },
+      },
+    }))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ success: true, action: 'subscriptionCancelled' })
+    // Notes were found inside subscription.entity, not at the payload root.
+    expect(mocks.subscriptionFindFirst).toHaveBeenCalledWith({ where: { providerSubscriptionId: 'rzp-sub-nested' } })
+    expect(mocks.subscriptionUpdate).toHaveBeenCalledWith({
+      where: { id: 'sub-1' },
+      data: { cancelAtPeriodEnd: true },
+    })
+    expect(mocks.billingWebhookEventUpsert).not.toHaveBeenCalled()
+  })
+
+  it('records both provider identifiers for subscription.charged events', async () => {
+    mocks.subscriptionFindFirst.mockResolvedValue(null)
+
+    const { POST } = await import('@/app/api/billing/webhook/route')
+    const response = await POST(signedRequest({
+      id: 'evt-charged',
+      event: 'subscription.charged',
+      payload: {
+        payment: {
+          entity: {
+            id: 'pay-chg-1',
+            subscription_id: 'rzp-sub-9',
+            amount: 49900,
+            currency: 'INR',
+            notes: { userId: 'user-1', planId: 'plan-1' },
+          },
+        },
+        subscription: {
+          entity: { id: 'rzp-sub-9' },
+        },
+      },
+    }))
+
+    expect(response.status).toBe(200)
+    expect(mocks.eventCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        providerPaymentId: 'pay-chg-1',
+        providerSubscriptionId: 'rzp-sub-9',
+        eventType: 'subscription.charged',
+      }),
+    }))
+    expect(mocks.subscriptionCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ providerSubscriptionId: 'rzp-sub-9', status: 'ACTIVE' }),
+    }))
+  })
+
+  it('grants access for payment_link.paid even when verification reports PENDING', async () => {
+    mocks.verifyWebhook.mockResolvedValueOnce({
+      provider: 'razorpay', paymentId: 'plink-1', checkoutId: '', status: 'PENDING',
+      amount: 499, currency: 'INR', metadata: {}, verifiedAt: new Date(),
+    })
+
+    const { POST } = await import('@/app/api/billing/webhook/route')
+    const response = await POST(signedRequest({
+      id: 'evt-plink',
+      event: 'payment_link.paid',
+      payload: {
+        payment_link: {
+          entity: {
+            id: 'plink-1',
+            amount: 49900,
+            currency: 'INR',
+            notes: { userId: 'user-1', planId: 'plan-1' },
+          },
+        },
+      },
+    }))
+
+    expect(response.status).toBe(200)
+    expect(mocks.subscriptionCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'ACTIVE' }),
+    }))
+    expect(mocks.invoiceCreate).toHaveBeenCalledOnce()
+    expect(mocks.eventUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ processingStatus: 'PROCESSED' }),
+    }))
+  })
+
+  it('treats order.paid as a captured payment and grants access', async () => {
+    mocks.subscriptionFindFirst.mockResolvedValue(null)
+
+    const { POST } = await import('@/app/api/billing/webhook/route')
+    const response = await POST(signedRequest({
+      id: 'evt-order-paid',
+      event: 'order.paid',
+      payload: {
+        payment: {
+          entity: {
+            id: 'pay-order-1',
+            order_id: 'order-1',
+            amount: 49900,
+            currency: 'INR',
+            notes: { userId: 'user-1', planId: 'plan-1' },
+          },
+        },
+      },
+    }))
+
+    expect(response.status).toBe(200)
+    expect(mocks.subscriptionCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'ACTIVE' }),
+    }))
+    expect(mocks.invoiceCreate).toHaveBeenCalledOnce()
+  })
+
+  it('treats unknown paid-looking events as a processed no-op without mutations', async () => {
+    mocks.verifyWebhook.mockResolvedValueOnce({
+      provider: 'razorpay', paymentId: 'pay-settle-1', checkoutId: '', status: 'PENDING',
+      amount: 499, currency: 'INR', metadata: {}, verifiedAt: new Date(),
+    })
+    mocks.subscriptionFindFirst.mockResolvedValue(subscription)
+
+    const { POST } = await import('@/app/api/billing/webhook/route')
+    const response = await POST(signedRequest({
+      id: 'evt-foo-paid',
+      event: 'settlement.paid',
+      payload: {
+        payment: {
+          entity: {
+            id: 'pay-settle-1',
+            amount: 49900,
+            currency: 'INR',
+            notes: { userId: 'user-1', planId: 'plan-1' },
+          },
+        },
+      },
+    }))
+    const json = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(json).toMatchObject({ success: true, status: 'PENDING' })
+    expect(mocks.subscriptionCreate).not.toHaveBeenCalled()
+    expect(mocks.subscriptionUpdate).not.toHaveBeenCalled()
+    expect(mocks.invoiceCreate).not.toHaveBeenCalled()
+    expect(mocks.eventUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ processingStatus: 'PROCESSED' }),
+    }))
   })
 })

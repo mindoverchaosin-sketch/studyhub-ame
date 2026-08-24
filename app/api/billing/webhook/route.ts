@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { env } from '@/lib/env'
 import prisma from '@/lib/prisma'
 import { paymentService } from '@/server/domains/billing/payments/payment.service'
+import { observabilityService } from '@/server/services/observability.service'
 
 function verifyRazorpaySignature(payload: string, signature: string) {
   if (!signature || !env.RAZORPAY_WEBHOOK_SECRET) {
@@ -33,6 +34,7 @@ function getWebhookData(body: any) {
   return (
     body?.payload?.payment?.entity ||
     body?.payload?.payment_link?.entity ||
+    body?.payload?.subscription?.entity ||
     body?.payload?.entity ||
     body?.payload ||
     body
@@ -49,20 +51,62 @@ function parseString(value: unknown): string | undefined {
   return undefined
 }
 
+// Explicit allow-list: substring matching previously misclassified arbitrary
+// `*.paid` events (e.g. settlement families) as captured payments.
+const CAPTURED_PAYMENT_EVENTS = new Set([
+  'payment.captured',
+  'order.paid',
+  'payment_link.paid',
+  'subscription.charged',
+])
+
 function isPaymentCaptured(event: string) {
-  return event.includes('captured') || event.includes('paid') || event.includes('payment_link.paid')
+  return CAPTURED_PAYMENT_EVENTS.has(event)
 }
 
 function isPaymentFailed(event: string) {
-  return event.includes('failed') || event.includes('payment.failed')
+  return event === 'payment.failed'
 }
 
 function isSubscriptionCancelled(event: string) {
-  return event.includes('subscription.cancelled') || event.includes('subscription.canceled')
+  return event === 'subscription.cancelled' || event === 'subscription.canceled'
 }
 
 function isUniqueConstraintError(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
+}
+
+/**
+ * Best-effort durable failure marker, written OUTSIDE the rolled-back
+ * processing transaction so operators can query and alert on FAILED events.
+ * Never throws: marker persistence must not mask the original error.
+ */
+async function persistFailedMarker(
+  providerEventId: string,
+  event: string,
+  identifiers: { providerPaymentId?: string | null; providerSubscriptionId?: string | null } = {},
+) {
+  try {
+    const processedAt = new Date()
+    await prisma.billingWebhookEvent.upsert({
+      where: { provider_providerEventId: { provider: 'razorpay', providerEventId } },
+      create: {
+        provider: 'razorpay',
+        providerEventId,
+        eventType: event,
+        processingStatus: 'FAILED',
+        processedAt,
+        ...identifiers,
+      },
+      update: { processingStatus: 'FAILED', processedAt },
+    })
+  } catch (markerError) {
+    observabilityService.captureError(markerError, {
+      service: 'billing',
+      operation: 'webhook-failed-marker',
+      severity: 'low',
+    })
+  }
 }
 
 /**
@@ -98,7 +142,13 @@ function getProviderEventId(body: any, request: Request) {
   return parseString(body?.id ?? body?.event_id ?? request.headers.get('x-razorpay-event-id'))
 }
 
-function getProviderPaymentId(data: any) {
+function getProviderPaymentId(body: any, data: any) {
+  // When the resolved entity IS the subscription (subscription-only events
+  // such as subscription.cancelled), there is no payment identifier —
+  // recording data.id would store a subscription id as a payment id.
+  if (data && data === body?.payload?.subscription?.entity) {
+    return undefined
+  }
   return parseString(data?.id ?? data?.payment_id ?? data?.paymentId ?? data?.entity?.id)
 }
 
@@ -109,6 +159,15 @@ function getProviderSubscriptionId(body: any, data: any) {
       data?.subscription?.id ??
       body?.payload?.subscription?.entity?.id,
   )
+}
+
+/**
+ * Notes may ride on the resolved entity (Razorpay nests them per-entity) or
+ * on the payload root depending on event family — accept both, preferring
+ * the resolved entity.
+ */
+function getWebhookNotes(body: any, data: any): Record<string, unknown> {
+  return ((data?.notes ?? body?.payload?.notes ?? {}) ?? {}) as Record<string, unknown>
 }
 
 export async function POST(request: Request) {
@@ -129,7 +188,7 @@ export async function POST(request: Request) {
   const event = parseString(body.event) ?? 'unknown'
   const data = getWebhookData(body)
   const providerEventId = getProviderEventId(body, request)
-  const providerPaymentId = getProviderPaymentId(data)
+  const providerPaymentId = getProviderPaymentId(body, data)
   const providerSubscriptionId = getProviderSubscriptionId(body, data)
 
   if (!providerEventId) {
@@ -145,7 +204,7 @@ export async function POST(request: Request) {
   }
 
   const verification = await paymentService.verifyWebhook(payload)
-  const notes = (data?.notes ?? {}) as Record<string, unknown>
+  const notes = getWebhookNotes(body, data)
   const userId = parseString(notes.userId ?? notes.user_id ?? data['userId'] ?? data['user_id'])
   const planId = parseString(notes.planId ?? notes.plan_id ?? data['planId'] ?? data['plan_id'])
 
@@ -370,10 +429,23 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ success: true, ...result })
   } catch (error) {
+    observabilityService.captureError(error, {
+      service: 'billing',
+      operation: 'razorpay-webhook',
+      severity: 'high',
+    })
+
+    // The processing transaction rolled back, taking the RECEIVED row with
+    // it — persist a durable FAILED marker so failures remain queryable.
+    await persistFailedMarker(providerEventId, event, {
+      providerPaymentId,
+      providerSubscriptionId,
+    })
+
     if (error instanceof Error && (error.message.startsWith('Missing ') || error.message.startsWith('Plan not found'))) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
-    throw error
+    return NextResponse.json({ success: false }, { status: 500 })
   }
 }
 
