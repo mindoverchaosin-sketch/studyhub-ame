@@ -5,6 +5,7 @@ import { toErrorResponse, ValidationError } from '@/server/services/ai/ai-error'
 import { aiChatPayloadSchema } from '@/server/validators/ai.validator';
 import { logAIEvent } from '@/server/services/ai/logging';
 import { withRequestLogging } from '@/lib/request-logger';
+import { aiRateLimiter, getAIRateLimitIdentity } from '@/server/services/ai/rate-limit.service';
 
 async function streamToResponse(stream: AsyncGenerator<unknown>) {
   const encoder = new TextEncoder();
@@ -37,6 +38,8 @@ export async function POST(request: Request) {
       if (!parseResult.success) {
         throw new ValidationError('Invalid AI chat stream request.');
       }
+
+      aiRateLimiter.enforce('chat-stream', getAIRateLimitIdentity(session.user.id, request));
 
       const abortSignal = request.signal;
       const stream = aiService.streamChat(parseResult.data, session.user.id as string, { timeoutMs: 30000, signal: abortSignal });

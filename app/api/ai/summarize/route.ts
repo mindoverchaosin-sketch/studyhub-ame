@@ -5,6 +5,7 @@ import { toErrorResponse, ValidationError } from '@/server/services/ai/ai-error'
 import { aiSummarizePayloadSchema } from '@/server/validators/ai.validator';
 import { logAIEvent } from '@/server/services/ai/logging';
 import { withRequestLogging } from '@/lib/request-logger';
+import { aiRateLimiter, getAIRateLimitIdentity } from '@/server/services/ai/rate-limit.service';
 
 export async function POST(request: Request) {
   return withRequestLogging(request, 'ai.summarize', async () => {
@@ -16,6 +17,8 @@ export async function POST(request: Request) {
       if (!parseResult.success) {
         throw new ValidationError('Invalid AI summarize request.');
       }
+
+      aiRateLimiter.enforce('summarize', getAIRateLimitIdentity(session.user.id, request));
 
       const response = await aiService.handleSummarize(parseResult.data.prompt);
 

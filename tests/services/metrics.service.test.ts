@@ -5,11 +5,20 @@ import { withRequestLogging } from '@/lib/request-logger'
 import { serviceCache } from '@/server/services/cache'
 import { metricsService } from '@/server/services/metrics.service'
 
+// The metrics route now requires viewAnalytics permission; grant an admin
+// session so this suite keeps validating the snapshot payload contract.
+const requirePermissionMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@/auth', () => ({
+  requirePermission: requirePermissionMock,
+}))
+
 describe('MetricsService', () => {
   beforeEach(() => {
     metricsService.reset()
     serviceCache.clear()
     vi.restoreAllMocks()
+    requirePermissionMock.mockResolvedValue({ user: { id: 'admin-1', role: 'SUPER_ADMIN' } })
   })
 
   it('tracks request counters', async () => {

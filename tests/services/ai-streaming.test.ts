@@ -3,6 +3,14 @@ import { AIService } from '@/server/services/ai/ai-service'
 import { conversationService } from '@/server/services/ai/conversation.service'
 import type { AIRequestContext } from '@/types/ai'
 
+const canUseAITutorMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@/server/services/content-access.service', () => ({
+  contentAccessService: {
+    canUseAITutor: canUseAITutorMock,
+  },
+}))
+
 class NonStreamingProvider {
   async generateResponse({ prompt }: AIRequestContext) {
     return {
@@ -33,6 +41,8 @@ describe('AIService streaming', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks()
+    canUseAITutorMock.mockReset()
+    canUseAITutorMock.mockResolvedValue({ allowed: true, requiredFeature: 'aiTools' })
   })
 
   afterEach(() => {

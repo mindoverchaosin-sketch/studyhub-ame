@@ -29,6 +29,28 @@ export class AIConversationRepository {
     return conversation ? this.mapConversation(conversation, conversation.messages) : null;
   }
 
+  async findConversationForUser(id: string, userId: string): Promise<AIConversation | null> {
+    if (!id || !userId) {
+      return null;
+    }
+    const conversation = await prisma.aIConversation.findFirst({
+      where: { id, userId },
+      include: { messages: { orderBy: { createdAt: 'asc' } } },
+    });
+    return conversation ? this.mapConversation(conversation, conversation.messages) : null;
+  }
+
+  async ownsConversation(id: string, userId: string): Promise<boolean> {
+    if (!id || !userId) {
+      return false;
+    }
+    const conversation = await prisma.aIConversation.findUnique({
+      where: { id },
+      select: { userId: true },
+    });
+    return conversation?.userId === userId;
+  }
+
   async listConversations(params: ConversationQueryParams = {}): Promise<AIConversation[]> {
     const where: any = {};
     if (params.userId) {
@@ -97,6 +119,7 @@ export class AIConversationRepository {
     return {
       id: conversation.id,
       title: conversation.title,
+      userId: conversation.userId ?? undefined,
       createdAt: conversation.createdAt.toISOString(),
       lastUpdated: conversation.updatedAt.toISOString(),
       messages: messages.map((message) => ({

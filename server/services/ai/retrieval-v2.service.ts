@@ -20,12 +20,26 @@ type QuestionRecord = {
   question?: string;
   explanation?: string;
   difficulty?: string;
+  status?: string;
   createdAt?: Date | string;
 };
 
 type LessonMetadata = {
   tags?: unknown;
 };
+
+/**
+ * Student-facing AI features may only ground on published content. Anything
+ * without explicit PUBLISHED status is treated as unpublished and excluded,
+ * so draft/admin content can never enter AI prompts.
+ */
+function isPublishedStatus(status?: string | null): boolean {
+  return typeof status === 'string' && status.toUpperCase() === 'PUBLISHED';
+}
+
+function questionRecordStatus(question: unknown): string | undefined {
+  return (question as { status?: string } | null)?.status;
+}
 
 const embeddingProvider = createEmbeddingProvider();
 const vectorStore = createVectorStore();
@@ -90,8 +104,8 @@ async function keywordSearch(query: string): Promise<RetrievalCandidate[]> {
   const results: RetrievalCandidate[] = [];
 
   try {
-    const lessons = await lessonRepository.list({ search: query, take: 10 });
-    const questions = await questionRepository.findForAdmin({ search: query, take: 10 });
+    const lessons = await lessonRepository.list({ search: query, take: 10, status: 'PUBLISHED' });
+    const questions = await questionRepository.findForAdmin({ search: query, take: 10, status: 'PUBLISHED' });
 
     for (const lesson of lessons) {
       let moduleTitle: string | undefined = undefined;
@@ -191,7 +205,14 @@ async function vectorSearch(query: string): Promise<RetrievalCandidate[]> {
   });
 
   retrievalMetricsCollector.vectorHits += results.length;
-  return results.map((result) => {
+  return results
+    .filter((result) => {
+      const status = (result.document?.metadata as { status?: string } | undefined)?.status;
+      // Vector documents without publication metadata are untrusted; only
+      // chunks explicitly marked PUBLISHED may reach student prompts.
+      return isPublishedStatus(status);
+    })
+    .map((result) => {
     const doc = result.document;
     const chunk: AIContentChunk = {
       id: doc.chunkId,
@@ -231,7 +252,7 @@ export class RetrievalV2Service {
         if (safeInput.lessonId) {
           try {
             const lesson = await lessonRepository.findById(safeInput.lessonId);
-            if (lesson) {
+            if (lesson && isPublishedStatus(lesson.status)) {
               let moduleTitle: string | undefined = undefined;
               try {
                 if (lesson.moduleId) {
@@ -279,7 +300,7 @@ export class RetrievalV2Service {
         if (safeInput.questionId) {
           try {
             const question = await questionRepository.findById(safeInput.questionId);
-            if (question) {
+            if (question && isPublishedStatus(questionRecordStatus(question))) {
               const questionRecord = question as unknown as QuestionRecord;
               const source: AIContentSource = {
                 id: questionRecord.id,

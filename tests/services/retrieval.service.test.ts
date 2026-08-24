@@ -17,7 +17,7 @@ describe('RetrievalService', () => {
       topic: 'Corrosion',
       difficulty: 'Hard',
       standard: 'DGCA',
-      status: 'Unanswered',
+      status: 'PUBLISHED',
       module: 'Corrosion module',
       isBookmarked: false,
       recommended: false,

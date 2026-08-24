@@ -48,6 +48,7 @@ export interface AIConversation {
   messages: AIMessage[];
   createdAt: string;
   lastUpdated: string;
+  userId?: string;
 }
 
 export interface AIContextSnapshot {

@@ -5,6 +5,7 @@ import { toErrorResponse, ValidationError } from '@/server/services/ai/ai-error'
 import { aiGenerateQuestionsPayloadSchema } from '@/server/validators/ai.validator';
 import { logAIEvent } from '@/server/services/ai/logging';
 import { withRequestLogging } from '@/lib/request-logger';
+import { aiRateLimiter, getAIRateLimitIdentity } from '@/server/services/ai/rate-limit.service';
 
 export async function POST(request: Request) {
   return withRequestLogging(request, 'ai.generate-questions', async () => {
@@ -16,6 +17,8 @@ export async function POST(request: Request) {
       if (!parseResult.success) {
         throw new ValidationError('Invalid AI generate questions request.');
       }
+
+      aiRateLimiter.enforce('generate-questions', getAIRateLimitIdentity(session.user.id, request));
 
       const response = await aiService.handleGenerateQuestions(parseResult.data.topic);
 

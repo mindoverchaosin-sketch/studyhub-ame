@@ -30,6 +30,22 @@ export class AIService {
     }
   }
 
+  /**
+   * Builds a throwaway conversation for one-shot features (summarize,
+   * generate questions). These never touch persistence and are never
+   * addressable by clients.
+   */
+  private buildEphemeralConversation(title: string): AIRequestContext['conversation'] {
+    const now = new Date().toISOString();
+    return {
+      id: `ephemeral-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      title,
+      messages: [],
+      createdAt: now,
+      lastUpdated: now,
+    };
+  }
+
   private async buildRequestContext(payload: AIRequestPayload, userId: string, conversation: AIRequestContext['conversation']): Promise<AIRequestContext> {
     const contextSnapshot = timeSync('AIService', 'buildContext', () => aiContextBuilderService.buildContext(payload.context ?? {}));
     const retrievalContext = await timeAsync('AIService', 'buildRetrievalContext', () => retrievalService.buildRetrievalContext(payload.context ?? {}));
@@ -62,8 +78,10 @@ export class AIService {
       throw new ValidationError('A prompt is required.');
     }
 
+    // Ownership: the conversation is resolved for this user only; foreign or
+    // unknown ids both resolve to null so callers cannot probe existence.
     const conversation = await (payload.conversationId
-      ? conversationService.getConversation(payload.conversationId)
+      ? conversationService.getConversation(payload.conversationId, userId)
       : conversationService.createConversation('Tutor session', userId));
 
     if (!conversation) {
@@ -72,7 +90,7 @@ export class AIService {
 
     const requestContext = await this.buildRequestContext(payload, userId, conversation);
     const message = await timeAsync('AIService', 'generateResponse', () => this.provider.generateResponse(requestContext));
-    conversationService.addMessage(conversation.id, message);
+    await conversationService.addMessage(conversation.id, message, userId);
 
     return {
       success: true,
@@ -93,7 +111,7 @@ export class AIService {
     }
 
     const conversation = await (payload.conversationId
-      ? conversationService.getConversation(payload.conversationId)
+      ? conversationService.getConversation(payload.conversationId, userId)
       : conversationService.createConversation('Tutor session', userId));
 
     if (!conversation) {
@@ -104,7 +122,7 @@ export class AIService {
 
     if (typeof this.provider.streamResponse !== 'function') {
       const response = await timeAsync('AIService', 'generateResponse', () => this.provider.generateResponse(requestContext));
-      conversationService.addMessage(conversation.id, response);
+      await conversationService.addMessage(conversation.id, response, userId);
       yield { type: 'delta', content: response.content, conversationId: conversation.id };
       yield {
         type: 'done',
@@ -137,7 +155,7 @@ export class AIService {
           assistantMessage.usage = chunk.usage;
           assistantMessage.model = chunk.model ?? assistantMessage.model;
           assistantMessage.metadata = { ...assistantMessage.metadata, ...chunk.metadata };
-          conversationService.addMessage(conversation.id, assistantMessage);
+          await conversationService.addMessage(conversation.id, assistantMessage, userId);
           yield enrichedChunk;
           return;
         } else if (chunk.type === 'error') {
@@ -146,7 +164,7 @@ export class AIService {
         }
       }
 
-      conversationService.addMessage(conversation.id, assistantMessage);
+      await conversationService.addMessage(conversation.id, assistantMessage, userId);
       yield {
         type: 'done',
         finishReason: assistantMessage.finishReason ?? 'stop',
@@ -203,13 +221,11 @@ export class AIService {
       throw new ValidationError('A prompt is required.');
     }
 
-    const summaryConversation = await conversationService.createConversation('Summary', undefined);
+    const summaryConversation = this.buildEphemeralConversation('Summary');
     const message = await this.provider.generateResponse({
       prompt: `Summarize: ${prompt}`,
       conversation: summaryConversation,
     });
-
-    conversationService.addMessage(summaryConversation.id, message);
 
     return {
       success: true,
@@ -226,13 +242,11 @@ export class AIService {
       throw new ValidationError('A topic is required.');
     }
 
-    const generatedConversation = await conversationService.createConversation('Generated questions', undefined);
+    const generatedConversation = this.buildEphemeralConversation('Generated questions');
     const message = await this.provider.generateResponse({
       prompt: `Generate questions for ${topic}`,
       conversation: generatedConversation,
     });
-
-    conversationService.addMessage(generatedConversation.id, message);
 
     return {
       success: true,

@@ -7,8 +7,10 @@ import Card from "@/components/ui/Card";
 import { buildPrompt, PROMPT_TEMPLATES } from "@/services/ai/PromptTemplates";
 import type { AIConversation, AIMessage } from "@/types/ai";
 
+// A conversation id is only assigned by the server once the first message
+// creates the durable conversation; an empty id means "no conversation yet".
 const createInitialConversation = (): AIConversation => ({
-  id: "conv-1",
+  id: "",
   title: "AI tutor session",
   messages: [
     {
@@ -83,7 +85,10 @@ export default function AIChatPanel() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
-        body: JSON.stringify({ prompt: text, conversationId: conversation.id }),
+        body: JSON.stringify({
+          prompt: text,
+          ...(conversation.id ? { conversationId: conversation.id } : {}),
+        }),
       });
 
       if (!response.ok || !response.body) {
@@ -119,6 +124,14 @@ export default function AIChatPanel() {
           if (!line.trim()) continue;
           try {
             const parsed = JSON.parse(line);
+            // Adopt the server-issued conversation id so subsequent messages
+            // continue the same durable conversation.
+            if (typeof parsed.conversationId === 'string' && parsed.conversationId) {
+              const serverConversationId = parsed.conversationId;
+              setConversation((current) =>
+                current.id === serverConversationId ? current : { ...current, id: serverConversationId },
+              );
+            }
             if (parsed.type === 'delta' && parsed.content) {
               assistantMessage.content += parsed.content;
               setConversation((current) => ({
