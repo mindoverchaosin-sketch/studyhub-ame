@@ -57,7 +57,13 @@ export class SubscriptionManagementService {
   }
 
   async upgradeSubscription(id: string, planId: string, actor: SubscriptionManagementActor): Promise<SubscriptionDTO> {
-    const result = await this.subscriptionService.upgradePlan(id, planId)
+    // Admin supplies a subscription id; the domain API is user-scoped.
+    const subscription = await subscriptionRepository.findById(id)
+    if (!subscription) {
+      throw new Error(`Subscription not found: ${id}`)
+    }
+
+    const result = await this.subscriptionService.upgradePlan(subscription.userId, planId)
     await auditLogService.recordEvent({
       actorId: actor.id,
       actorRole: actor.role ?? null,
@@ -70,7 +76,12 @@ export class SubscriptionManagementService {
   }
 
   async downgradeSubscription(id: string, planId: string, actor: SubscriptionManagementActor): Promise<SubscriptionDTO> {
-    const result = await this.subscriptionService.downgradePlan(id, planId)
+    const subscription = await subscriptionRepository.findById(id)
+    if (!subscription) {
+      throw new Error(`Subscription not found: ${id}`)
+    }
+
+    const result = await this.subscriptionService.downgradePlan(subscription.userId, planId)
     await auditLogService.recordEvent({
       actorId: actor.id,
       actorRole: actor.role ?? null,
@@ -131,7 +142,12 @@ export class SubscriptionManagementService {
   }
 
   async renewSubscription(id: string, actor: SubscriptionManagementActor): Promise<SubscriptionDTO> {
-    const result = await this.subscriptionService.renewSubscription(id)
+    const subscription = await subscriptionRepository.findById(id)
+    if (!subscription) {
+      throw new Error(`Subscription not found: ${id}`)
+    }
+
+    const result = await this.subscriptionService.renewSubscription(subscription.userId)
     await auditLogService.recordEvent({
       actorId: actor.id,
       actorRole: actor.role ?? null,
