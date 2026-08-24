@@ -179,6 +179,16 @@ export class SubscriptionService {
    * Pause a subscription
    */
   async pauseSubscription(subscriptionId: string): Promise<SubscriptionDTO> {
+    const subscription = await subscriptionRepository.findById(subscriptionId)
+    if (!subscription) {
+      throw new Error(`Subscription not found: ${subscriptionId}`)
+    }
+
+    // Only live subscriptions may be paused; terminal states are exit-only.
+    if (subscription.status !== 'ACTIVE' && subscription.status !== 'PAST_DUE') {
+      throw new Error(`Cannot pause subscription in status: ${subscription.status}`)
+    }
+
     const paused = await subscriptionRepository.update(subscriptionId, {
       status: 'PAUSED',
     })
@@ -194,17 +204,17 @@ export class SubscriptionService {
       throw new Error(`Subscription not found: ${subscriptionId}`)
     }
 
-    // Extend period if it has already expired
-    let newEnd = subscription.currentPeriodEnd
-    if (new Date() > newEnd) {
-      newEnd = this.calculatePeriodEnd(new Date(), subscription.subscriptionPlan.interval)
+    // Resume is strictly restorative: only a paused subscription returns to
+    // ACTIVE, and the prior period end is preserved untouched so no paid
+    // time can be minted outside payment flows. A lapsed paused period
+    // finalizes through the expiration job.
+    if (subscription.status !== 'PAUSED') {
+      throw new Error(`Cannot resume subscription in status: ${subscription.status}. Only paused subscriptions can be resumed.`)
     }
 
     const resumed = await subscriptionRepository.update(subscriptionId, {
       status: 'ACTIVE',
-      currentPeriodEnd: newEnd,
     })
-
     return this.mapToDTO(resumed)
   }
 

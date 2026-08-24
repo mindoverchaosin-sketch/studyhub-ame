@@ -302,4 +302,133 @@ describe('SubscriptionService', () => {
       })
     })
   })
+
+  describe('pauseSubscription', () => {
+    const baseRow = {
+      id: 'sub_123',
+      userId: 'user_123',
+      subscriptionPlanId: 'plan_monthly',
+      currentPeriodStart: new Date('2026-08-01T00:00:00.000Z'),
+      currentPeriodEnd: new Date('2026-09-01T00:00:00.000Z'),
+      renewalAttempts: 0,
+      createdAt: new Date('2026-08-01T00:00:00.000Z'),
+      updatedAt: new Date(),
+      subscriptionPlan: { name: 'Monthly', slug: 'monthly', interval: 'monthly' },
+    }
+
+    it('pauses an active subscription', async () => {
+      mocks.findById.mockResolvedValue({ ...baseRow, status: 'ACTIVE' })
+      const paused = { ...baseRow, status: 'PAUSED' }
+      mocks.update.mockResolvedValue(paused)
+
+      const result = await service.pauseSubscription('sub_123')
+
+      // Exact payload: only the status changes.
+      expect(mocks.update).toHaveBeenCalledWith('sub_123', { status: 'PAUSED' })
+      expect(result.status).toBe('PAUSED')
+    })
+
+    it('pauses a past-due subscription (admin dunning hold)', async () => {
+      mocks.findById.mockResolvedValue({
+        ...baseRow,
+        status: 'PAST_DUE',
+        pastDueAt: new Date('2026-08-20T00:00:00.000Z'),
+        gracePeriodEndsAt: new Date('2026-08-23T00:00:00.000Z'),
+      })
+      mocks.update.mockResolvedValue({ ...baseRow, status: 'PAUSED' })
+
+      const result = await service.pauseSubscription('sub_123')
+
+      expect(mocks.update).toHaveBeenCalledWith('sub_123', { status: 'PAUSED' })
+      expect(result.status).toBe('PAUSED')
+    })
+
+    it.each(['PAUSED', 'CANCELLED', 'EXPIRED'])(
+      'rejects pausing a subscription in status %s',
+      async (status) => {
+        mocks.findById.mockResolvedValue({ ...baseRow, status })
+
+        await expect(service.pauseSubscription('sub_123'))
+          .rejects.toThrow(`Cannot pause subscription in status: ${status}`)
+
+        expect(mocks.update).not.toHaveBeenCalled()
+      },
+    )
+
+    it('throws the not-found error for a missing subscription without updating', async () => {
+      mocks.findById.mockResolvedValue(null)
+
+      await expect(service.pauseSubscription('sub_404'))
+        .rejects.toThrow('Subscription not found: sub_404')
+
+      expect(mocks.update).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('resumeSubscription', () => {
+    const periodEnd = new Date('2026-09-01T00:00:00.000Z')
+    const pausedRow = {
+      id: 'sub_123',
+      userId: 'user_123',
+      subscriptionPlanId: 'plan_monthly',
+      status: 'PAUSED',
+      currentPeriodStart: new Date('2026-08-01T00:00:00.000Z'),
+      currentPeriodEnd: periodEnd,
+      renewalAttempts: 0,
+      createdAt: new Date('2026-08-01T00:00:00.000Z'),
+      updatedAt: new Date(),
+      subscriptionPlan: { name: 'Monthly', slug: 'monthly', interval: 'monthly' },
+    }
+
+    it('resumes a paused subscription preserving the existing period end exactly', async () => {
+      mocks.findById.mockResolvedValue({ ...pausedRow })
+      mocks.update.mockResolvedValue({ ...pausedRow, status: 'ACTIVE' })
+
+      const result = await service.resumeSubscription('sub_123')
+
+      // Exact payload: resume is strictly restorative — no fresh period may
+      // be minted and no other field may change.
+      expect(mocks.update).toHaveBeenCalledTimes(1)
+      expect(mocks.update).toHaveBeenCalledWith('sub_123', { status: 'ACTIVE' })
+      expect(result.status).toBe('ACTIVE')
+      expect(result.currentPeriodEnd).toEqual(periodEnd)
+    })
+
+    it('does not extend the period of a lapsed paused subscription', async () => {
+      const lapsed = {
+        ...pausedRow,
+        currentPeriodEnd: new Date('2026-01-01T00:00:00.000Z'),
+      }
+      mocks.findById.mockResolvedValue({ ...lapsed })
+      mocks.update.mockResolvedValue({ ...lapsed, status: 'ACTIVE' })
+
+      await service.resumeSubscription('sub_123')
+
+      // Even with a long-elapsed period, the update must carry no
+      // currentPeriodEnd override — expiration finalizes it instead.
+      expect(mocks.update).toHaveBeenCalledWith('sub_123', { status: 'ACTIVE' })
+      expect(mocks.update.mock.calls[0][1]).not.toHaveProperty('currentPeriodEnd')
+    })
+
+    it.each(['ACTIVE', 'PAST_DUE', 'CANCELLED', 'EXPIRED'])(
+      'rejects resuming a subscription in status %s',
+      async (status) => {
+        mocks.findById.mockResolvedValue({ ...pausedRow, status })
+
+        await expect(service.resumeSubscription('sub_123'))
+          .rejects.toThrow(`Cannot resume subscription in status: ${status}. Only paused subscriptions can be resumed.`)
+
+        expect(mocks.update).not.toHaveBeenCalled()
+      },
+    )
+
+    it('throws the not-found error for a missing subscription without updating', async () => {
+      mocks.findById.mockResolvedValue(null)
+
+      await expect(service.resumeSubscription('sub_404'))
+        .rejects.toThrow('Subscription not found: sub_404')
+
+      expect(mocks.update).not.toHaveBeenCalled()
+    })
+  })
 })
