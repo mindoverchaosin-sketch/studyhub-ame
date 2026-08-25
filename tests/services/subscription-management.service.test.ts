@@ -97,6 +97,10 @@ describe('SubscriptionManagementService', () => {
   })
 
   it('upgrades a subscription and records an audit event', async () => {
+    subscriptionRepositoryMock.findById.mockResolvedValue({
+      id: 'sub-1',
+      userId: 'user-1',
+    })
     subscriptionServiceMock.upgradePlan.mockResolvedValue({
       id: 'sub-1',
       userId: 'user-1',
@@ -113,7 +117,9 @@ describe('SubscriptionManagementService', () => {
     const service = new SubscriptionManagementService()
     await service.upgradeSubscription('sub-1', 'plan-2', { id: 'admin-1', role: 'FINANCE_MANAGER' })
 
-    expect(subscriptionServiceMock.upgradePlan).toHaveBeenCalledWith('sub-1', 'plan-2')
+    // The admin supplies a subscription id; the domain API receives the row owner.
+    expect(subscriptionRepositoryMock.findById).toHaveBeenCalledWith('sub-1')
+    expect(subscriptionServiceMock.upgradePlan).toHaveBeenCalledWith('user-1', 'plan-2')
     expect(auditLogServiceMock.recordEvent).toHaveBeenCalledWith(expect.objectContaining({
       action: 'subscription.upgraded',
     }))
