@@ -16,6 +16,22 @@ const rawEnvSchema = z.object({
   RAZORPAY_WEBHOOK_SECRET: z.string().trim().min(1).optional(),
   BILLING_CRON_SECRET: z.string().trim().min(32).optional(),
   ERROR_REPORT_WEBHOOK_URL: z.string().trim().url().optional(),
+  ALERT_FAILED_WEBHOOK_THRESHOLD: z
+    .preprocess((value) => {
+      if (typeof value === 'string' && value.trim() !== '') {
+        return Number(value)
+      }
+      return value
+    }, z.number().int().positive())
+    .optional(),
+  ALERT_FAILED_WEBHOOK_WINDOW_MINUTES: z
+    .preprocess((value) => {
+      if (typeof value === 'string' && value.trim() !== '') {
+        return Number(value)
+      }
+      return value
+    }, z.number().int().positive())
+    .optional(),
   OPENAI_API_KEY: z.string().trim().min(1).optional(),
   OPENAI_MODEL: z.string().trim().min(1).optional(),
   ANTHROPIC_API_KEY: z.string().trim().min(1).optional(),
@@ -62,6 +78,8 @@ const env = {
   RAZORPAY_WEBHOOK_SECRET: parsed.RAZORPAY_WEBHOOK_SECRET,
   BILLING_CRON_SECRET: parsed.BILLING_CRON_SECRET,
   ERROR_REPORT_WEBHOOK_URL: parsed.ERROR_REPORT_WEBHOOK_URL,
+  ALERT_FAILED_WEBHOOK_THRESHOLD: parsed.ALERT_FAILED_WEBHOOK_THRESHOLD ?? 3,
+  ALERT_FAILED_WEBHOOK_WINDOW_MINUTES: parsed.ALERT_FAILED_WEBHOOK_WINDOW_MINUTES ?? 60,
   OPENAI_API_KEY: parsed.OPENAI_API_KEY,
   OPENAI_MODEL: parsed.OPENAI_MODEL ?? 'gpt-4.1-mini',
   ANTHROPIC_API_KEY: parsed.ANTHROPIC_API_KEY,
@@ -100,6 +118,8 @@ const validatedEnvSchema = z
     RAZORPAY_WEBHOOK_SECRET: z.string().trim().min(1).optional(),
     BILLING_CRON_SECRET: z.string().trim().min(32).optional(),
     ERROR_REPORT_WEBHOOK_URL: z.string().trim().url().optional(),
+    ALERT_FAILED_WEBHOOK_THRESHOLD: z.number().int().positive(),
+    ALERT_FAILED_WEBHOOK_WINDOW_MINUTES: z.number().int().positive(),
     AUTH_SECRET: z.string().trim().min(32).optional(),
     MAX_MEDIA_UPLOAD_SIZE_BYTES: z.number().int().positive(),
     PORT: z.number().int().positive().optional(),
