@@ -2,6 +2,14 @@ import type { ResourceDTO } from '@/server/application/dto/resource.dto'
 import { resourceRepository } from '@/server/repositories/resource.repository'
 import type { StudyMaterialType } from '@prisma/client'
 import { mapResourceEntityToDTO } from '@/server/application/mappers/resource.mapper'
+import { contentAccessService } from '@/server/services/content-access.service'
+
+export type StudentResourceAccess = {
+  resource: ResourceDTO
+  allowed: boolean
+  reason?: string
+  requiredFeature?: 'premiumModules'
+}
 
 /**
  * ResourceService
@@ -15,6 +23,28 @@ export async function getResourcesByTopic(topicId: string): Promise<ResourceDTO[
 export async function getResourceById(id: string): Promise<ResourceDTO | null> {
   const resource = await resourceRepository.findById(id)
   return resource ? mapResourceEntityToDTO(resource) : null
+}
+
+export async function getStudentResourceAccess(
+  studentId: string,
+  resourceId: string,
+  lessonId: string,
+  moduleId: string,
+): Promise<StudentResourceAccess | null> {
+  const resource = await resourceRepository.findPublishedById(resourceId)
+
+  if (!resource || resource.lessonId !== lessonId || resource.moduleId !== moduleId) {
+    return null
+  }
+
+  const access = await contentAccessService.canAccessStudyMaterial(studentId, resource.isPremium)
+
+  return {
+    resource: mapResourceEntityToDTO(resource),
+    allowed: access.allowed,
+    reason: access.reason,
+    requiredFeature: access.requiredFeature === 'premiumModules' ? access.requiredFeature : undefined,
+  }
 }
 
 export async function getResourcesByType(topicId: string, type: string): Promise<ResourceDTO[]> {

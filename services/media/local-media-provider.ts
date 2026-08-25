@@ -20,7 +20,12 @@ export class LocalMediaProvider implements MediaProvider {
   async update(id: string, updates: Partial<MediaAsset>): Promise<MediaAsset | null> {
     const index = this.assets.findIndex((asset) => asset.id === id);
     if (index < 0) return null;
-    this.assets[index] = { ...this.assets[index], ...updates };
+    const previous = this.assets[index];
+    if ((updates.url ?? previous.url) !== previous.url && previous.url) {
+      // Keep byte storage consistent with the re-keyed registry entry.
+      this.bytes.delete(previous.url);
+    }
+    this.assets[index] = { ...previous, ...updates };
     return this.assets[index];
   }
 
@@ -37,7 +42,11 @@ export class LocalMediaProvider implements MediaProvider {
     this.bytes.set(path, { body, mimeType });
   }
 
-  async readBytes(path: string): Promise<{ body: Uint8Array; mimeType: string; redirectPath?: string } | null> {
+  async getObject(path: string): Promise<{ body: Uint8Array; mimeType: string; redirectPath?: string } | null> {
     return this.bytes.get(path) ?? null;
+  }
+
+  async deleteObject(path: string): Promise<void> {
+    this.bytes.delete(path);
   }
 }

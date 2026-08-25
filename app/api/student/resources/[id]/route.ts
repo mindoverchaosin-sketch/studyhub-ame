@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { getStudentResourceAccess } from '@/server/services/resource.service'
-
-const MAX_REDIRECTS = 3
+import { mediaProvider } from '@/services/media/provider'
 
 function getAllowedMediaUrl(value: string, requestUrl: URL): URL | null {
   if (!value || value.includes('\\') || /[\u0000-\u001f\u007f]/.test(value)) return null
@@ -59,33 +58,26 @@ export async function GET(
     return NextResponse.json({ error: 'Resource URL is not allowed' }, { status: 502 })
   }
 
-  let sourceUrl: URL = initialSourceUrl
-  let sourceResponse: Response | null = null
-  for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
-    sourceResponse = await fetch(sourceUrl, { redirect: 'manual' })
-    if (sourceResponse.status < 300 || sourceResponse.status >= 400) break
-
-    const location = sourceResponse.headers.get('location')
-    const redirectUrl = location ? getAllowedMediaUrl(location, sourceUrl) : null
-    if (!redirectUrl) {
-      return NextResponse.json({ error: 'Resource redirect is not allowed' }, { status: 502 })
-    }
-    sourceUrl = redirectUrl
+  let sourcePath = initialSourceUrl.pathname
+  let storedMedia = await mediaProvider.getObject(sourcePath)
+  for (let redirectCount = 0; storedMedia?.redirectPath && redirectCount < 3; redirectCount += 1) {
+    const redirectUrl = getAllowedMediaUrl(storedMedia.redirectPath, new URL(sourcePath, requestUrl))
+    if (!redirectUrl) return NextResponse.json({ error: 'Resource redirect is not allowed' }, { status: 502 })
+    sourcePath = redirectUrl.pathname
+    storedMedia = await mediaProvider.getObject(sourcePath)
   }
-
-  if (!sourceResponse || !sourceResponse.ok || !sourceResponse.body) {
+  if (!storedMedia) {
     return NextResponse.json({ error: 'Resource unavailable' }, { status: 502 })
   }
 
-  if (!isContentTypeAllowed(access.resource.type, sourceResponse.headers.get('content-type'))) {
+  if (!isContentTypeAllowed(access.resource.type, storedMedia.mimeType)) {
     return NextResponse.json({ error: 'Resource content type is not allowed' }, { status: 502 })
   }
 
   const headers = new Headers()
-  const contentType = sourceResponse.headers.get('content-type')
-  if (contentType) headers.set('content-type', contentType)
+  headers.set('content-type', storedMedia.mimeType)
   headers.set('content-disposition', 'inline')
   headers.set('cache-control', 'private, no-store')
 
-  return new Response(sourceResponse.body, { status: 200, headers })
+  return new Response(storedMedia.body as unknown as BodyInit, { status: 200, headers })
 }

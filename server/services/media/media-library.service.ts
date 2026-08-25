@@ -34,6 +34,7 @@ export class MediaLibraryService {
     this.validateUpload(file);
     const safeName = this.sanitizeFileName(file.name);
     const assetType = this.inferAssetType(file.type, safeName);
+    const storageKey = `media/${randomUUID()}-${safeName}`;
 
     const asset: MediaAsset = {
       id: randomUUID(),
@@ -43,15 +44,13 @@ export class MediaLibraryService {
       size: file.size,
       uploadedAt: new Date().toISOString(),
       uploadedBy: options.uploadedBy,
-      storageKey: `media/${randomUUID()}-${safeName}`,
+      storageKey,
       altText: options.altText,
-      url: `/media/${encodeURIComponent(safeName)}`,
+      url: `/media/${storageKey}`,
     };
 
     const created = await this.provider.create(asset);
-    if (this.provider.storeBytes) {
-      await this.provider.storeBytes(asset.url ?? '', new Uint8Array(await file.arrayBuffer()), asset.mimeType)
-    }
+    await this.provider.storeBytes(asset.url ?? '', new Uint8Array(await file.arrayBuffer()), asset.mimeType)
     this.cachedAssets = [...this.cachedAssets, created];
     return created;
   }
@@ -68,6 +67,9 @@ export class MediaLibraryService {
     this.validateUpload(file);
     const safeName = this.sanitizeFileName(file.name);
     const assetType = this.inferAssetType(file.type, safeName);
+    const storageKey = `media/${randomUUID()}-${safeName}`;
+
+    const previous = await this.provider.get(id);
 
     const updated = await this.provider.update(id, {
       name: safeName,
@@ -76,15 +78,20 @@ export class MediaLibraryService {
       size: file.size,
       uploadedAt: new Date().toISOString(),
       uploadedBy: options.uploadedBy,
-      storageKey: `media/${randomUUID()}-${safeName}`,
+      storageKey,
       altText: options.altText,
-      url: `/media/${encodeURIComponent(safeName)}`,
+      url: `/media/${storageKey}`,
     });
 
     if (updated) {
-      if (this.provider.storeBytes) {
-        await this.provider.storeBytes(updated.url ?? '', new Uint8Array(await file.arrayBuffer()), updated.mimeType)
+      await this.provider.storeBytes(updated.url ?? '', new Uint8Array(await file.arrayBuffer()), updated.mimeType)
+
+      // Only after the new bytes are durably stored may the superseded
+      // object be removed — a failed store must preserve the old media.
+      if (previous && previous.storageKey !== updated.storageKey) {
+        await this.provider.deleteObject?.(previous.url ?? `/media/${previous.storageKey}`)
       }
+
       this.cachedAssets = this.cachedAssets.map((asset) => (asset.id === id ? updated : asset));
     }
 

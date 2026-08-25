@@ -4,6 +4,8 @@ import type { MediaAsset, MediaProvider, MediaAssetType } from '@/types/media';
 
 class InMemoryMediaProvider implements MediaProvider {
   private assets: MediaAsset[] = [];
+  private objects = new Map<string, { body: Uint8Array; mimeType: string }>();
+  readonly operations: string[] = [];
 
   async list(): Promise<MediaAsset[]> {
     return this.assets;
@@ -22,6 +24,7 @@ class InMemoryMediaProvider implements MediaProvider {
     const index = this.assets.findIndex((asset) => asset.id === id);
     if (index < 0) return null;
     this.assets[index] = { ...this.assets[index], ...updates };
+    this.operations.push(`update:${updates.storageKey ?? this.assets[index].storageKey}`);
     return this.assets[index];
   }
 
@@ -29,6 +32,20 @@ class InMemoryMediaProvider implements MediaProvider {
     const initialLength = this.assets.length;
     this.assets = this.assets.filter((asset) => asset.id !== id);
     return this.assets.length < initialLength;
+  }
+
+  async storeBytes(path: string, body: Uint8Array, mimeType: string): Promise<void> {
+    this.objects.set(path, { body, mimeType });
+    this.operations.push(`store:${path}`);
+  }
+
+  async deleteObject(path: string): Promise<void> {
+    this.objects.delete(path);
+    this.operations.push(`delete:${path}`);
+  }
+
+  async getObject(path: string): Promise<{ body: Uint8Array; mimeType: string; redirectPath?: string } | null> {
+    return this.objects.get(path) ?? null;
   }
 }
 
@@ -80,5 +97,27 @@ describe('media library service', () => {
     expect(service.canManageMedia('INSTRUCTOR')).toBe(false);
     expect(service.canAttachMedia('INSTRUCTOR')).toBe(true);
     expect(service.canViewMedia('STUDENT')).toBe(true);
+  });
+
+  it('stores replacement bytes before removing the previous storage object', async () => {
+    const provider = new InMemoryMediaProvider();
+    const service = new MediaLibraryService(provider);
+    const original = await service.uploadAsset(new File(['original'], 'doc.pdf', { type: 'application/pdf' }), { uploadedBy: 'editor' });
+    provider.operations.length = 0;
+
+    const replaced = await service.replaceAsset(original.id, new File(['replacement'], 'doc.pdf', { type: 'application/pdf' }), { uploadedBy: 'editor' });
+
+    // Safe replacement ordering: prepare/store the new bytes first, and only
+    // then remove the superseded object. A failed store must preserve old media.
+    expect(replaced).not.toBeNull();
+    expect(replaced?.storageKey).not.toBe(original.storageKey);
+
+    const updateIndex = provider.operations.findIndex((op) => op.startsWith('update:'));
+    const storeIndex = provider.operations.findIndex((op) => op.startsWith('store:'));
+    const deleteIndex = provider.operations.findIndex((op) => op.startsWith('delete:'));
+
+    expect(updateIndex).toBeGreaterThan(-1);
+    expect(storeIndex).toBeGreaterThan(updateIndex);
+    expect(deleteIndex).toBeGreaterThan(storeIndex);
   });
 });

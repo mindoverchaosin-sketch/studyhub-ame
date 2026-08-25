@@ -49,6 +49,13 @@ const rawEnvSchema = z.object({
       return value
     }, z.number().int().positive())
     .optional(),
+  MEDIA_STORAGE_PROVIDER: z.enum(['memory', 's3']).optional(),
+  S3_ENDPOINT: z.string().trim().url().optional(),
+  S3_REGION: z.string().trim().min(1).optional(),
+  S3_BUCKET: z.string().trim().min(1).optional(),
+  S3_ACCESS_KEY_ID: z.string().trim().min(1).optional(),
+  S3_SECRET_ACCESS_KEY: z.string().trim().min(1).optional(),
+  S3_FORCE_PATH_STYLE: z.enum(['true', 'false']).optional(),
   PORT: z
     .preprocess((value) => {
       if (typeof value === 'string' && value.trim() !== '') {
@@ -89,6 +96,13 @@ const env = {
   GOOGLE_API_KEY: parsed.GOOGLE_API_KEY,
   GOOGLE_CLOUD_API_KEY: parsed.GOOGLE_CLOUD_API_KEY,
   MAX_MEDIA_UPLOAD_SIZE_BYTES: parsed.MAX_MEDIA_UPLOAD_SIZE_BYTES ?? 10 * 1024 * 1024,
+  MEDIA_STORAGE_PROVIDER: parsed.MEDIA_STORAGE_PROVIDER ?? 'memory',
+  S3_ENDPOINT: parsed.S3_ENDPOINT,
+  S3_REGION: parsed.S3_REGION,
+  S3_BUCKET: parsed.S3_BUCKET,
+  S3_ACCESS_KEY_ID: parsed.S3_ACCESS_KEY_ID,
+  S3_SECRET_ACCESS_KEY: parsed.S3_SECRET_ACCESS_KEY,
+  S3_FORCE_PATH_STYLE: parsed.S3_FORCE_PATH_STYLE === 'true',
   PORT: parsed.PORT,
   ADMIN_PASSWORD: parsed.ADMIN_PASSWORD,
   SUPER_ADMIN_EMAIL: parsed.SUPER_ADMIN_EMAIL,
@@ -122,6 +136,13 @@ const validatedEnvSchema = z
     ALERT_FAILED_WEBHOOK_WINDOW_MINUTES: z.number().int().positive(),
     AUTH_SECRET: z.string().trim().min(32).optional(),
     MAX_MEDIA_UPLOAD_SIZE_BYTES: z.number().int().positive(),
+    MEDIA_STORAGE_PROVIDER: z.enum(['memory', 's3']),
+    S3_ENDPOINT: z.string().trim().url().optional(),
+    S3_REGION: z.string().trim().min(1).optional(),
+    S3_BUCKET: z.string().trim().min(1).optional(),
+    S3_ACCESS_KEY_ID: z.string().trim().min(1).optional(),
+    S3_SECRET_ACCESS_KEY: z.string().trim().min(1).optional(),
+    S3_FORCE_PATH_STYLE: z.boolean(),
     PORT: z.number().int().positive().optional(),
     ADMIN_PASSWORD: z.string().trim().min(8).optional(),
     SUPER_ADMIN_EMAIL: z.string().trim().email().optional(),
@@ -165,6 +186,11 @@ const validatedEnvSchema = z
       }
       if (!parsedEnv.RAZORPAY_WEBHOOK_SECRET) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'RAZORPAY_WEBHOOK_SECRET is required when PAYMENT_PROVIDER=razorpay.' })
+      }
+    }
+    if (parsedEnv.MEDIA_STORAGE_PROVIDER === 's3') {
+      if (!parsedEnv.S3_REGION || !parsedEnv.S3_BUCKET || !parsedEnv.S3_ACCESS_KEY_ID || !parsedEnv.S3_SECRET_ACCESS_KEY) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'S3_REGION, S3_BUCKET, S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY are required when MEDIA_STORAGE_PROVIDER=s3.' })
       }
     }
   })

@@ -46,14 +46,12 @@ export async function GET(
   }
 
   let sourcePath = initialSourceUrl.pathname
-  let storedMedia = mediaProvider.readBytes ? await mediaProvider.readBytes(sourcePath) : null
+  let storedMedia = await mediaProvider.getObject(sourcePath)
   for (let redirectCount = 0; storedMedia?.redirectPath && redirectCount < MAX_REDIRECTS; redirectCount += 1) {
     const redirectUrl = getAllowedMediaUrl(storedMedia.redirectPath, new URL(sourcePath, requestUrl))
-    if (!redirectUrl) {
-      return NextResponse.json({ error: 'Paper redirect is not allowed' }, { status: 502 })
-    }
+    if (!redirectUrl) return NextResponse.json({ error: 'Paper redirect is not allowed' }, { status: 502 })
     sourcePath = redirectUrl.pathname
-    storedMedia = mediaProvider.readBytes ? await mediaProvider.readBytes(sourcePath) : null
+    storedMedia = await mediaProvider.getObject(sourcePath)
   }
   if (!storedMedia) {
     return NextResponse.json({ error: 'Paper unavailable' }, { status: 502 })

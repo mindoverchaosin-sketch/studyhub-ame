@@ -11,7 +11,7 @@ export type ResourceAdminFilters = {
 export class ResourceRepository {
   async findByLesson(lessonId: string) {
     return prisma.studyMaterial.findMany({
-      where: { lessonId },
+      where: { lessonId, status: 'PUBLISHED', deletedAt: null },
       orderBy: { createdAt: 'asc' },
     })
   }
@@ -47,9 +47,15 @@ export class ResourceRepository {
     return prisma.studyMaterial.findUnique({ where: { id } })
   }
 
+  async findPublishedById(id: string) {
+    return prisma.studyMaterial.findFirst({
+      where: { id, status: 'PUBLISHED', deletedAt: null },
+    })
+  }
+
   async findByLessonAndType(lessonId: string, materialType: StudyMaterialType) {
     return prisma.studyMaterial.findMany({
-      where: { lessonId, materialType },
+      where: { lessonId, materialType, status: 'PUBLISHED', deletedAt: null },
       orderBy: { createdAt: 'asc' },
     })
   }
