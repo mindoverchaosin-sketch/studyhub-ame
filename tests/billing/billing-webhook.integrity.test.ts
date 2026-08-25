@@ -203,7 +203,11 @@ describe('billing webhook integrity', () => {
     expect(mocks.captureError).toHaveBeenCalledOnce()
     expect(mocks.captureError).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'invoice write failed' }),
-      expect.objectContaining({ service: 'billing', operation: 'razorpay-webhook' }),
+      expect.objectContaining({
+        service: 'billing',
+        operation: 'razorpay-webhook',
+        metadata: { provider: 'razorpay', providerEventId: 'evt-1' },
+      }),
     )
   })
 
@@ -287,7 +291,11 @@ describe('billing webhook integrity', () => {
     expect(await response.json()).toEqual({ success: false })
     expect(mocks.captureError).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'Cancelled provider subscription belongs to a different account.' }),
-      expect.objectContaining({ service: 'billing', operation: 'razorpay-webhook' }),
+      expect.objectContaining({
+        service: 'billing',
+        operation: 'razorpay-webhook',
+        metadata: { provider: 'razorpay', providerEventId: 'evt-cancel-foreign' },
+      }),
     )
     expect(mocks.billingWebhookEventUpsert).toHaveBeenCalledWith(expect.objectContaining({
       where: { provider_providerEventId: { provider: 'razorpay', providerEventId: 'evt-cancel-foreign' } },

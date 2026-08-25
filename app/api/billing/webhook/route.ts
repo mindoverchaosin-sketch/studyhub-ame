@@ -105,6 +105,7 @@ async function persistFailedMarker(
       service: 'billing',
       operation: 'webhook-failed-marker',
       severity: 'low',
+      metadata: { provider: 'razorpay', providerEventId },
     })
   }
 }
@@ -433,6 +434,7 @@ export async function POST(request: Request) {
       service: 'billing',
       operation: 'razorpay-webhook',
       severity: 'high',
+      metadata: { provider: 'razorpay', providerEventId },
     })
 
     // The processing transaction rolled back, taking the RECEIVED row with

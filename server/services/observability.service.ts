@@ -1,5 +1,7 @@
 import { getRequestContext } from '@/lib/request-context'
+import { env } from '@/lib/env'
 import { errorReportingService } from '@/server/services/error-reporting.service'
+import { WebhookSinkMonitoringAdapter } from '@/server/services/adapters/webhook-sink-monitoring.adapter'
 
 export interface TraceContext {
   requestId: string
@@ -75,7 +77,12 @@ export class ObservabilityService {
 
   captureError(error: unknown, details: ErrorReportDetails = {}): void {
     for (const adapter of this.adapters) {
-      adapter.captureError?.(error, details)
+      try {
+        adapter.captureError?.(error, details)
+      } catch {
+        // One failing adapter must never prevent the others (or the durable
+        // error report) from running.
+      }
     }
     errorReportingService.reportError(error, {
       service: details.service,
@@ -95,3 +102,9 @@ export class ObservabilityService {
 
 export const observabilityService = new ObservabilityService()
 observabilityService.registerAdapter(new ConsoleMonitoringAdapter())
+
+// Optional durable sink: registered only when configured, so local
+// development stays console-only and startup never depends on the sink.
+if (env.ERROR_REPORT_WEBHOOK_URL) {
+  observabilityService.registerAdapter(new WebhookSinkMonitoringAdapter(env.ERROR_REPORT_WEBHOOK_URL))
+}
