@@ -64,7 +64,7 @@ export async function getTopicLearningPageData(topicSlug: string): Promise<Topic
       title: resource.title,
       description: resource.description,
       type: resource.type,
-      url: resource.url,
+      isPremium: resource.isPremium,
     })),
     questions: questions.map((question) => ({
       id: question.id,

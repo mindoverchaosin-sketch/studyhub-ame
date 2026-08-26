@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   getModuleById: vi.fn(),
   canAccessLesson: vi.fn(),
   canAccessQuiz: vi.fn(),
+  canAccessStudyMaterial: vi.fn(),
   getQuizWithQuestions: vi.fn(),
   getTopicById: vi.fn(),
   getTopicBySlug: vi.fn(),
@@ -35,6 +36,7 @@ vi.mock('@/server/services/content-access.service', () => ({
   contentAccessService: {
     canAccessLesson: mocks.canAccessLesson,
     canAccessQuiz: mocks.canAccessQuiz,
+    canAccessStudyMaterial: mocks.canAccessStudyMaterial,
     canAccessQuestionBank: mocks.canAccessQuestionBank,
     canAccessQuestion: mocks.canAccessQuestion,
     canAccessExamTemplate: mocks.canAccessExamTemplate,
@@ -59,6 +61,7 @@ describe('Phase 6C.2 premium enforcement execution paths', () => {
     mocks.requireStudent.mockResolvedValue({ user: { id: 'student-1', role: 'STUDENT' } })
     mocks.canAccessLesson.mockResolvedValue({ allowed: true })
     mocks.canAccessQuiz.mockResolvedValue({ allowed: true })
+    mocks.canAccessStudyMaterial.mockResolvedValue({ allowed: true })
     mocks.canAccessQuestionBank.mockResolvedValue({ allowed: true })
     mocks.canAccessQuestion.mockResolvedValue({ allowed: true })
     mocks.canAccessExamTemplate.mockResolvedValue({ allowed: true })

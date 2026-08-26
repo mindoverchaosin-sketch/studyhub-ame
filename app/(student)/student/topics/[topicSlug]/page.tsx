@@ -47,6 +47,8 @@ export default async function TopicLearningPage({ params }: TopicLearningPagePro
     return null;
   }
 
+  const resourceAccess = await Promise.all(data.resources.map((resource) => contentAccessService.canAccessStudyMaterial(sessionUser.user.id, resource.isPremium)));
+
   return (
     <div className="min-h-screen bg-[linear-gradient(135deg,_#f8fbff_0%,_#f8fafc_100%)] px-4 py-6 text-slate-950 sm:px-6 lg:px-8">
       <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
@@ -69,8 +71,8 @@ export default async function TopicLearningPage({ params }: TopicLearningPagePro
           <TopicSectionCard title="Resources" description="Reference materials for this topic.">
             {data.resources.length > 0 ? (
               <div className="space-y-3">
-                {data.resources.map((resource) => (
-                  <ResourceCard key={resource.id} {...resource} />
+                {data.resources.map((resource, index) => (
+                  <ResourceCard key={resource.id} id={resource.id} title={resource.title} description={resource.description} type={resource.type} locked={!resourceAccess[index].allowed} lessonId={topic.id} moduleId={learningModule.id} />
                 ))}
               </div>
             ) : (

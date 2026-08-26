@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   getResourcesByTopic: vi.fn(),
   getQuizByTopic: vi.fn(),
   canAccessModule: vi.fn(),
+  canAccessStudyMaterial: vi.fn(),
   getTopicBySlug: vi.fn(),
   getTopicLearningPageData: vi.fn(),
 }))
@@ -25,7 +26,7 @@ vi.mock('@/server/services/course.service', () => ({ getCourseById: mocks.getCou
 vi.mock('@/server/services/progress.service', () => ({ getStudentProgress: mocks.getStudentProgress }))
 vi.mock('@/server/services/resource.service', () => ({ getResourcesByTopic: mocks.getResourcesByTopic }))
 vi.mock('@/server/services/quiz.service', () => ({ getQuizByTopic: mocks.getQuizByTopic }))
-vi.mock('@/server/services/content-access.service', () => ({ contentAccessService: { canAccessModule: mocks.canAccessModule, canAccessLesson: mocks.canAccessModule } }))
+vi.mock('@/server/services/content-access.service', () => ({ contentAccessService: { canAccessModule: mocks.canAccessModule, canAccessLesson: mocks.canAccessModule, canAccessStudyMaterial: mocks.canAccessStudyMaterial } }))
 vi.mock('@/server/services/topic.service', () => ({ getTopicBySlug: mocks.getTopicBySlug }))
 vi.mock('@/features/topics/actions/topic-learning', () => ({ getTopicLearningPageData: mocks.getTopicLearningPageData }))
 
@@ -34,6 +35,7 @@ describe('persisted student learning routes', () => {
     vi.clearAllMocks()
     mocks.requireStudent.mockResolvedValue({ user: { id: 'student-1', role: 'STUDENT' } })
     mocks.canAccessModule.mockResolvedValue({ allowed: true })
+    mocks.canAccessStudyMaterial.mockResolvedValue({ allowed: true })
     mocks.getModuleBySlug.mockResolvedValue({ id: 'module-1', courseId: 'course-1', slug: 'systems', title: 'Systems', description: 'Persisted', isPremium: false })
     mocks.getModuleById.mockResolvedValue({ id: 'module-1', isPremium: false })
     mocks.getModuleWithSections.mockResolvedValue({ sections: [{ id: 'lesson-1', slug: 'hydraulics', title: 'Hydraulics', description: 'Lesson', order: 1 }] })

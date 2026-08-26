@@ -1,15 +1,18 @@
 import Link from "next/link";
-import { FiBookOpen, FiCamera, FiLink, FiPlayCircle } from "react-icons/fi";
+import { FiBookOpen, FiCamera, FiExternalLink, FiLink, FiLock, FiPlayCircle } from "react-icons/fi";
 import { formatResourceLabel } from "@/features/topics/utils/topic-learning";
 
 type ResourceCardProps = {
+  id: string;
   title: string;
   description: string | null;
   type: string;
-  url: string;
+  locked: boolean;
+  lessonId: string;
+  moduleId: string;
 };
 
-export default function ResourceCard({ title, description, type, url }: ResourceCardProps) {
+export default function ResourceCard({ id, title, description, type, locked, lessonId, moduleId }: ResourceCardProps) {
   const iconMap = {
     PDF: FiBookOpen,
     VIDEO: FiPlayCircle,
@@ -30,9 +33,7 @@ export default function ResourceCard({ title, description, type, url }: Resource
           <p className="mt-1 text-sm text-slate-600">{description || formatResourceLabel(type)}</p>
         </div>
       </div>
-      <Link href={url} target="_blank" rel="noreferrer" className="text-sm font-semibold text-blue-600 transition hover:text-blue-700">
-        Open
-      </Link>
+      {locked ? <Link href="/student/dashboard/billing?reason=resource-access&feature=premiumModules" className="inline-flex items-center gap-2 text-sm font-semibold text-amber-700"><FiLock className="h-4 w-4" />Upgrade</Link> : <Link href={`/api/student/resources/${id}?lessonId=${encodeURIComponent(lessonId)}&moduleId=${encodeURIComponent(moduleId)}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 transition hover:text-blue-700"><FiExternalLink className="h-4 w-4" />Open</Link>}
     </div>
   );
 }

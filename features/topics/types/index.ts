@@ -3,7 +3,7 @@ export type TopicLearningResource = {
   title: string;
   description: string | null;
   type: string;
-  url: string;
+  isPremium: boolean;
 };
 
 export type TopicLearningQuestion = {

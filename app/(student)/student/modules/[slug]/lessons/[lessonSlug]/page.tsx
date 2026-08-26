@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireStudent } from "@/auth";
 import { notFound } from "next/navigation";
-import { FiChevronLeft, FiChevronRight, FiDownload, FiFileText, FiFlag, FiList, FiPlayCircle } from "react-icons/fi";
+import { FiChevronLeft, FiChevronRight, FiDownload, FiExternalLink, FiFileText, FiFlag, FiList, FiLock, FiPlayCircle } from "react-icons/fi";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ModuleHeader from "@/components/modules/ModuleHeader";
@@ -31,6 +31,7 @@ export default async function StudentLessonPage({ params }: { params: Promise<{ 
   }
   const data = await getTopicLearningPageData(lessonSlug);
   if (!data) notFound();
+  const resourceAccess = await Promise.all(data.resources.map((resource) => contentAccessService.canAccessStudyMaterial(session.user.id, resource.isPremium)));
 
   return (
     <div className="min-h-screen bg-[linear-gradient(135deg,_#f8fbff_0%,_#f8fafc_100%)] px-4 py-6 text-slate-950 sm:px-6 lg:px-8">
@@ -101,7 +102,20 @@ export default async function StudentLessonPage({ params }: { params: Promise<{ 
               <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.24em] text-slate-600">
                 <FiList className="h-4 w-4" />Notes
               </div>
-              {data.resources.length > 0 ? <ul className="mt-4 space-y-3 text-sm text-slate-700">{data.resources.map((resource) => <li key={resource.id} className="rounded-[1rem] border border-slate-200 bg-white p-3">{resource.title} · {resource.type}</li>)}</ul> : <p className="mt-4 text-sm text-slate-600">No published resources yet.</p>}
+              {data.resources.length > 0 ? <ul className="mt-4 space-y-3 text-sm text-slate-700">{data.resources.map((resource, index) => {
+                const resourceUrl = `/api/student/resources/${resource.id}?lessonId=${encodeURIComponent(data.topic.id)}&moduleId=${encodeURIComponent(persistedModule.id)}`;
+                const isLocked = !resourceAccess[index].allowed;
+                return <li key={resource.id} className="flex flex-col gap-3 rounded-[1rem] border border-slate-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-slate-950">{resource.title}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                      <span>{resource.type}</span>
+                      <span className={`rounded-full px-2 py-0.5 font-semibold ${resource.isPremium ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>{resource.isPremium ? "Premium" : "Free"}</span>
+                    </div>
+                  </div>
+                  {isLocked ? <Link href={`/student/dashboard/billing?reason=resource-access&feature=premiumModules`} className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-amber-700"><FiLock className="h-4 w-4" />Upgrade</Link> : <Link href={resourceUrl} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-blue-700"><FiExternalLink className="h-4 w-4" />Open</Link>}
+                </li>
+              })}</ul> : <p className="mt-4 text-sm text-slate-600">No published resources yet.</p>}
             </div>
 
             <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:justify-between">
