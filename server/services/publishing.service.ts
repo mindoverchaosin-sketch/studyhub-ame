@@ -10,17 +10,14 @@ export type PublishingResult = {
   targetId: string
   targetType: PublishingTargetType
   workflowState: PublishingWorkflowState
-  persistedStatus: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED'
+  persistedStatus: 'DRAFT' | 'IN_REVIEW' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED'
   publishedAt: string | null
   reason?: string | null
 }
 
 export class PublishingService {
-  private static workflowStore = new Map<string, PublishingWorkflowState>()
-
   async submitForReview(targetType: PublishingTargetType, targetId: string): Promise<PublishingResult> {
-    this.setWorkflowState(targetType, targetId, 'IN_REVIEW')
-    return this.transition(targetType, targetId, 'IN_REVIEW', 'DRAFT', undefined, { setPublishedAt: false })
+    return this.transition(targetType, targetId, 'IN_REVIEW', 'IN_REVIEW', undefined, { setPublishedAt: false })
   }
 
   async approve(targetType: PublishingTargetType, targetId: string): Promise<PublishingResult> {
@@ -53,10 +50,10 @@ export class PublishingService {
     return this.transition(targetType, targetId, 'ARCHIVED', 'ARCHIVED', undefined, { setPublishedAt: false })
   }
 
-  private async getCurrent(targetType: PublishingTargetType, targetId: string): Promise<{ workflowState: PublishingWorkflowState; persistedStatus: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED'; publishedAt: string | null }> {
+  private async getCurrent(targetType: PublishingTargetType, targetId: string): Promise<{ workflowState: PublishingWorkflowState; persistedStatus: 'DRAFT' | 'IN_REVIEW' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED'; publishedAt: string | null }> {
     const entity = await this.loadEntity(targetType, targetId)
-    const persistedStatus = (entity && 'status' in entity ? (entity.status as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED') : 'DRAFT') ?? 'DRAFT'
-    const workflowState = this.getWorkflowState(targetType, targetId) ?? (persistedStatus === 'ARCHIVED' ? 'ARCHIVED' : persistedStatus === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT')
+    const persistedStatus = (entity && 'status' in entity ? (entity.status as 'DRAFT' | 'IN_REVIEW' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED') : 'DRAFT') ?? 'DRAFT'
+    const workflowState = persistedStatus === 'ARCHIVED' ? 'ARCHIVED' : persistedStatus === 'PUBLISHED' ? 'PUBLISHED' : persistedStatus === 'IN_REVIEW' ? 'IN_REVIEW' : 'DRAFT'
     const publishedAtValue = entity && 'publishedAt' in entity ? entity.publishedAt : null
 
     return {
@@ -70,7 +67,7 @@ export class PublishingService {
     targetType: PublishingTargetType,
     targetId: string,
     workflowState: PublishingWorkflowState,
-    persistedStatus: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED',
+    persistedStatus: 'DRAFT' | 'IN_REVIEW' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED',
     reason?: string,
     options: { setPublishedAt?: boolean | null } = {},
   ): Promise<PublishingResult> {
@@ -82,9 +79,8 @@ export class PublishingService {
     }
 
     const updated = await this.saveEntity(targetType, targetId, updatePayload)
-    this.setWorkflowState(targetType, targetId, workflowState)
 
-    const nextPersistedStatus = updated && 'status' in updated ? (updated.status as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED') : 'DRAFT'
+    const nextPersistedStatus = updated && 'status' in updated ? (updated.status as 'DRAFT' | 'IN_REVIEW' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED') : 'DRAFT'
     const publishedAtValue = updated && 'publishedAt' in updated ? updated.publishedAt : null
 
     return {
@@ -95,14 +91,6 @@ export class PublishingService {
       publishedAt: publishedAtValue ? new Date(publishedAtValue).toISOString() : null,
       reason: reason ?? null,
     }
-  }
-
-  private getWorkflowState(targetType: PublishingTargetType, targetId: string) {
-    return PublishingService.workflowStore.get(`${targetType}:${targetId}`)
-  }
-
-  private setWorkflowState(targetType: PublishingTargetType, targetId: string, workflowState: PublishingWorkflowState) {
-    PublishingService.workflowStore.set(`${targetType}:${targetId}`, workflowState)
   }
 
   private async loadEntity(targetType: PublishingTargetType, targetId: string) {

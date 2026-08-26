@@ -29,6 +29,7 @@ enum Difficulty {
 
 enum Status {
   DRAFT
+  IN_REVIEW
   PUBLISHED
   ARCHIVED
   SCHEDULED
