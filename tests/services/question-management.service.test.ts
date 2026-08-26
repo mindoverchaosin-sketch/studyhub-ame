@@ -95,4 +95,24 @@ describe('QuestionManagementService', () => {
     expect(result.total).toBe(1)
     expect(questionRepositoryMock.findForAdmin).toHaveBeenCalledWith(expect.objectContaining({ search: 'hydraulics', status: 'PUBLISHED', difficulty: 'BEGINNER' }))
   })
+
+  it('returns not-found result for archiveQuestion when the question does not exist', async () => {
+    questionRepositoryMock.findById.mockResolvedValue(null)
+
+    const result = await service.archiveQuestion('ghost')
+
+    expect(result.success).toBe(false)
+    expect(result.errors).toEqual([{ field: 'questionBankId', message: 'Question not found' }])
+    expect(questionRepositoryMock.archive).not.toHaveBeenCalled()
+  })
+
+  it('returns not-found result for unarchiveQuestion when the question does not exist', async () => {
+    questionRepositoryMock.findById.mockResolvedValue(null)
+
+    const result = await service.unarchiveQuestion('ghost')
+
+    expect(result.success).toBe(false)
+    expect(result.errors).toEqual([{ field: 'questionBankId', message: 'Question not found' }])
+    expect(questionRepositoryMock.update).not.toHaveBeenCalled()
+  })
 })

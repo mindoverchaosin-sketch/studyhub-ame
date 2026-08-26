@@ -191,6 +191,38 @@ describe('StudyMaterialManagementService', () => {
     expect(lessonRepository.findById).toHaveBeenCalledWith('l1')
   })
 
+  it('rejects archiveResource when the study material does not exist', async () => {
+    const { resourceRepository } = setupRepositoryMocks({ resourceRow: null })
+    const service = await importService()
+
+    await expect(service.archiveResource('ghost')).rejects.toThrow('Study material not found')
+    expect(resourceRepository.update).not.toHaveBeenCalled()
+  })
+
+  it('rejects publishResource when the study material does not exist', async () => {
+    const { resourceRepository } = setupRepositoryMocks({ resourceRow: null })
+    const service = await importService()
+
+    await expect(service.publishResource('ghost')).rejects.toThrow('Study material not found')
+    expect(resourceRepository.update).not.toHaveBeenCalled()
+  })
+
+  it('rejects unpublishResource when the study material does not exist', async () => {
+    const { resourceRepository } = setupRepositoryMocks({ resourceRow: null })
+    const service = await importService()
+
+    await expect(service.unpublishResource('ghost')).rejects.toThrow('Study material not found')
+    expect(resourceRepository.update).not.toHaveBeenCalled()
+  })
+
+  it('rejects unarchiveResource when the study material does not exist', async () => {
+    const { resourceRepository } = setupRepositoryMocks({ resourceRow: null })
+    const service = await importService()
+
+    await expect(service.unarchiveResource('ghost')).rejects.toThrow('Study material not found')
+    expect(resourceRepository.update).not.toHaveBeenCalled()
+  })
+
   it.each([
     'https://example.com/notes',
     'http://localhost/notes',

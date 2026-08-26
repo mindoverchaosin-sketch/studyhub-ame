@@ -73,6 +73,7 @@ describe('ModuleManagementService', () => {
       update: vi.fn().mockResolvedValue({ id: 'm4', status: 'PUBLISHED', isPremium: false }),
       setPublishState: vi.fn(),
       getModuleDetail: vi.fn(),
+      findById: vi.fn().mockResolvedValue({ id: 'm4' }),
     }
 
     vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository }))
@@ -131,6 +132,7 @@ describe('ModuleManagementService', () => {
       update: vi.fn().mockResolvedValue({ id: 'm3', status: 'ARCHIVED' }),
       setPublishState: vi.fn().mockResolvedValue({ id: 'm3', status: 'DRAFT' }),
       getModuleDetail: vi.fn(),
+      findById: vi.fn().mockResolvedValue({ id: 'm3' }),
     }
 
     vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository }))
@@ -144,5 +146,45 @@ describe('ModuleManagementService', () => {
     expect(moduleRepository.setPublishState).toHaveBeenCalledWith('m3', 'DRAFT')
     expect(archived.status).toBe('ARCHIVED')
     expect(restored.status).toBe('DRAFT')
+  })
+
+  it('throws domain not-found for archiveModule when the module does not exist', async () => {
+    const moduleRepository = {
+      findModulesForAdmin: vi.fn(),
+      countModulesForAdmin: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      setPublishState: vi.fn(),
+      findById: vi.fn().mockResolvedValue(null),
+      getModuleDetail: vi.fn(),
+    }
+
+    vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository }))
+
+    const { ModuleManagementService } = await import('../../server/services/module-management.service')
+    const service = new ModuleManagementService()
+
+    await expect(service.archiveModule('ghost')).rejects.toThrow('Module not found')
+    expect(moduleRepository.update).not.toHaveBeenCalled()
+  })
+
+  it('throws domain not-found for unarchiveModule when the module does not exist', async () => {
+    const moduleRepository = {
+      findModulesForAdmin: vi.fn(),
+      countModulesForAdmin: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      setPublishState: vi.fn(),
+      findById: vi.fn().mockResolvedValue(null),
+      getModuleDetail: vi.fn(),
+    }
+
+    vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository }))
+
+    const { ModuleManagementService } = await import('../../server/services/module-management.service')
+    const service = new ModuleManagementService()
+
+    await expect(service.unarchiveModule('ghost')).rejects.toThrow('Module not found')
+    expect(moduleRepository.setPublishState).not.toHaveBeenCalled()
   })
 })

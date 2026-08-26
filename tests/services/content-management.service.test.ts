@@ -36,6 +36,7 @@ describe('content management services', () => {
       update: vi.fn().mockResolvedValue({ id: 'm2', status: 'ARCHIVED' }),
       setPublishState: vi.fn().mockResolvedValue({ id: 'm2', status: 'DRAFT' }),
       getModuleDetail: vi.fn(),
+      findById: vi.fn().mockResolvedValue({ id: 'm2' }),
     }
 
     vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository }))
@@ -60,6 +61,7 @@ describe('content management services', () => {
       create: vi.fn(),
       update: vi.fn().mockResolvedValueOnce({ id: 'r1', status: 'PUBLISHED' }).mockResolvedValueOnce({ id: 'r1', status: 'DRAFT' }),
       reorder: vi.fn().mockResolvedValue([{ id: 'r2' }, { id: 'r1' }]),
+      findById: vi.fn().mockResolvedValue({ id: 'r1' }),
     }
 
     vi.doMock('@/server/repositories/resource.repository', () => ({ resourceRepository }))

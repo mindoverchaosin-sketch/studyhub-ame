@@ -1,6 +1,7 @@
 import type { QuestionDTO } from '@/server/application/dto/question.dto'
 import { questionBankRepository } from '@/server/repositories/question-bank.repository'
 import { questionRepository } from '@/server/repositories/question.repository'
+import { NotFoundError } from '@/auth'
 
 export type QuestionManagementStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
 
@@ -208,6 +209,11 @@ export class QuestionManagementService {
   }
 
   async archiveQuestion(questionId: string): Promise<QuestionManagementResult> {
+    const existing = await questionRepository.findById(questionId)
+    if (!existing) {
+      return { success: false, errors: [{ field: 'questionBankId', message: 'Question not found' }] }
+    }
+
     const updated = await questionRepository.archive(questionId)
     return {
       success: true,
@@ -217,6 +223,11 @@ export class QuestionManagementService {
   }
 
   async unarchiveQuestion(questionId: string): Promise<QuestionManagementResult> {
+    const existing = await questionRepository.findById(questionId)
+    if (!existing) {
+      return { success: false, errors: [{ field: 'questionBankId', message: 'Question not found' }] }
+    }
+
     const updated = await questionRepository.update(questionId, { status: 'DRAFT' } as any)
     return {
       success: true,

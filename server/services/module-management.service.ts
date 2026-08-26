@@ -1,5 +1,6 @@
 import type { ModuleDetailDTO, ModuleDirectoryDTO, ModuleDirectoryFilters, ModuleManagementActionResult } from '@/server/application/dto/module-management.dto'
 import { moduleRepository } from '@/server/repositories/module.repository'
+import { NotFoundError } from '@/auth'
 
 function toStatus(status: string): 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' {
   return (status as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED') ?? 'DRAFT'
@@ -108,6 +109,9 @@ export class ModuleManagementService {
   }
 
   async updateModule(moduleId: string, input: { title?: string; slug?: string; moduleNumber?: string; description?: string; status?: string; difficulty?: string; estimatedHours?: number; displayOrder?: number; isPremium?: boolean }) {
+    const module = await moduleRepository.findById(moduleId)
+    if (!module) throw new NotFoundError('Module not found')
+
     const updated = await moduleRepository.update(moduleId, {
       ...(input.title ? { title: input.title } : {}),
       ...(input.slug ? { slug: input.slug } : {}),
@@ -124,11 +128,17 @@ export class ModuleManagementService {
   }
 
   async archiveModule(moduleId: string): Promise<ModuleManagementActionResult> {
+    const module = await moduleRepository.findById(moduleId)
+    if (!module) throw new NotFoundError('Module not found')
+
     const updated = await moduleRepository.update(moduleId, { status: 'ARCHIVED' } as any)
     return { id: updated.id, status: updated.status }
   }
 
   async unarchiveModule(moduleId: string): Promise<ModuleManagementActionResult> {
+    const module = await moduleRepository.findById(moduleId)
+    if (!module) throw new NotFoundError('Module not found')
+
     const updated = await moduleRepository.setPublishState(moduleId, 'DRAFT')
     return { id: updated.id, status: updated.status }
   }

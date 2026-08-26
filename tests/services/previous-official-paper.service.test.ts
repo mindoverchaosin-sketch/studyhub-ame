@@ -57,6 +57,45 @@ describe('PreviousOfficialPaperService', () => {
     expect(repository.update).toHaveBeenCalledTimes(3)
   })
 
+  it('throws domain not-found for archive when the paper does not exist', async () => {
+    const repository = { findForAdmin: vi.fn(), findPublished: vi.fn(), findById: vi.fn().mockResolvedValue(null), findPublishedById: vi.fn(), create: vi.fn(), update: vi.fn() }
+    vi.doMock('@/server/repositories/previous-official-paper.repository', () => ({ previousOfficialPaperRepository: repository }))
+    vi.doMock('@/server/repositories/course.repository', () => ({ courseRepository: { findById: vi.fn() } }))
+    vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository: { findById: vi.fn() } }))
+    vi.doMock('@/server/services/content-access.service', () => ({ contentAccessService: { canAccessStudyMaterial: vi.fn() } }))
+    vi.doMock('@/server/services/study-material-management.service', () => ({ validateStudyMaterialUrl: (value: string) => value }))
+
+    const { previousOfficialPaperService } = await import('@/server/services/previous-official-paper.service')
+    await expect(previousOfficialPaperService.archive('ghost')).rejects.toThrow('Paper not found')
+    expect(repository.update).not.toHaveBeenCalled()
+  })
+
+  it('throws domain not-found for publish when the paper does not exist', async () => {
+    const repository = { findForAdmin: vi.fn(), findPublished: vi.fn(), findById: vi.fn().mockResolvedValue(null), findPublishedById: vi.fn(), create: vi.fn(), update: vi.fn() }
+    vi.doMock('@/server/repositories/previous-official-paper.repository', () => ({ previousOfficialPaperRepository: repository }))
+    vi.doMock('@/server/repositories/course.repository', () => ({ courseRepository: { findById: vi.fn() } }))
+    vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository: { findById: vi.fn() } }))
+    vi.doMock('@/server/services/content-access.service', () => ({ contentAccessService: { canAccessStudyMaterial: vi.fn() } }))
+    vi.doMock('@/server/services/study-material-management.service', () => ({ validateStudyMaterialUrl: (value: string) => value }))
+
+    const { previousOfficialPaperService } = await import('@/server/services/previous-official-paper.service')
+    await expect(previousOfficialPaperService.publish('ghost')).rejects.toThrow('Paper not found')
+    expect(repository.update).not.toHaveBeenCalled()
+  })
+
+  it('throws domain not-found for unpublish when the paper does not exist', async () => {
+    const repository = { findForAdmin: vi.fn(), findPublished: vi.fn(), findById: vi.fn().mockResolvedValue(null), findPublishedById: vi.fn(), create: vi.fn(), update: vi.fn() }
+    vi.doMock('@/server/repositories/previous-official-paper.repository', () => ({ previousOfficialPaperRepository: repository }))
+    vi.doMock('@/server/repositories/course.repository', () => ({ courseRepository: { findById: vi.fn() } }))
+    vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository: { findById: vi.fn() } }))
+    vi.doMock('@/server/services/content-access.service', () => ({ contentAccessService: { canAccessStudyMaterial: vi.fn() } }))
+    vi.doMock('@/server/services/study-material-management.service', () => ({ validateStudyMaterialUrl: (value: string) => value }))
+
+    const { previousOfficialPaperService } = await import('@/server/services/previous-official-paper.service')
+    await expect(previousOfficialPaperService.unpublish('ghost')).rejects.toThrow('Paper not found')
+    expect(repository.update).not.toHaveBeenCalled()
+  })
+
   it('returns premium access decisions without exposing media to student DTOs', async () => {
     const repository = { findForAdmin: vi.fn(), findPublished: vi.fn(), findById: vi.fn(), findPublishedById: vi.fn().mockResolvedValue(paper({ isPremium: true })), create: vi.fn(), update: vi.fn() }
     const access = vi.fn().mockResolvedValue({ allowed: false, requiredFeature: 'premiumModules', reason: 'Premium module access required' })

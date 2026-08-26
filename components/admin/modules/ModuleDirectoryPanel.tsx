@@ -9,6 +9,7 @@ interface ModuleDirectoryPanelProps {
   status: string;
   sortBy: string;
   page: number;
+  basePath?: string;
 }
 
 type FilterValue = "ALL" | "DGCA" | "EASA" | "BOTH" | "DRAFT" | "PUBLISHED" | "ARCHIVED" | "SCHEDULED";
@@ -18,7 +19,7 @@ function formatDate(value: string) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function buildHref(current: string, options: Record<string, string | number | undefined>) {
+function buildHref(current: string, options: Record<string, string | number | undefined>, basePath = "/admin/modules") {
   const params = new URLSearchParams(current);
 
   Object.entries(options).forEach(([key, value]) => {
@@ -31,7 +32,7 @@ function buildHref(current: string, options: Record<string, string | number | un
   });
 
   const queryString = params.toString();
-  return queryString ? `/admin/modules?${queryString}` : "/admin/modules";
+  return queryString ? `${basePath}?${queryString}` : basePath;
 }
 
 function statusTone(status: string) {
@@ -47,7 +48,7 @@ function statusTone(status: string) {
   }
 }
 
-export default function ModuleDirectoryPanel({ directory, query, examType, status, sortBy, page }: ModuleDirectoryPanelProps) {
+export default function ModuleDirectoryPanel({ directory, query, examType, status, sortBy, page, basePath = "/admin/modules" }: ModuleDirectoryPanelProps) {
   const baseQuery = new URLSearchParams();
   if (query) baseQuery.set("query", query);
   if (examType && examType !== "ALL") baseQuery.set("examType", examType);
@@ -71,7 +72,7 @@ export default function ModuleDirectoryPanel({ directory, query, examType, statu
               { label: "EASA", value: "EASA" },
               { label: "BOTH", value: "BOTH" },
             ].map((option) => {
-              const href = buildHref(currentParams, { examType: option.value, page: 1 });
+              const href = buildHref(currentParams, { examType: option.value, page: 1 }, basePath);
               const active = examType === option.value;
 
               return (
@@ -99,7 +100,7 @@ export default function ModuleDirectoryPanel({ directory, query, examType, statu
         </div>
 
         <div className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
-          <form method="get" action="/admin/modules" className="flex w-full max-w-xl items-center gap-2">
+          <form method="get" action={basePath} className="flex w-full max-w-xl items-center gap-2">
             <input type="text" name="query" defaultValue={query} placeholder="Search modules" className="w-full rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 outline-none focus:border-slate-500" />
             <input type="hidden" name="examType" value={examType} />
             <input type="hidden" name="status" value={status} />
@@ -115,7 +116,7 @@ export default function ModuleDirectoryPanel({ directory, query, examType, statu
               { label: "Archived", value: "ARCHIVED" },
               { label: "Scheduled", value: "SCHEDULED" },
             ].map((option) => {
-              const href = buildHref(currentParams, { status: option.value, page: 1 });
+              const href = buildHref(currentParams, { status: option.value, page: 1 }, basePath);
               const active = status === option.value;
 
               return (
@@ -132,7 +133,7 @@ export default function ModuleDirectoryPanel({ directory, query, examType, statu
               { label: "Title", value: "title" },
               { label: "Created", value: "created" },
             ].map((option) => {
-              const href = buildHref(currentParams, { sortBy: option.value, page: 1 });
+              const href = buildHref(currentParams, { sortBy: option.value, page: 1 }, basePath);
               const active = sortBy === option.value;
 
               return (
@@ -156,7 +157,7 @@ export default function ModuleDirectoryPanel({ directory, query, examType, statu
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-base font-semibold text-slate-900">{module.title}</h3>
-                    <Link href={`/admin/modules/${module.id}`} className="text-sm font-medium text-slate-600 underline-offset-2 hover:underline">
+                    <Link href={`${basePath}/${module.id}`} className="text-sm font-medium text-slate-600 underline-offset-2 hover:underline">
                       View details
                     </Link>
                   </div>
@@ -190,10 +191,10 @@ export default function ModuleDirectoryPanel({ directory, query, examType, statu
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-600">Page {directory.pagination.page} of {directory.pagination.totalPages}</p>
         <div className="flex gap-2">
-          <Link href={buildHref(currentParams, { page: Math.max(1, page - 1) })} className={`rounded-full border px-3 py-2 text-sm font-medium ${page <= 1 ? "pointer-events-none border-slate-200 text-slate-400" : "border-slate-300 text-slate-700 hover:bg-slate-50"}`}>
+          <Link href={buildHref(currentParams, { page: Math.max(1, page - 1) }, basePath)} className={`rounded-full border px-3 py-2 text-sm font-medium ${page <= 1 ? "pointer-events-none border-slate-200 text-slate-400" : "border-slate-300 text-slate-700 hover:bg-slate-50"}`}>
             Previous
           </Link>
-          <Link href={buildHref(currentParams, { page: Math.min(directory.pagination.totalPages, page + 1) })} className={`rounded-full border px-3 py-2 text-sm font-medium ${page >= directory.pagination.totalPages ? "pointer-events-none border-slate-200 text-slate-400" : "border-slate-300 text-slate-700 hover:bg-slate-50"}`}>
+          <Link href={buildHref(currentParams, { page: Math.min(directory.pagination.totalPages, page + 1) }, basePath)} className={`rounded-full border px-3 py-2 text-sm font-medium ${page >= directory.pagination.totalPages ? "pointer-events-none border-slate-200 text-slate-400" : "border-slate-300 text-slate-700 hover:bg-slate-50"}`}>
             Next
           </Link>
         </div>

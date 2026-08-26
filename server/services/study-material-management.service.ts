@@ -1,6 +1,7 @@
 import type { ResourceDTO } from '@/server/application/dto/resource.dto'
 import { resourceRepository } from '@/server/repositories/resource.repository'
 import { lessonRepository } from '@/server/repositories/lesson.repository'
+import { NotFoundError } from '@/auth'
 
 export type ResourceCreateInput = {
   moduleId: string
@@ -123,21 +124,33 @@ export class StudyMaterialManagementService {
   }
 
   async archiveResource(resourceId: string): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' }> {
+    const resource = await resourceRepository.findById(resourceId)
+    if (!resource) throw new NotFoundError('Study material not found')
+
     const updated = await resourceRepository.update(resourceId, { status: 'ARCHIVED' } as any)
     return { id: updated.id, status: updated.status }
   }
 
   async publishResource(resourceId: string): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' }> {
+    const resource = await resourceRepository.findById(resourceId)
+    if (!resource) throw new NotFoundError('Study material not found')
+
     const updated = await resourceRepository.update(resourceId, { status: 'PUBLISHED' } as any)
     return { id: updated.id, status: updated.status }
   }
 
   async unpublishResource(resourceId: string): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' }> {
+    const resource = await resourceRepository.findById(resourceId)
+    if (!resource) throw new NotFoundError('Study material not found')
+
     const updated = await resourceRepository.update(resourceId, { status: 'DRAFT' } as any)
     return { id: updated.id, status: updated.status }
   }
 
   async unarchiveResource(resourceId: string): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' }> {
+    const resource = await resourceRepository.findById(resourceId)
+    if (!resource) throw new NotFoundError('Study material not found')
+
     const updated = await resourceRepository.update(resourceId, { status: 'DRAFT' } as any)
     return { id: updated.id, status: updated.status }
   }

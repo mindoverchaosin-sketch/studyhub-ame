@@ -4,6 +4,7 @@ import { moduleRepository } from '@/server/repositories/module.repository'
 import { previousOfficialPaperRepository, type PreviousOfficialPaperFilters } from '@/server/repositories/previous-official-paper.repository'
 import { contentAccessService } from '@/server/services/content-access.service'
 import { validateStudyMaterialUrl } from '@/server/services/study-material-management.service'
+import { NotFoundError } from '@/auth'
 
 export type PreviousOfficialPaperCreateInput = {
   courseId: string
@@ -111,14 +112,23 @@ export class PreviousOfficialPaperService {
   }
 
   async archive(id: string) {
+    const existing = await previousOfficialPaperRepository.findById(id)
+    if (!existing) throw new NotFoundError('Paper not found')
+
     return mapPaper(await previousOfficialPaperRepository.update(id, { status: 'ARCHIVED' }))
   }
 
   async publish(id: string) {
+    const existing = await previousOfficialPaperRepository.findById(id)
+    if (!existing) throw new NotFoundError('Paper not found')
+
     return mapPaper(await previousOfficialPaperRepository.update(id, { status: 'PUBLISHED', publishedAt: new Date() }))
   }
 
   async unpublish(id: string) {
+    const existing = await previousOfficialPaperRepository.findById(id)
+    if (!existing) throw new NotFoundError('Paper not found')
+
     return mapPaper(await previousOfficialPaperRepository.update(id, { status: 'DRAFT', publishedAt: null }))
   }
 
