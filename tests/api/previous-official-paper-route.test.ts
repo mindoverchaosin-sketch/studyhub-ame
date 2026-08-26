@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
+import { mediaProvider } from '@/services/media/provider'
 
 const authMock = vi.fn()
 const accessMock = vi.fn()
@@ -8,11 +9,13 @@ vi.mock('@/server/services/previous-official-paper.service', () => ({ previousOf
 const paper = { id: 'paper-1', courseId: 'course-1', moduleId: 'module-1', year: 2025, title: 'Official Paper', paperType: 'Official PDF', mediaPath: '/media/paper.pdf', isPremium: false, status: 'PUBLISHED' as const, courseTitle: 'DGCA', moduleTitle: 'Air Navigation', publishedAt: new Date(), createdAt: new Date(), updatedAt: new Date() }
 
 describe('previous official paper view route', () => {
+  let getObjectSpy: MockInstance
+
   beforeEach(async () => {
     vi.clearAllMocks()
     vi.restoreAllMocks()
     vi.stubGlobal('fetch', vi.fn())
-    const { mediaProvider } = await import('@/services/media/provider')
+    getObjectSpy = vi.spyOn(mediaProvider, 'getObject')
     await mediaProvider.storeBytes?.('/media/paper.pdf', new TextEncoder().encode('%PDF-1.7 test'), 'application/pdf')
   })
 
@@ -35,6 +38,7 @@ describe('previous official paper view route', () => {
     const response = await GET(new Request('https://app.test/api/student/previous-papers/paper-1'), { params: Promise.resolve({ id: 'paper-1' }) })
     expect(response.status).toBe(404)
     expect(fetch).not.toHaveBeenCalled()
+    expect(getObjectSpy).not.toHaveBeenCalled()
   })
 
   it('denies premium papers without premiumModules', async () => {
@@ -44,6 +48,7 @@ describe('previous official paper view route', () => {
     const response = await GET(new Request('https://app.test/api/student/previous-papers/paper-1'), { params: Promise.resolve({ id: 'paper-1' }) })
     expect(response.status).toBe(403)
     expect(fetch).not.toHaveBeenCalled()
+    expect(getObjectSpy).not.toHaveBeenCalled()
   })
 
   it('allows a free or entitled paper through the protected boundary', async () => {
@@ -62,18 +67,18 @@ describe('previous official paper view route', () => {
     const response = await GET(new Request('https://app.test/api/student/previous-papers/paper-1'), { params: Promise.resolve({ id: 'paper-1' }) })
     expect(response.status).toBe(502)
     expect(fetch).not.toHaveBeenCalled()
+    expect(getObjectSpy).not.toHaveBeenCalled()
   })
 
   it('rejects unsafe redirects and mismatched MIME types', async () => {
     authMock.mockResolvedValue({ user: { id: 'student-1' } })
     accessMock.mockResolvedValue({ paper, allowed: true })
-    const { mediaProvider } = await import('@/services/media/provider')
-    vi.spyOn(mediaProvider, 'readBytes').mockResolvedValueOnce({ body: new Uint8Array(), mimeType: 'application/pdf', redirectPath: 'http://127.0.0.1/admin' })
+    vi.spyOn(mediaProvider, 'getObject').mockResolvedValueOnce({ body: new Uint8Array(), mimeType: 'application/pdf', redirectPath: 'http://127.0.0.1/admin' })
     const { GET } = await getRoute()
     const redirectResponse = await GET(new Request('https://app.test/api/student/previous-papers/paper-1'), { params: Promise.resolve({ id: 'paper-1' }) })
     expect(redirectResponse.status).toBe(502)
 
-    vi.spyOn(mediaProvider, 'readBytes').mockResolvedValue({ body: new TextEncoder().encode('<html>'), mimeType: 'text/html' })
+    vi.spyOn(mediaProvider, 'getObject').mockResolvedValue({ body: new TextEncoder().encode('<html>'), mimeType: 'text/html' })
     const mimeResponse = await GET(new Request('https://app.test/api/student/previous-papers/paper-1'), { params: Promise.resolve({ id: 'paper-1' }) })
     expect(mimeResponse.status).toBe(502)
   })
