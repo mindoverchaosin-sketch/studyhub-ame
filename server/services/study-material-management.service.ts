@@ -1,8 +1,10 @@
 import type { ResourceDTO } from '@/server/application/dto/resource.dto'
 import { resourceRepository } from '@/server/repositories/resource.repository'
+import { lessonRepository } from '@/server/repositories/lesson.repository'
 
 export type ResourceCreateInput = {
   moduleId: string
+  lessonId: string
   title: string
   description?: string | null
   type: string
@@ -20,6 +22,7 @@ export type ResourceUpdateInput = {
   isPremium?: boolean
   status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED'
   displayOrder?: number
+  lessonId?: string
 }
 
 export function validateStudyMaterialUrl(value: string): string {
@@ -36,6 +39,20 @@ export function validateStudyMaterialUrl(value: string): string {
   }
 
   return url
+}
+
+async function resolveLessonForBinding(lessonId: string, expectedModuleId?: string) {
+  const lesson = await lessonRepository.findById(lessonId)
+
+  if (!lesson || lesson.deletedAt) {
+    throw new Error(`Lesson for binding not found: ${lessonId}`)
+  }
+
+  if (expectedModuleId !== undefined && lesson.moduleId !== expectedModuleId) {
+    throw new Error('Lesson does not belong to the requested module')
+  }
+
+  return lesson
 }
 
 export class StudyMaterialManagementService {
@@ -59,9 +76,14 @@ export class StudyMaterialManagementService {
   }
 
   async createResource(input: ResourceCreateInput): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' }> {
+    if (!input.lessonId) {
+      throw new Error('lessonId is required to bind a study material to a lesson')
+    }
     const resourceUrl = validateStudyMaterialUrl(input.url)
+    const lesson = await resolveLessonForBinding(input.lessonId, input.moduleId)
     const created = await resourceRepository.create({
-      moduleId: input.moduleId,
+      moduleId: lesson.moduleId,
+      lessonId: lesson.id,
       title: input.title,
       materialType: input.type as any,
       url: resourceUrl,
@@ -74,12 +96,27 @@ export class StudyMaterialManagementService {
 
   async updateResource(resourceId: string, input: ResourceUpdateInput): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' }> {
     const resourceUrl = input.url === undefined ? undefined : validateStudyMaterialUrl(input.url)
+    let bindingUpdate: { lessonId: string; moduleId: string } | undefined
+
+    if (input.lessonId !== undefined) {
+      const resource = await resourceRepository.findById(resourceId)
+      if (!resource) {
+        throw new Error(`Study material not found: ${resourceId}`)
+      }
+      const lesson = await resolveLessonForBinding(input.lessonId)
+      if (lesson.moduleId !== resource.moduleId) {
+        throw new Error('Target lesson belongs to a different module than the study material')
+      }
+      bindingUpdate = { lessonId: lesson.id, moduleId: resource.moduleId }
+    }
+
     const updated = await resourceRepository.update(resourceId, {
       ...(input.title ? { title: input.title } : {}),
       ...(input.type ? { materialType: input.type as any } : {}),
       ...(resourceUrl ? { url: resourceUrl } : {}),
       ...(input.isPremium !== undefined ? { isPremium: input.isPremium } : {}),
       ...(input.status ? { status: input.status } : {}),
+      ...bindingUpdate,
     } as any)
 
     return { id: updated.id, status: updated.status }

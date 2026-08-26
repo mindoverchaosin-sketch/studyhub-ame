@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { requirePermission } from '@/auth'
 import { withAuditLogging } from '@/server/actions/audit-helpers'
-import { StudyMaterialManagementService } from '@/server/services/study-material-management.service'
+import { StudyMaterialManagementService, type ResourceCreateInput, type ResourceUpdateInput } from '@/server/services/study-material-management.service'
 
 const studyMaterialManagementService = new StudyMaterialManagementService()
 
@@ -15,7 +15,7 @@ export async function createStudyMaterialAction(input: Record<string, unknown>) 
     entityType: 'RESOURCE',
     metadata: { source: 'study-materials' },
     run: async () => {
-      const created = await studyMaterialManagementService.createResource(input as any)
+      const created = await studyMaterialManagementService.createResource(input as unknown as ResourceCreateInput)
       revalidatePath('/admin/modules')
       return created
     },
@@ -32,7 +32,7 @@ export async function updateStudyMaterialAction(resourceId: string, input: Recor
     entityId: resourceId,
     metadata: { source: 'study-materials' },
     run: async () => {
-      const updated = await studyMaterialManagementService.updateResource(resourceId, input as any)
+      const updated = await studyMaterialManagementService.updateResource(resourceId, input as unknown as ResourceUpdateInput)
       revalidatePath('/admin/modules')
       return updated
     },
