@@ -58,6 +58,7 @@ const submitAttemptMock = vi.fn()
 const listExamHistoryMock = vi.fn()
 const createTemplateMock = vi.fn()
 const activateTemplateMock = vi.fn()
+const getTemplateMock = vi.fn()
 const bulkUpdateQuestionStatusMock = vi.fn()
 const getGoalProgressMock = vi.fn()
 const updateGoalsMock = vi.fn()
@@ -66,6 +67,7 @@ const getProgressInsightsMock = vi.fn()
 const getContinueLearningMock = vi.fn()
 const generateDailyPlanMock = vi.fn()
 const processCompletedAttemptMock = vi.fn()
+const canAccessExamTemplateMock = vi.fn()
 
 const editorialWorkflowServiceMocks = {
   addLessonReviewComment: vi.fn(),
@@ -117,9 +119,15 @@ vi.mock('@/server/services/exam-completion.service', () => ({
 vi.mock('@/server/services/exam-template.service', () => ({
   createTemplate: createTemplateMock,
   activateTemplate: activateTemplateMock,
+  getTemplate: getTemplateMock,
 }))
 vi.mock('@/server/services/question.service', () => ({
   bulkUpdateQuestionStatus: bulkUpdateQuestionStatusMock,
+}))
+vi.mock('@/server/services/content-access.service', () => ({
+  contentAccessService: {
+    canAccessExamTemplate: canAccessExamTemplateMock,
+  },
 }))
 vi.mock('@/server/services/editorial-workflow.service', () => editorialWorkflowServiceMocks)
 vi.mock('@/server/services/goal-tracking.service', () => ({
@@ -166,15 +174,19 @@ describe.sequential('authorization regression tests', () => {
 
     await expect(generateAttempt('template-1', 'student-2')).rejects.toThrow(ForbiddenError)
     expect(loadAttemptMock).not.toHaveBeenCalled()
+    expect(getTemplateMock).not.toHaveBeenCalled()
+    expect(canAccessExamTemplateMock).not.toHaveBeenCalled()
   })
 
   it('should allow admin to generate an exam attempt for any student', async () => {
     requireStudentMock.mockResolvedValue({ user: { id: 'admin-1', role: 'ADMIN' } })
+    getTemplateMock.mockResolvedValue({ id: 'template-1', isPremium: false })
     generateExamAttemptMock.mockResolvedValue({ id: 'generated-attempt' })
     const { generateAttempt } = await import('../../server/actions/exam.actions')
 
     await expect(generateAttempt('template-1', 'student-2')).resolves.toEqual({ id: 'generated-attempt' })
     expect(generateExamAttemptMock).toHaveBeenCalledWith('template-1', 'student-2')
+    expect(canAccessExamTemplateMock).not.toHaveBeenCalled()
   })
 
   it('should forbid non-admin student from creating an exam template', async () => {
@@ -187,7 +199,6 @@ describe.sequential('authorization regression tests', () => {
 
   it('should deny anonymous admin workflow action requests', async () => {
     requirePermissionMock.mockImplementation(async () => {
-      console.log('requirePermissionMock called')
       throw new UnauthorizedError()
     })
     const { bulkPublishQuestionsAction } = await import('../../features/admin/actions/editorial-workflow.actions')
@@ -214,15 +225,11 @@ describe.sequential('authorization regression tests', () => {
   })
 
   it('should forbid cross-user exam attempt loading', async () => {
-    console.log('before import loadAttemptAction')
     requireStudentMock.mockResolvedValue({ user: { id: 'student-1', role: 'STUDENT' } })
     loadAttemptMock.mockResolvedValue({ id: 'attempt-1', studentId: 'student-2' })
     const { loadAttemptAction } = await import('../../server/actions/exam-attempt.actions')
-    console.log('after import loadAttemptAction')
 
-    console.log('before call loadAttemptAction')
     await expect(loadAttemptAction('attempt-1')).rejects.toThrow(ForbiddenError)
-    console.log('after expect loadAttemptAction')
     expect(loadAttemptMock).toHaveBeenCalledWith('attempt-1')
   }, 10000)
 

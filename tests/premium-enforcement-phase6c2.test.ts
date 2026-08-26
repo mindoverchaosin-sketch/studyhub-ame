@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   canAccessQuiz: vi.fn(),
   getQuizWithQuestions: vi.fn(),
   getTopicById: vi.fn(),
+  getTopicBySlug: vi.fn(),
   getTopicProgress: vi.fn(),
   getQuizAnalytics: vi.fn(),
   submitQuizAttempt: vi.fn(),
@@ -20,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   generateExamAttempt: vi.fn(),
   canAccessExamTemplate: vi.fn(),
   requireOwnership: vi.fn(),
+  getTopicLearningPageData: vi.fn(),
 }))
 
 vi.mock('@/auth', () => ({
@@ -43,12 +45,13 @@ vi.mock('@/server/services/quiz.service', () => ({
   getQuizAnalytics: mocks.getQuizAnalytics,
   submitQuizAttempt: mocks.submitQuizAttempt,
 }))
-vi.mock('@/server/services/topic.service', () => ({ getTopicById: mocks.getTopicById }))
+vi.mock('@/server/services/topic.service', () => ({ getTopicById: mocks.getTopicById, getTopicBySlug: mocks.getTopicBySlug }))
 vi.mock('@/server/services/progress.service', () => ({ getTopicProgress: mocks.getTopicProgress }))
 vi.mock('@/server/repositories/question-bank.repository', () => ({ questionBankRepository: { findById: mocks.questionBankFindById } }))
 vi.mock('@/server/repositories/question.repository', () => ({ questionRepository: { findById: mocks.questionFindById } }))
 vi.mock('@/server/services/exam-template.service', () => ({ getTemplate: mocks.templateGetTemplate }))
 vi.mock('@/server/services/exam-attempt.service', () => ({ generateExamAttempt: mocks.generateExamAttempt }))
+vi.mock('@/features/topics/actions/topic-learning', () => ({ getTopicLearningPageData: mocks.getTopicLearningPageData }))
 
 describe('Phase 6C.2 premium enforcement execution paths', () => {
   beforeEach(() => {
@@ -61,6 +64,8 @@ describe('Phase 6C.2 premium enforcement execution paths', () => {
     mocks.canAccessExamTemplate.mockResolvedValue({ allowed: true })
     mocks.getModuleBySlug.mockResolvedValue({ id: 'module-1', isPremium: true })
     mocks.getModuleById.mockResolvedValue({ id: 'module-1', isPremium: true })
+    mocks.getTopicBySlug.mockResolvedValue({ id: 'topic-1', moduleId: 'module-1', slug: 'structural-layout', title: 'Structural layout' })
+    mocks.getTopicLearningPageData.mockResolvedValue({ topic: { title: 'Structural layout', description: 'Persisted lesson' }, resources: [], questions: [], quiz: null, progress: { status: 'NOT_STARTED' }, navigation: {} })
   })
 
   it('denies and allows premium lessons through the page access path', async () => {
