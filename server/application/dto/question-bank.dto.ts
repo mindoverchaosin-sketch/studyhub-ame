@@ -1,4 +1,4 @@
-export type QuestionBankStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED'
+export type QuestionBankStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' | 'IN_REVIEW'
 
 export type QuestionBankReferenceDTO = {
   id: string

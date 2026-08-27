@@ -17,7 +17,7 @@ export type ModuleDirectoryItemDTO = {
   slug: string
   moduleNumber: string
   examType: ModuleExamType
-  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED'
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' | 'IN_REVIEW'
   description: string
   updatedAt: string
   createdAt: string
@@ -52,7 +52,7 @@ export type ModuleDetailDTO = {
   moduleNumber: string
   description: string
   examType: ModuleExamType
-  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED'
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' | 'IN_REVIEW'
   difficulty: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
   estimatedHours: number
   displayOrder: number
@@ -65,5 +65,5 @@ export type ModuleDetailDTO = {
 
 export type ModuleManagementActionResult = {
   id: string
-  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED'
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' | 'IN_REVIEW'
 }

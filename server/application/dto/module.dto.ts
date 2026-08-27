@@ -11,7 +11,7 @@ export type ModuleDTO = {
   difficulty: "BEGINNER" | "INTERMEDIATE" | "ADVANCED"
   estimatedHours: number
   displayOrder: number
-  status: "DRAFT" | "PUBLISHED" | "ARCHIVED" | "SCHEDULED"
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED" | "SCHEDULED" | "IN_REVIEW"
   publishedAt: Date | null
   createdAt: Date
   updatedAt: Date

@@ -11,7 +11,7 @@ export type ResourceCreateInput = {
   type: string
   url: string
   isPremium?: boolean
-  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED'
+  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' | 'IN_REVIEW'
   displayOrder?: number
 }
 
@@ -21,7 +21,7 @@ export type ResourceUpdateInput = {
   type?: string
   url?: string
   isPremium?: boolean
-  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED'
+  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' | 'IN_REVIEW'
   displayOrder?: number
   lessonId?: string
 }
@@ -76,7 +76,7 @@ export class StudyMaterialManagementService {
     }))
   }
 
-  async createResource(input: ResourceCreateInput): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' }> {
+  async createResource(input: ResourceCreateInput): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' | 'IN_REVIEW' }> {
     if (!input.lessonId) {
       throw new Error('lessonId is required to bind a study material to a lesson')
     }
@@ -95,7 +95,7 @@ export class StudyMaterialManagementService {
     return { id: created.id, status: created.status }
   }
 
-  async updateResource(resourceId: string, input: ResourceUpdateInput): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' }> {
+  async updateResource(resourceId: string, input: ResourceUpdateInput): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' | 'IN_REVIEW' }> {
     const resourceUrl = input.url === undefined ? undefined : validateStudyMaterialUrl(input.url)
     let bindingUpdate: { lessonId: string; moduleId: string } | undefined
 
@@ -123,7 +123,7 @@ export class StudyMaterialManagementService {
     return { id: updated.id, status: updated.status }
   }
 
-  async archiveResource(resourceId: string): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' }> {
+  async archiveResource(resourceId: string): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' | 'IN_REVIEW' }> {
     const resource = await resourceRepository.findById(resourceId)
     if (!resource) throw new NotFoundError('Study material not found')
 
@@ -131,7 +131,7 @@ export class StudyMaterialManagementService {
     return { id: updated.id, status: updated.status }
   }
 
-  async publishResource(resourceId: string): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' }> {
+  async publishResource(resourceId: string): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' | 'IN_REVIEW' }> {
     const resource = await resourceRepository.findById(resourceId)
     if (!resource) throw new NotFoundError('Study material not found')
 
@@ -139,7 +139,7 @@ export class StudyMaterialManagementService {
     return { id: updated.id, status: updated.status }
   }
 
-  async unpublishResource(resourceId: string): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' }> {
+  async unpublishResource(resourceId: string): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' | 'IN_REVIEW' }> {
     const resource = await resourceRepository.findById(resourceId)
     if (!resource) throw new NotFoundError('Study material not found')
 
@@ -147,7 +147,7 @@ export class StudyMaterialManagementService {
     return { id: updated.id, status: updated.status }
   }
 
-  async unarchiveResource(resourceId: string): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' }> {
+  async unarchiveResource(resourceId: string): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' | 'IN_REVIEW' }> {
     const resource = await resourceRepository.findById(resourceId)
     if (!resource) throw new NotFoundError('Study material not found')
 

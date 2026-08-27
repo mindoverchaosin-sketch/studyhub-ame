@@ -6,7 +6,7 @@ export type LessonDTO = {
   description: string | null
   durationMinutes: number
   displayOrder: number
-  status: "DRAFT" | "PUBLISHED" | "ARCHIVED" | "SCHEDULED"
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED" | "SCHEDULED" | "IN_REVIEW"
   publishedAt: Date | null
   createdAt: Date
   updatedAt: Date

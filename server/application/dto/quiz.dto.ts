@@ -8,7 +8,7 @@ export type QuizDTO = {
   description: string | null
   passingScore: number
   timeLimitMinutes: number | null
-  status: "DRAFT" | "PUBLISHED" | "ARCHIVED" | "SCHEDULED"
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED" | "SCHEDULED" | "IN_REVIEW"
   publishedAt: Date | null
   createdAt: Date
   updatedAt: Date

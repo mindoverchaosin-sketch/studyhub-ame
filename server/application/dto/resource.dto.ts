@@ -7,7 +7,7 @@ export type ResourceDTO = {
   type: string
   url: string
   isPremium: boolean
-  status: "DRAFT" | "PUBLISHED" | "ARCHIVED" | "SCHEDULED"
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED" | "SCHEDULED" | "IN_REVIEW"
   publishedAt: Date | null
   createdAt: Date
   updatedAt: Date
