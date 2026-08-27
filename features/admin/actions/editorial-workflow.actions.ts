@@ -95,8 +95,8 @@ export async function bulkApproveQuestionsAction(questionIds: string[]) {
 }
 
 export async function bulkAssignReviewerToQuestionsAction(questionIds: string[], reviewer: string) {
-  await requirePermission('manageQuestions')
-  return bulkAssignReviewerToQuestions(questionIds, reviewer)
+  const session = await requirePermission('manageQuestions')
+  return bulkAssignReviewerToQuestions(questionIds, reviewer, session.user.id)
 }
 
 export async function createVersionSnapshotAction(questionId: string, summary: string, author = 'Editor') {

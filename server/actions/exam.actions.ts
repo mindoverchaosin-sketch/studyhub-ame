@@ -25,12 +25,12 @@ function normalizeExamTemplateInput(input: any) {
 }
 
 export async function listExamTemplates(params: { search?: string; active?: boolean; page?: number; pageSize?: number } = {}) {
-  await requireAuth() // Ensure user is authenticated before allowing template enumeration
+  await requirePermission('manageModules')
   return templateService.listTemplates(params)
 }
 
 export async function getExamTemplate(id: string) {
-  await requireAuth() // Ensure user is authenticated before allowing template access
+  await requirePermission('manageModules')
   return templateService.getTemplate(id)
 }
 

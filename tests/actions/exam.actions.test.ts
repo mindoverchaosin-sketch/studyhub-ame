@@ -56,32 +56,27 @@ describe('Exam Actions - Authentication Tests', () => {
     vi.clearAllMocks()
   })
 
-  describe('listExamTemplates - Requires Authentication', () => {
-    it('allows authenticated STUDENT to list templates', async () => {
+  describe('listExamTemplates - Requires manageModules Permission', () => {
+    it('denies STUDENT access to list templates', async () => {
       const { listExamTemplates } = await import('@/server/actions/exam.actions')
       const studentSession = {
         user: { id: 'student-1', role: 'STUDENT' },
       }
 
-      mockRequireAuth.mockResolvedValue(studentSession)
-      mockTemplateService.listTemplates.mockResolvedValue([
-        { id: 'template-1', title: 'Math Quiz' },
-      ])
+      mockRequirePermission.mockRejectedValue(new Error('Forbidden'))
 
-      const result = await listExamTemplates({ active: true })
-
-      expect(mockRequireAuth).toHaveBeenCalled()
-      expect(mockTemplateService.listTemplates).toHaveBeenCalledWith({ active: true })
-      expect(result).toEqual([{ id: 'template-1', title: 'Math Quiz' }])
+      await expect(listExamTemplates({ active: true })).rejects.toThrow('Forbidden')
+      expect(mockRequirePermission).toHaveBeenCalledWith('manageModules')
+      expect(mockTemplateService.listTemplates).not.toHaveBeenCalled()
     })
 
-    it('allows authenticated ADMIN to list templates', async () => {
+    it('allows ADMIN to list templates', async () => {
       const { listExamTemplates } = await import('@/server/actions/exam.actions')
       const adminSession = {
         user: { id: 'admin-1', role: 'ADMIN' },
       }
 
-      mockRequireAuth.mockResolvedValue(adminSession)
+      mockRequirePermission.mockResolvedValue(adminSession)
       mockTemplateService.listTemplates.mockResolvedValue([
         { id: 'template-1', title: 'Math Quiz' },
         { id: 'template-2', title: 'Science Quiz' },
@@ -89,52 +84,60 @@ describe('Exam Actions - Authentication Tests', () => {
 
       const result = await listExamTemplates()
 
-      expect(mockRequireAuth).toHaveBeenCalled()
+      expect(mockRequirePermission).toHaveBeenCalledWith('manageModules')
       expect(mockTemplateService.listTemplates).toHaveBeenCalled()
       expect(result).toHaveLength(2)
     })
 
-    it('denies unauthenticated access to list templates', async () => {
+    it('allows CONTENT_EDITOR to list templates', async () => {
       const { listExamTemplates } = await import('@/server/actions/exam.actions')
-
-      mockRequireAuth.mockRejectedValue(new Error('Unauthorized'))
-
-      await expect(listExamTemplates()).rejects.toThrow('Unauthorized')
-      expect(mockRequireAuth).toHaveBeenCalled()
-      expect(mockTemplateService.listTemplates).not.toHaveBeenCalled()
-    })
-
-    it('supports search parameter for authenticated users', async () => {
-      const { listExamTemplates } = await import('@/server/actions/exam.actions')
-      const studentSession = {
-        user: { id: 'student-1', role: 'STUDENT' },
+      const editorSession = {
+        user: { id: 'editor-1', role: 'CONTENT_EDITOR' },
       }
 
-      mockRequireAuth.mockResolvedValue(studentSession)
+      mockRequirePermission.mockResolvedValue(editorSession)
+      mockTemplateService.listTemplates.mockResolvedValue([
+        { id: 'template-1', title: 'Math Quiz' },
+      ])
+
+      const result = await listExamTemplates({ active: true })
+
+      expect(mockRequirePermission).toHaveBeenCalledWith('manageModules')
+      expect(mockTemplateService.listTemplates).toHaveBeenCalledWith({ active: true })
+      expect(result).toEqual([{ id: 'template-1', title: 'Math Quiz' }])
+    })
+
+    it('supports search parameter for authorized users', async () => {
+      const { listExamTemplates } = await import('@/server/actions/exam.actions')
+      const adminSession = {
+        user: { id: 'admin-1', role: 'ADMIN' },
+      }
+
+      mockRequirePermission.mockResolvedValue(adminSession)
       mockTemplateService.listTemplates.mockResolvedValue([
         { id: 'template-1', title: 'Math Quiz' },
       ])
 
       await listExamTemplates({ search: 'Math' })
 
-      expect(mockRequireAuth).toHaveBeenCalled()
+      expect(mockRequirePermission).toHaveBeenCalledWith('manageModules')
       expect(mockTemplateService.listTemplates).toHaveBeenCalledWith({
         search: 'Math',
       })
     })
 
-    it('supports pagination parameters for authenticated users', async () => {
+    it('supports pagination parameters for authorized users', async () => {
       const { listExamTemplates } = await import('@/server/actions/exam.actions')
-      const studentSession = {
-        user: { id: 'student-1', role: 'STUDENT' },
+      const adminSession = {
+        user: { id: 'admin-1', role: 'ADMIN' },
       }
 
-      mockRequireAuth.mockResolvedValue(studentSession)
+      mockRequirePermission.mockResolvedValue(adminSession)
       mockTemplateService.listTemplates.mockResolvedValue([])
 
       await listExamTemplates({ page: 2, pageSize: 10 })
 
-      expect(mockRequireAuth).toHaveBeenCalled()
+      expect(mockRequirePermission).toHaveBeenCalledWith('manageModules')
       expect(mockTemplateService.listTemplates).toHaveBeenCalledWith({
         page: 2,
         pageSize: 10,
@@ -142,33 +145,24 @@ describe('Exam Actions - Authentication Tests', () => {
     })
   })
 
-  describe('getExamTemplate - Requires Authentication', () => {
-    it('allows authenticated STUDENT to get template', async () => {
+  describe('getExamTemplate - Requires manageModules Permission', () => {
+    it('denies STUDENT access to get template', async () => {
       const { getExamTemplate } = await import('@/server/actions/exam.actions')
-      const studentSession = {
-        user: { id: 'student-1', role: 'STUDENT' },
-      }
 
-      mockRequireAuth.mockResolvedValue(studentSession)
-      mockTemplateService.getTemplate.mockResolvedValue({
-        id: 'template-1',
-        title: 'Math Quiz',
-      })
+      mockRequirePermission.mockRejectedValue(new Error('Forbidden'))
 
-      const result = await getExamTemplate('template-1')
-
-      expect(mockRequireAuth).toHaveBeenCalled()
-      expect(mockTemplateService.getTemplate).toHaveBeenCalledWith('template-1')
-      expect(result).toEqual({ id: 'template-1', title: 'Math Quiz' })
+      await expect(getExamTemplate('template-1')).rejects.toThrow('Forbidden')
+      expect(mockRequirePermission).toHaveBeenCalledWith('manageModules')
+      expect(mockTemplateService.getTemplate).not.toHaveBeenCalled()
     })
 
-    it('allows authenticated ADMIN to get template', async () => {
+    it('allows ADMIN to get template', async () => {
       const { getExamTemplate } = await import('@/server/actions/exam.actions')
       const adminSession = {
         user: { id: 'admin-1', role: 'ADMIN' },
       }
 
-      mockRequireAuth.mockResolvedValue(adminSession)
+      mockRequirePermission.mockResolvedValue(adminSession)
       mockTemplateService.getTemplate.mockResolvedValue({
         id: 'template-1',
         title: 'Admin Template',
@@ -176,32 +170,51 @@ describe('Exam Actions - Authentication Tests', () => {
 
       const result = await getExamTemplate('template-1')
 
-      expect(mockRequireAuth).toHaveBeenCalled()
+      expect(mockRequirePermission).toHaveBeenCalledWith('manageModules')
       expect(mockTemplateService.getTemplate).toHaveBeenCalledWith('template-1')
       expect(result).toEqual({ id: 'template-1', title: 'Admin Template' })
+    })
+
+    it('allows CONTENT_EDITOR to get template', async () => {
+      const { getExamTemplate } = await import('@/server/actions/exam.actions')
+      const editorSession = {
+        user: { id: 'editor-1', role: 'CONTENT_EDITOR' },
+      }
+
+      mockRequirePermission.mockResolvedValue(editorSession)
+      mockTemplateService.getTemplate.mockResolvedValue({
+        id: 'template-1',
+        title: 'Editor Template',
+      })
+
+      const result = await getExamTemplate('template-1')
+
+      expect(mockRequirePermission).toHaveBeenCalledWith('manageModules')
+      expect(mockTemplateService.getTemplate).toHaveBeenCalledWith('template-1')
+      expect(result).toEqual({ id: 'template-1', title: 'Editor Template' })
     })
 
     it('denies unauthenticated access to get template', async () => {
       const { getExamTemplate } = await import('@/server/actions/exam.actions')
 
-      mockRequireAuth.mockRejectedValue(
+      mockRequirePermission.mockRejectedValue(
         new Error('Session required')
       )
 
       await expect(getExamTemplate('template-1')).rejects.toThrow(
         'Session required'
       )
-      expect(mockRequireAuth).toHaveBeenCalled()
+      expect(mockRequirePermission).toHaveBeenCalledWith('manageModules')
       expect(mockTemplateService.getTemplate).not.toHaveBeenCalled()
     })
 
     it('handles not found template gracefully after auth check', async () => {
       const { getExamTemplate } = await import('@/server/actions/exam.actions')
-      const studentSession = {
-        user: { id: 'student-1', role: 'STUDENT' },
+      const adminSession = {
+        user: { id: 'admin-1', role: 'ADMIN' },
       }
 
-      mockRequireAuth.mockResolvedValue(studentSession)
+      mockRequirePermission.mockResolvedValue(adminSession)
       mockTemplateService.getTemplate.mockRejectedValue(
         new Error('Template not found')
       )
@@ -209,7 +222,7 @@ describe('Exam Actions - Authentication Tests', () => {
       await expect(getExamTemplate('nonexistent')).rejects.toThrow(
         'Template not found'
       )
-      expect(mockRequireAuth).toHaveBeenCalled()
+      expect(mockRequirePermission).toHaveBeenCalledWith('manageModules')
       expect(mockTemplateService.getTemplate).toHaveBeenCalledWith('nonexistent')
     })
   })

@@ -475,6 +475,199 @@ describe('EditorialWorkflowService', () => {
 
     await expect(service.updateEditorialStatus('q-1', 'APPROVED', 'Editor', undefined, 'user-1')).rejects.toThrow('DB connection lost')
   })
+
+  describe('bulkAssignReviewerToQuestions', () => {
+    it('assigns reviewer to pending review items on a single question', async () => {
+      const service = new EditorialWorkflowService()
+      const initialReviewQueue = [
+        { id: 'r-1', prompt: 'Review 1', warnings: [], status: 'pending', comments: [], reviewer: undefined },
+      ]
+      const baseRow = createMockWorkflowRow({ reviewQueue: initialReviewQueue })
+      prismaEditorialWorkflowFindUniqueMock.mockResolvedValue(baseRow)
+      questionFindByIdMock.mockResolvedValue({ id: 'q-1' })
+
+      prismaTransactionMock.mockImplementation(async (fn: any) => {
+        const updateFn = vi.fn().mockImplementation(async (args: any) => {
+          return { ...baseRow, ...args.data, updatedAt: new Date() }
+        })
+        return fn(createMockTransactionClient(baseRow, updateFn))
+      })
+      auditListForTargetMock.mockResolvedValue([])
+
+      const result = await service.bulkAssignReviewerToQuestions(['q-1'], 'reviewer-1', 'user-1')
+
+      expect(result['q-1'].reviewQueue[0].reviewer).toBe('reviewer-1')
+      expect(auditRecordEventMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'editorial.review.assign',
+          metadata: expect.objectContaining({ reviewId: 'r-1' }),
+        })
+      )
+    })
+
+    it('assigns reviewer to all pending items on one question', async () => {
+      const service = new EditorialWorkflowService()
+      const initialReviewQueue = [
+        { id: 'r-1', prompt: 'Review 1', warnings: [], status: 'pending', comments: [], reviewer: undefined },
+        { id: 'r-2', prompt: 'Review 2', warnings: [], status: 'pending', comments: [], reviewer: undefined },
+      ]
+      const baseRow = createMockWorkflowRow({ reviewQueue: initialReviewQueue })
+      prismaEditorialWorkflowFindUniqueMock.mockResolvedValue(baseRow)
+      questionFindByIdMock.mockResolvedValue({ id: 'q-1' })
+
+      let reviewQueue = [...initialReviewQueue]
+      prismaTransactionMock.mockImplementation(async (fn: any) => {
+        const lockedRow = { ...baseRow, reviewQueue }
+        const updateFn = vi.fn().mockImplementation(async (args: any) => {
+          reviewQueue = args.data?.reviewQueue || reviewQueue
+          return { ...baseRow, reviewQueue, updatedAt: new Date() }
+        })
+        return fn(createMockTransactionClient(lockedRow, updateFn))
+      })
+      auditListForTargetMock.mockResolvedValue([])
+
+      const result = await service.bulkAssignReviewerToQuestions(['q-1'], 'reviewer-1', 'user-1')
+
+      expect(result['q-1'].reviewQueue).toHaveLength(2)
+      expect(result['q-1'].reviewQueue[0].reviewer).toBe('reviewer-1')
+      expect(result['q-1'].reviewQueue[1].reviewer).toBe('reviewer-1')
+      expect(prismaTransactionMock).toHaveBeenCalledTimes(2)
+      expect(auditRecordEventMock).toHaveBeenCalledTimes(2)
+    })
+
+    it('leaves non-pending review items unchanged', async () => {
+      const service = new EditorialWorkflowService()
+      const initialReviewQueue = [
+        { id: 'r-1', prompt: 'Review 1', warnings: [], status: 'pending', comments: [], reviewer: undefined },
+        { id: 'r-2', prompt: 'Review 2', warnings: [], status: 'ai-review', comments: [], reviewer: 'other' },
+      ]
+      const baseRow = createMockWorkflowRow({ reviewQueue: initialReviewQueue })
+      prismaEditorialWorkflowFindUniqueMock.mockResolvedValue(baseRow)
+      questionFindByIdMock.mockResolvedValue({ id: 'q-1' })
+
+      let reviewQueue = [...initialReviewQueue]
+      prismaTransactionMock.mockImplementation(async (fn: any) => {
+        const lockedRow = { ...baseRow, reviewQueue }
+        const updateFn = vi.fn().mockImplementation(async (args: any) => {
+          reviewQueue = args.data?.reviewQueue || reviewQueue
+          return { ...baseRow, reviewQueue, updatedAt: new Date() }
+        })
+        return fn(createMockTransactionClient(lockedRow, updateFn))
+      })
+      auditListForTargetMock.mockResolvedValue([])
+
+      const result = await service.bulkAssignReviewerToQuestions(['q-1'], 'reviewer-1', 'user-1')
+
+      expect(result['q-1'].reviewQueue).toHaveLength(2)
+      expect(result['q-1'].reviewQueue[0].reviewer).toBe('reviewer-1')
+      expect(result['q-1'].reviewQueue[1].reviewer).toBe('other')
+      expect(prismaTransactionMock).toHaveBeenCalledTimes(1)
+      expect(auditRecordEventMock).toHaveBeenCalledTimes(1)
+    })
+
+    it('processes multiple questions', async () => {
+      const service = new EditorialWorkflowService()
+      const baseRowQ1 = createMockWorkflowRow({ entityId: 'q-1', reviewQueue: [{ id: 'r-1', prompt: '', warnings: [], status: 'pending', comments: [], reviewer: undefined }] })
+      const baseRowQ2 = createMockWorkflowRow({ entityId: 'q-2', reviewQueue: [{ id: 'r-2', prompt: '', warnings: [], status: 'pending', comments: [], reviewer: undefined }] })
+      prismaEditorialWorkflowFindUniqueMock.mockResolvedValueOnce(baseRowQ1).mockResolvedValueOnce(baseRowQ2)
+      questionFindByIdMock.mockResolvedValueOnce({ id: 'q-1' }).mockResolvedValueOnce({ id: 'q-2' })
+
+      let q1Queue = [{ ...baseRowQ1.reviewQueue[0] }]
+      let q2Queue = [{ ...baseRowQ2.reviewQueue[0] }]
+      let txCallCount = 0
+
+      prismaTransactionMock.mockImplementation(async (fn: any) => {
+        txCallCount++
+        const isQ1 = txCallCount === 1
+        const baseRow = isQ1 ? baseRowQ1 : baseRowQ2
+        const queue = isQ1 ? q1Queue : q2Queue
+        const lockedRow = { ...baseRow, reviewQueue: queue }
+        const updateFn = vi.fn().mockImplementation(async (args: any) => {
+          if (isQ1) q1Queue = args.data?.reviewQueue || q1Queue
+          else q2Queue = args.data?.reviewQueue || q2Queue
+          return { ...baseRow, reviewQueue: args.data?.reviewQueue || queue, updatedAt: new Date() }
+        })
+        return fn(createMockTransactionClient(lockedRow, updateFn))
+      })
+      auditListForTargetMock.mockResolvedValue([])
+
+      const result = await service.bulkAssignReviewerToQuestions(['q-1', 'q-2'], 'reviewer-1', 'user-1')
+
+      expect(result['q-1'].reviewQueue[0].reviewer).toBe('reviewer-1')
+      expect(result['q-2'].reviewQueue[0].reviewer).toBe('reviewer-1')
+      expect(prismaTransactionMock).toHaveBeenCalledTimes(2)
+      expect(auditRecordEventMock).toHaveBeenCalledTimes(2)
+    })
+
+    it('deduplicates question IDs', async () => {
+      const service = new EditorialWorkflowService()
+      const baseRow = createMockWorkflowRow({ reviewQueue: [{ id: 'r-1', prompt: '', warnings: [], status: 'pending', comments: [], reviewer: undefined }] })
+      prismaEditorialWorkflowFindUniqueMock.mockResolvedValue(baseRow)
+      questionFindByIdMock.mockResolvedValue({ id: 'q-1' })
+
+      prismaTransactionMock.mockImplementation(async (fn: any) => {
+        const updateFn = vi.fn().mockImplementation(async (args: any) => {
+          return { ...baseRow, ...args.data, updatedAt: new Date() }
+        })
+        return fn(createMockTransactionClient(baseRow, updateFn))
+      })
+      auditListForTargetMock.mockResolvedValue([])
+
+      const result = await service.bulkAssignReviewerToQuestions(['q-1', 'q-1', 'q-1'], 'reviewer-1', 'user-1')
+
+      expect(Object.keys(result)).toHaveLength(1)
+      expect(result['q-1'].reviewQueue[0].reviewer).toBe('reviewer-1')
+      expect(prismaTransactionMock).toHaveBeenCalledTimes(1)
+      expect(auditRecordEventMock).toHaveBeenCalledTimes(1)
+    })
+
+    it('throws NotFoundError for nonexistent question', async () => {
+      const service = new EditorialWorkflowService()
+      questionFindByIdMock.mockResolvedValue(null)
+
+      await expect(service.bulkAssignReviewerToQuestions(['missing-q'], 'reviewer-1', 'user-1')).rejects.toThrow('Question not found.')
+    })
+
+    it('returns workflow unchanged when no pending review items exist', async () => {
+      const service = new EditorialWorkflowService()
+      const baseRow = createMockWorkflowRow({ reviewQueue: [{ id: 'r-1', prompt: '', warnings: [], status: 'ai-review', comments: [], reviewer: 'other' }] })
+      prismaEditorialWorkflowFindUniqueMock.mockResolvedValue(baseRow)
+      questionFindByIdMock.mockResolvedValue({ id: 'q-1' })
+      auditListForTargetMock.mockResolvedValue([])
+
+      const result = await service.bulkAssignReviewerToQuestions(['q-1'], 'reviewer-1', 'user-1')
+
+      expect(result['q-1'].reviewQueue[0].reviewer).toBe('other')
+      expect(prismaTransactionMock).not.toHaveBeenCalled()
+      expect(auditRecordEventMock).not.toHaveBeenCalled()
+    })
+
+    it('does not produce audit events when actorUserId is not provided', async () => {
+      const service = new EditorialWorkflowService()
+      const initialReviewQueue = [
+        { id: 'r-1', prompt: 'Review 1', warnings: [], status: 'pending', comments: [], reviewer: undefined },
+        { id: 'r-2', prompt: 'Review 2', warnings: [], status: 'pending', comments: [], reviewer: undefined },
+      ]
+      const baseRow = createMockWorkflowRow({ reviewQueue: initialReviewQueue })
+      prismaEditorialWorkflowFindUniqueMock.mockResolvedValue(baseRow)
+      questionFindByIdMock.mockResolvedValue({ id: 'q-1' })
+
+      let reviewQueue = [...initialReviewQueue]
+      prismaTransactionMock.mockImplementation(async (fn: any) => {
+        const lockedRow = { ...baseRow, reviewQueue }
+        const updateFn = vi.fn().mockImplementation(async (args: any) => {
+          reviewQueue = args.data?.reviewQueue || reviewQueue
+          return { ...baseRow, reviewQueue, updatedAt: new Date() }
+        })
+        return fn(createMockTransactionClient(lockedRow, updateFn))
+      })
+      auditListForTargetMock.mockResolvedValue([])
+
+      await service.bulkAssignReviewerToQuestions(['q-1'], 'reviewer-1')
+
+      expect(auditRecordEventMock).not.toHaveBeenCalled()
+    })
+  })
 })
 
 describe('EditorialWorkflowRepository', () => {

@@ -1020,12 +1020,32 @@ export async function bulkApproveWorkflowQuestions(questionIds: string[], actor 
   return result
 }
 
-export async function bulkAssignReviewerToQuestions(questionIds: string[], reviewer: string): Promise<Record<string, EditorialWorkflowDTO>> {
+export async function bulkAssignReviewerToQuestions(
+  questionIds: string[],
+  reviewer: string,
+  actorUserId?: string,
+): Promise<Record<string, EditorialWorkflowDTO>> {
   const result: Record<string, EditorialWorkflowDTO> = {}
+  const seen = new Set<string>()
 
   for (const questionId of questionIds) {
+    if (seen.has(questionId)) continue
+    seen.add(questionId)
+
     const workflow = await getEditorialWorkflow(questionId)
-    result[questionId] = workflow
+    const reviewQueue = (workflow.reviewQueue ?? []) as EditorialReviewQueueItemDTO[]
+    const pendingItems = reviewQueue.filter((item) => item.status === 'pending')
+
+    if (pendingItems.length === 0) {
+      result[questionId] = workflow
+      continue
+    }
+
+    let currentWorkflow = workflow
+    for (const item of pendingItems) {
+      currentWorkflow = await assignReviewer(questionId, item.id, reviewer, actorUserId)
+    }
+    result[questionId] = currentWorkflow
   }
 
   return result
