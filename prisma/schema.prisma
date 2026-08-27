@@ -35,6 +35,14 @@ enum Status {
   SCHEDULED
 }
 
+enum EditorialStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  PUBLISHED
+  ARCHIVED
+}
+
 enum ProductType {
   BUNDLE
   COURSE
@@ -556,6 +564,22 @@ model Question {
 
   @@index([questionBankId])
   @@index([difficulty])
+}
+
+model EditorialWorkflow {
+  id             String          @id @default(uuid())
+  targetType     String
+  entityId       String
+  status         EditorialStatus @default(DRAFT)
+  currentVersion Int             @default(1)
+  versions       Json
+  reviewQueue    Json
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@unique([targetType, entityId])
+  @@index([entityId])
+  @@index([status])
 }
 
 model ExamTemplate {
