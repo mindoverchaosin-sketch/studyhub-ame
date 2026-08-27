@@ -207,6 +207,33 @@ describe.sequential('authorization regression tests', () => {
     expect(bulkUpdateQuestionStatusMock).not.toHaveBeenCalled()
   })
 
+  it('should propagate actor ID through bulkUpdateReviewQueueAction', async () => {
+    requirePermissionMock.mockResolvedValue({ user: { id: 'admin-1' } })
+    editorialWorkflowServiceMocks.bulkUpdateReviewQueue.mockResolvedValue({ status: 'APPROVED', reviewQueue: [] })
+    const { bulkUpdateReviewQueueAction } = await import('../../features/admin/actions/editorial-workflow.actions')
+
+    await expect(bulkUpdateReviewQueueAction('q-1', ['r-1'], 'APPROVED')).resolves.toEqual({ status: 'APPROVED', reviewQueue: [] })
+    expect(editorialWorkflowServiceMocks.bulkUpdateReviewQueue).toHaveBeenCalledWith('q-1', ['r-1'], 'APPROVED', 'admin-1')
+  })
+
+  it('should propagate actor ID through submitLessonForReviewAction', async () => {
+    requirePermissionMock.mockResolvedValue({ user: { id: 'admin-1' } })
+    editorialWorkflowServiceMocks.submitLessonForReview.mockResolvedValue({ status: 'IN_REVIEW', reviewQueue: [] })
+    const { submitLessonForReviewAction } = await import('../../features/admin/actions/editorial-workflow.actions')
+
+    await expect(submitLessonForReviewAction('l-1', 'Admin', 'Please review')).resolves.toEqual({ status: 'IN_REVIEW', reviewQueue: [] })
+    expect(editorialWorkflowServiceMocks.submitLessonForReview).toHaveBeenCalledWith('l-1', 'Admin', 'Please review', 'admin-1')
+  })
+
+  it('should propagate actor ID through sendLessonBackToDraftAction', async () => {
+    requirePermissionMock.mockResolvedValue({ user: { id: 'admin-1' } })
+    editorialWorkflowServiceMocks.sendLessonBackToDraft.mockResolvedValue({ status: 'DRAFT', reviewQueue: [] })
+    const { sendLessonBackToDraftAction } = await import('../../features/admin/actions/editorial-workflow.actions')
+
+    await expect(sendLessonBackToDraftAction('l-1', 'Admin', 'Needs revision')).resolves.toEqual({ status: 'DRAFT', reviewQueue: [] })
+    expect(editorialWorkflowServiceMocks.sendLessonBackToDraft).toHaveBeenCalledWith('l-1', 'Admin', 'Needs revision', 'admin-1')
+  })
+
   it('should forbid student from updating another student goal progress', async () => {
     requireStudentMock.mockResolvedValue({ user: { id: 'student-1', role: 'STUDENT' } })
     const { updateGoalProgressAction } = await import('../../server/actions/progress-insights.actions')

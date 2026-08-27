@@ -668,6 +668,238 @@ describe('EditorialWorkflowService', () => {
       expect(auditRecordEventMock).not.toHaveBeenCalled()
     })
   })
+
+  describe('bulkUpdateReviewQueue', () => {
+    it('applies the supplied status to selected review items', async () => {
+      const service = new EditorialWorkflowService()
+      const initialReviewQueue = [
+        { id: 'r-1', prompt: 'Review 1', warnings: [], status: 'pending', comments: [], reviewer: undefined },
+        { id: 'r-2', prompt: 'Review 2', warnings: [], status: 'pending', comments: [], reviewer: undefined },
+        { id: 'r-3', prompt: 'Review 3', warnings: [], status: 'pending', comments: [], reviewer: undefined },
+      ]
+      const baseRow = createMockWorkflowRow({ reviewQueue: initialReviewQueue })
+      prismaEditorialWorkflowFindUniqueMock.mockResolvedValue(baseRow)
+      questionFindByIdMock.mockResolvedValue({ id: 'q-1' })
+
+      let reviewQueue = [...initialReviewQueue]
+      prismaTransactionMock.mockImplementation(async (fn: any) => {
+        const lockedRow = { ...baseRow, reviewQueue }
+        const updateFn = vi.fn().mockImplementation(async (args: any) => {
+          reviewQueue = args.data?.reviewQueue || reviewQueue
+          return { ...baseRow, reviewQueue, updatedAt: new Date() }
+        })
+        return fn(createMockTransactionClient(lockedRow, updateFn))
+      })
+      auditListForTargetMock.mockResolvedValue([])
+
+      const result = await service.bulkUpdateReviewQueue('q-1', ['r-1', 'r-2'], 'APPROVED', 'user-1')
+
+      expect(result.reviewQueue).toHaveLength(3)
+      expect(result.reviewQueue[0].status).toBe('APPROVED')
+      expect(result.reviewQueue[1].status).toBe('APPROVED')
+      expect(result.reviewQueue[2].status).toBe('pending')
+      expect(auditRecordEventMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'editorial.review.bulkUpdate',
+          metadata: expect.objectContaining({ status: 'APPROVED' }),
+        })
+      )
+    })
+
+    it('updates workflow-level status alongside review items', async () => {
+      const service = new EditorialWorkflowService()
+      const baseRow = createMockWorkflowRow({ status: 'IN_REVIEW' })
+      prismaEditorialWorkflowFindUniqueMock.mockResolvedValue(baseRow)
+      questionFindByIdMock.mockResolvedValue({ id: 'q-1' })
+
+      prismaTransactionMock.mockImplementation(async (fn: any) => {
+        const updateFn = vi.fn().mockImplementation(async (args: any) => {
+          return { ...baseRow, ...args.data, updatedAt: new Date() }
+        })
+        return fn(createMockTransactionClient(baseRow, updateFn))
+      })
+      auditListForTargetMock.mockResolvedValue([])
+
+      const result = await service.bulkUpdateReviewQueue('q-1', ['r-1'], 'APPROVED', 'user-1')
+
+      expect(result.status).toBe('APPROVED')
+    })
+
+    it('ignores duplicate reviewIds without double-applying', async () => {
+      const service = new EditorialWorkflowService()
+      const initialReviewQueue = [
+        { id: 'r-1', prompt: 'Review 1', warnings: [], status: 'pending', comments: [], reviewer: undefined },
+      ]
+      const baseRow = createMockWorkflowRow({ reviewQueue: initialReviewQueue })
+      prismaEditorialWorkflowFindUniqueMock.mockResolvedValue(baseRow)
+      questionFindByIdMock.mockResolvedValue({ id: 'q-1' })
+
+      prismaTransactionMock.mockImplementation(async (fn: any) => {
+        const updateFn = vi.fn().mockImplementation(async (args: any) => {
+          return { ...baseRow, ...args.data, updatedAt: new Date() }
+        })
+        return fn(createMockTransactionClient(baseRow, updateFn))
+      })
+      auditListForTargetMock.mockResolvedValue([])
+
+      const result = await service.bulkUpdateReviewQueue('q-1', ['r-1', 'r-1'], 'APPROVED', 'user-1')
+
+      expect(result.reviewQueue[0].status).toBe('APPROVED')
+    })
+
+    it('silently ignores nonexistent review IDs', async () => {
+      const service = new EditorialWorkflowService()
+      const initialReviewQueue = [
+        { id: 'r-1', prompt: 'Review 1', warnings: [], status: 'pending', comments: [], reviewer: undefined },
+      ]
+      const baseRow = createMockWorkflowRow({ reviewQueue: initialReviewQueue })
+      prismaEditorialWorkflowFindUniqueMock.mockResolvedValue(baseRow)
+      questionFindByIdMock.mockResolvedValue({ id: 'q-1' })
+
+      prismaTransactionMock.mockImplementation(async (fn: any) => {
+        const updateFn = vi.fn().mockImplementation(async (args: any) => {
+          return { ...baseRow, ...args.data, updatedAt: new Date() }
+        })
+        return fn(createMockTransactionClient(baseRow, updateFn))
+      })
+      auditListForTargetMock.mockResolvedValue([])
+
+      const result = await service.bulkUpdateReviewQueue('q-1', ['missing'], 'APPROVED', 'user-1')
+
+      expect(result.reviewQueue[0].status).toBe('pending')
+    })
+  })
+
+  describe('submitLessonForReview', () => {
+    it('creates exactly one pending review item on first submission', async () => {
+      const service = new EditorialWorkflowService()
+      const baseRow = createMockWorkflowRow({ targetType: 'LESSON', entityId: 'l-1', status: 'DRAFT', reviewQueue: [] })
+      prismaEditorialWorkflowFindUniqueMock.mockResolvedValue(baseRow)
+      lessonFindByIdMock.mockResolvedValue({ id: 'l-1' })
+
+      prismaTransactionMock.mockImplementation(async (fn: any) => {
+        const updateFn = vi.fn().mockImplementation(async (args: any) => {
+          return { ...baseRow, ...args.data, updatedAt: new Date() }
+        })
+        return fn(createMockTransactionClient(baseRow, updateFn))
+      })
+      auditListForTargetMock.mockResolvedValue([])
+
+      const result = await service.submitLessonForReview('l-1', 'Editor', 'Please review', 'user-1')
+
+      expect(result.status).toBe('IN_REVIEW')
+      expect(result.reviewQueue).toHaveLength(1)
+      expect(result.reviewQueue[0].status).toBe('pending')
+      expect(auditRecordEventMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'editorial.review.submit',
+          metadata: expect.objectContaining({ comment: 'Please review' }),
+        })
+      )
+    })
+
+    it('does not create duplicate pending items on repeated submission', async () => {
+      const service = new EditorialWorkflowService()
+      const existingQueue = [
+        { id: 'l-1-review-1', prompt: 'Lesson submitted for review', warnings: [], status: 'pending', comments: [], reviewer: undefined },
+      ]
+      const baseRow = createMockWorkflowRow({ targetType: 'LESSON', entityId: 'l-1', status: 'IN_REVIEW', reviewQueue: existingQueue })
+      prismaEditorialWorkflowFindUniqueMock.mockResolvedValue(baseRow)
+      lessonFindByIdMock.mockResolvedValue({ id: 'l-1' })
+      auditListForTargetMock.mockResolvedValue([])
+
+      prismaTransactionMock.mockImplementation(async (fn: any) => {
+        const lockedRow = { ...baseRow, reviewQueue: existingQueue }
+        const updateFn = vi.fn().mockImplementation(async (args: any) => {
+          return { ...baseRow, ...args.data, updatedAt: new Date() }
+        })
+        return fn(createMockTransactionClient(lockedRow, updateFn))
+      })
+
+      const result = await service.submitLessonForReview('l-1', 'Editor', 'Please review', 'user-1')
+
+      expect(result.status).toBe('IN_REVIEW')
+      expect(result.reviewQueue).toHaveLength(1)
+      expect(auditRecordEventMock).not.toHaveBeenCalled()
+    })
+
+    it('creates a fresh pending item after send-back clears the queue', async () => {
+      const service = new EditorialWorkflowService()
+      const baseRow = createMockWorkflowRow({ targetType: 'LESSON', entityId: 'l-1', status: 'DRAFT', reviewQueue: [] })
+      prismaEditorialWorkflowFindUniqueMock.mockResolvedValue(baseRow)
+      lessonFindByIdMock.mockResolvedValue({ id: 'l-1' })
+
+      prismaTransactionMock.mockImplementation(async (fn: any) => {
+        const updateFn = vi.fn().mockImplementation(async (args: any) => {
+          return { ...baseRow, ...args.data, updatedAt: new Date() }
+        })
+        return fn(createMockTransactionClient(baseRow, updateFn))
+      })
+      auditListForTargetMock.mockResolvedValue([])
+
+      const result = await service.submitLessonForReview('l-1', 'Editor', 'Please review', 'user-1')
+
+      expect(result.status).toBe('IN_REVIEW')
+      expect(result.reviewQueue).toHaveLength(1)
+      expect(result.reviewQueue[0].status).toBe('pending')
+    })
+  })
+
+  describe('sendLessonBackToDraft', () => {
+    it('transitions workflow to DRAFT and removes pending review items', async () => {
+      const service = new EditorialWorkflowService()
+      const existingQueue = [
+        { id: 'l-1-review-1', prompt: 'Lesson submitted for review', warnings: [], status: 'pending', comments: [], reviewer: undefined },
+        { id: 'l-1-review-2', prompt: 'Historical comment', warnings: [], status: 'ai-review', comments: ['old'], reviewer: 'other' },
+      ]
+      const baseRow = createMockWorkflowRow({ targetType: 'LESSON', entityId: 'l-1', status: 'IN_REVIEW', reviewQueue: existingQueue })
+      prismaEditorialWorkflowFindUniqueMock.mockResolvedValue(baseRow)
+      lessonFindByIdMock.mockResolvedValue({ id: 'l-1' })
+
+      let reviewQueue = [...existingQueue]
+      prismaTransactionMock.mockImplementation(async (fn: any) => {
+        const lockedRow = { ...baseRow, reviewQueue }
+        const updateFn = vi.fn().mockImplementation(async (args: any) => {
+          reviewQueue = args.data?.reviewQueue || reviewQueue
+          return { ...baseRow, ...args.data, updatedAt: new Date() }
+        })
+        return fn(createMockTransactionClient(lockedRow, updateFn))
+      })
+      auditListForTargetMock.mockResolvedValue([])
+
+      const result = await service.sendLessonBackToDraft('l-1', 'Editor', 'Needs revision', 'user-1')
+
+      expect(result.status).toBe('DRAFT')
+      expect(result.reviewQueue).toHaveLength(1)
+      expect(result.reviewQueue[0].status).toBe('ai-review')
+      expect(auditRecordEventMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'editorial.review.send-back',
+          metadata: expect.objectContaining({ comment: 'Needs revision' }),
+        })
+      )
+    })
+
+    it('allows a new submission to create one fresh pending item after send-back', async () => {
+      const service = new EditorialWorkflowService()
+      const baseRow = createMockWorkflowRow({ targetType: 'LESSON', entityId: 'l-1', status: 'DRAFT', reviewQueue: [] })
+      prismaEditorialWorkflowFindUniqueMock.mockResolvedValue(baseRow)
+      lessonFindByIdMock.mockResolvedValue({ id: 'l-1' })
+
+      prismaTransactionMock.mockImplementation(async (fn: any) => {
+        const updateFn = vi.fn().mockImplementation(async (args: any) => {
+          return { ...baseRow, ...args.data, updatedAt: new Date() }
+        })
+        return fn(createMockTransactionClient(baseRow, updateFn))
+      })
+      auditListForTargetMock.mockResolvedValue([])
+
+      const result = await service.sendLessonBackToDraft('l-1', 'Editor', 'Needs revision', 'user-1')
+
+      expect(result.status).toBe('DRAFT')
+      expect(result.reviewQueue).toHaveLength(0)
+    })
+  })
 })
 
 describe('EditorialWorkflowRepository', () => {

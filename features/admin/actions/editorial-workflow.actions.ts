@@ -73,8 +73,8 @@ export async function assignReviewerAction(questionId: string, reviewId: string,
 }
 
 export async function bulkUpdateReviewQueueAction(questionId: string, reviewIds: string[], status: EditorialStatus) {
-  await requirePermission('manageQuestions')
-  return bulkUpdateReviewQueue(questionId, reviewIds, status)
+  const session = await requirePermission('manageQuestions')
+  return bulkUpdateReviewQueue(questionId, reviewIds, status, session.user.id)
 }
 
 export async function bulkPublishQuestionsAction(questionIds: string[]) {
@@ -150,8 +150,8 @@ export async function updateLessonEditorialStatusAction(lessonId: string, status
 }
 
 export async function submitLessonForReviewAction(lessonId: string, actor = 'Admin', comment?: string) {
-  await requirePermission('manageModules')
-  return submitLessonForReview(lessonId, actor, comment)
+  const session = await requirePermission('manageModules')
+  return submitLessonForReview(lessonId, actor, comment, session.user.id)
 }
 
 export async function approveLessonReviewAction(lessonId: string, actor = 'Admin') {
@@ -165,8 +165,8 @@ export async function rejectLessonReviewAction(lessonId: string, reason: string,
 }
 
 export async function sendLessonBackToDraftAction(lessonId: string, actor = 'Admin', comment?: string) {
-  await requirePermission('manageModules')
-  return sendLessonBackToDraft(lessonId, actor, comment)
+  const session = await requirePermission('manageModules')
+  return sendLessonBackToDraft(lessonId, actor, comment, session.user.id)
 }
 
 export async function publishLessonAction(lessonId: string, actor = 'Admin') {

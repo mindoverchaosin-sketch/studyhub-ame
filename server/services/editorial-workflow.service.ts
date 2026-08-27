@@ -471,7 +471,7 @@ export async function bulkUpdateReviewQueue(
     const nextQueue = reviewQueue.map((item) => {
       const r = item as Record<string, unknown>
       if (!reviewIds.includes(r.id as string)) return item
-      return { ...r, status: 'pending' as const }
+      return { ...r, status }
     })
 
     const updated = await tx.editorialWorkflow.update({
@@ -837,8 +837,17 @@ export async function unpublishLesson(lessonId: string, actor = 'Editor', actorU
 export async function submitLessonForReview(lessonId: string, actor = 'Editor', comment?: string, actorUserId?: string): Promise<EditorialWorkflowDTO> {
   return editorialWorkflowRepository.mutateWithLock('LESSON', lessonId, async (tx, locked) => {
     const reviewQueue = (locked.reviewQueue as Prisma.JsonArray) ?? []
+    const existingPending = reviewQueue.find(
+      (item) => (item as Record<string, unknown>).status === 'pending',
+    )
+
+    if (existingPending) {
+      const auditTrail = await loadAuditTrail('LESSON', lessonId)
+      return mapRowToDTO({ ...(locked as typeof locked), auditTrail })
+    }
+
     const reviewItem = {
-      id: `${lessonId}-review-${reviewQueue.length + 1}`,
+      id: `${lessonId}-review-${Date.now()}`,
       prompt: 'Lesson submitted for review',
       warnings: [] as string[],
       status: 'pending' as const,
@@ -941,9 +950,14 @@ export async function sendLessonBackToDraft(
   actorUserId?: string,
 ): Promise<EditorialWorkflowDTO> {
   return editorialWorkflowRepository.mutateWithLock('LESSON', lessonId, async (tx, locked) => {
+    const reviewQueue = (locked.reviewQueue as Prisma.JsonArray) ?? []
+    const cleanedQueue = reviewQueue.filter(
+      (item) => (item as Record<string, unknown>).status !== 'pending',
+    )
+
     const updated = await tx.editorialWorkflow.update({
       where: { targetType_entityId: { targetType: 'LESSON', entityId: lessonId } },
-      data: { status: 'DRAFT', updatedAt: new Date() },
+      data: { status: 'DRAFT', reviewQueue: cleanedQueue, updatedAt: new Date() },
       select: {
         id: true,
         targetType: true,
