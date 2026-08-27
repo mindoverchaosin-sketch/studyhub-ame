@@ -1,5 +1,11 @@
+import { NotFoundError } from '@/auth'
 import { auditRepository } from '@/server/repositories/audit.repository'
+import { EditorialWorkflowRepository, type EditorialWorkflowRow, editorialWorkflowRepository } from '@/server/repositories/editorial-workflow.repository'
+import { lessonRepository } from '@/server/repositories/lesson.repository'
+import { questionRepository } from '@/server/repositories/question.repository'
 import { publishingService } from '@/server/services/publishing.service'
+import type { Prisma } from '@prisma/client'
+import { PrismaClientKnownRequestError } from '@prisma/client-runtime-utils'
 
 export type EditorialTargetType = 'QUESTION' | 'LESSON'
 export type EditorialStatus = 'DRAFT' | 'IN_REVIEW' | 'APPROVED' | 'PUBLISHED' | 'ARCHIVED'
@@ -52,57 +58,82 @@ export type VersionComparisonDTO = {
   changes: Array<{ field: string; from: string; to: string }>
 }
 
-const workflowStore = new Map<string, EditorialWorkflowDTO>()
+function mapRowToDTO(row: {
+  id: string
+  targetType: string
+  entityId: string
+  status: string
+  currentVersion: number
+  versions: Prisma.JsonValue
+  reviewQueue: Prisma.JsonValue
+  createdAt: Date
+  updatedAt: Date
+  auditTrail?: EditorialAuditEntryDTO[]
+}): EditorialWorkflowDTO {
+  const versions = (row.versions as Prisma.JsonArray) ?? []
+  const reviewQueue = (row.reviewQueue as Prisma.JsonArray) ?? []
 
-function getWorkflowKey(targetType: EditorialTargetType, entityId: string) {
-  return `${targetType}:${entityId}`
-}
-
-function createBaseWorkflow(entityId: string, targetType: EditorialTargetType): EditorialWorkflowDTO {
-  const initialStatus: EditorialStatus = targetType === 'QUESTION' ? 'IN_REVIEW' : 'DRAFT'
   return {
-    status: initialStatus,
-    currentVersion: 1,
-    versions: [
-      {
-        id: `${entityId}-v1`,
-        version: 1,
-        summary: targetType === 'QUESTION' ? 'Initial question draft created' : 'Initial lesson draft created',
-        changedAt: new Date('2024-01-10T10:00:00.000Z').toISOString(),
-        author: 'Admin',
-        status: initialStatus,
-        publishedAt: null,
-        isCurrent: true,
-      },
-    ],
-    reviewQueue: targetType === 'QUESTION'
-      ? [
-          { id: `${entityId}-review-1`, prompt: 'Question needs review', warnings: ['Duplicate warning', 'Missing explanation'], status: 'duplicate', comments: ['Needs clearer distractor wording'], reviewer: undefined },
-          { id: `${entityId}-review-2`, prompt: 'AI review suggestion', warnings: ['Ambiguous wording'], status: 'ai-review', comments: [], reviewer: undefined },
-        ]
-      : [
-          { id: `${entityId}-review-1`, prompt: 'Lesson ready for editorial review', warnings: [], status: 'pending', comments: [], reviewer: undefined },
-        ],
-    auditTrail: [
-      { id: `${entityId}-audit-1`, actor: 'Author', action: targetType === 'QUESTION' ? 'Drafted question' : 'Drafted lesson', timestamp: new Date('2024-01-10T10:00:00.000Z').toISOString() },
-    ],
+    status: row.status as EditorialStatus,
+    currentVersion: row.currentVersion,
+    versions: versions.map((version) => {
+      const v = version as Record<string, unknown>
+      return {
+        id: (v.id as string) ?? `${row.entityId}-v${v.version as number}`,
+        version: (v.version as number) ?? 0,
+        summary: (v.summary as string) ?? '',
+        changedAt: (v.changedAt as string) ?? row.updatedAt.toISOString(),
+        author: (v.author as string) ?? 'Unknown',
+        status: (v.status as EditorialStatus) ?? row.status,
+        publishedAt: (v.publishedAt as string | null) ?? null,
+        isCurrent: (v.isCurrent as boolean) ?? false,
+        data: (v.data as Record<string, unknown> | undefined) ?? undefined,
+      }
+    }),
+    reviewQueue: reviewQueue.map((item) => {
+      const r = item as Record<string, unknown>
+      return {
+        id: (r.id as string) ?? `${row.entityId}-review-${Math.random()}`,
+        prompt: (r.prompt as string) ?? '',
+        warnings: Array.isArray(r.warnings) ? (r.warnings as string[]) : [],
+        status: (r.status as EditorialReviewQueueItemDTO['status']) ?? 'pending',
+        comments: Array.isArray(r.comments) ? (r.comments as string[]) : [],
+        reviewer: (r.reviewer as string | undefined) ?? undefined,
+      }
+    }),
+    auditTrail: row.auditTrail ?? [],
     analytics: {
-      reviewBacklog: 1,
-      contentQuality: 90,
-      coverageByModule: [{ module: 'Airframes', coverage: 92 }, { module: 'Systems', coverage: 78 }],
-      difficultyBalance: [{ label: 'Beginner', value: 40 }, { label: 'Intermediate', value: 40 }, { label: 'Advanced', value: 20 }],
+      reviewBacklog: reviewQueue.length,
+      contentQuality: 0,
+      coverageByModule: [],
+      difficultyBalance: [],
     },
   }
 }
 
-function getOrCreateWorkflow(targetType: EditorialTargetType, entityId: string): EditorialWorkflowDTO {
-  const key = getWorkflowKey(targetType, entityId)
-  const existing = workflowStore.get(key)
-  if (existing) return existing
-
-  const workflow = createBaseWorkflow(entityId, targetType)
-  workflowStore.set(key, workflow)
-  return workflow
+function buildVersionSnapshot(
+  entityId: string,
+  summary: string,
+  author: string,
+  status: EditorialStatus,
+  publishedAt: string | null,
+  nextVersion: number,
+  data?: Record<string, unknown>,
+): Prisma.InputJsonValue {
+  const snapshot: Record<string, unknown> = {
+    id: `${entityId}-v${nextVersion}`,
+    version: nextVersion,
+    summary,
+    changedAt: new Date().toISOString(),
+    author,
+    status,
+    publishedAt,
+    isCurrent: true,
+  }
+  if (data !== undefined) {
+    snapshot.data = data
+  }
+  return snapshot as Prisma.InputJsonValue
 }
 
 async function recordAuditEvent(
@@ -124,41 +155,63 @@ async function recordAuditEvent(
   })
 }
 
-function createVersionSnapshotInternal(
-  workflow: EditorialWorkflowDTO,
-  entityId: string,
-  targetType: EditorialTargetType,
-  summary: string,
-  author: string,
-  status: EditorialStatus,
-  publishedAt: string | null,
-  data?: Record<string, unknown>,
-): EditorialVersionDTO {
-  const nextVersion = Math.max(...workflow.versions.map((version) => version.version), 0) + 1
-  const snapshot: EditorialVersionDTO = {
-    id: `${entityId}-v${nextVersion}`,
-    version: nextVersion,
-    summary,
-    changedAt: new Date().toISOString(),
-    author,
-    status,
-    publishedAt,
-    isCurrent: true,
-    data,
+async function loadAuditTrail(targetType: EditorialTargetType, entityId: string): Promise<EditorialAuditEntryDTO[]> {
+  const entries = await auditRepository.listForTarget(targetType, entityId)
+
+  return entries.map((entry) => ({
+    id: entry.id,
+    actor: ((entry.metadata as Record<string, unknown> | null)?.actor as string | undefined) ?? entry.actorUserId,
+    action: entry.action,
+    timestamp: entry.createdAt.toISOString(),
+  }))
+}
+
+async function initializeWorkflow(targetType: EditorialTargetType, entityId: string): Promise<EditorialWorkflowRow> {
+  let existing = await editorialWorkflowRepository.findByTarget(targetType, entityId)
+  if (existing) return existing
+
+  if (targetType === 'QUESTION') {
+    const question = await questionRepository.findById(entityId)
+    if (!question) throw new NotFoundError('Question not found.')
+  } else {
+    const lesson = await lessonRepository.findById(entityId)
+    if (!lesson) throw new NotFoundError('Lesson not found.')
   }
 
-  workflow.versions = workflow.versions.map((version) => ({ ...version, isCurrent: false }))
-  workflow.versions = [...workflow.versions, snapshot]
-  workflow.currentVersion = nextVersion
-  return snapshot
+  const initialStatus: EditorialStatus = targetType === 'QUESTION' ? 'IN_REVIEW' : 'DRAFT'
+  const now = new Date().toISOString()
+  const initialSnapshot = buildVersionSnapshot(entityId, `Initial ${targetType.toLowerCase()} draft created`, 'System', initialStatus, null, 1)
+
+  try {
+    return await editorialWorkflowRepository.create({
+      targetType,
+      entityId,
+      status: initialStatus,
+      currentVersion: 1,
+      versions: [initialSnapshot],
+      reviewQueue: [],
+    })
+  } catch (error: unknown) {
+    const prismaError = error as { code?: string; message?: string } | null
+    if (prismaError && prismaError.code === 'P2002') {
+      const reloaded = await editorialWorkflowRepository.findByTarget(targetType, entityId)
+      if (!reloaded) throw new Error('Workflow not found after P2002')
+      return reloaded
+    }
+    throw error
+  }
 }
 
 export async function getEditorialWorkflow(questionId: string): Promise<EditorialWorkflowDTO> {
-  return structuredClone(getOrCreateWorkflow('QUESTION', questionId))
+  const row = await initializeWorkflow('QUESTION', questionId)
+  const auditTrail = await loadAuditTrail('QUESTION', questionId)
+  return mapRowToDTO({ ...row, auditTrail })
 }
 
 export async function getLessonEditorialWorkflow(lessonId: string): Promise<EditorialWorkflowDTO> {
-  return structuredClone(getOrCreateWorkflow('LESSON', lessonId))
+  const row = await initializeWorkflow('LESSON', lessonId)
+  const auditTrail = await loadAuditTrail('LESSON', lessonId)
+  return mapRowToDTO({ ...row, auditTrail })
 }
 
 export async function updateEditorialStatus(
@@ -168,14 +221,41 @@ export async function updateEditorialStatus(
   comment?: string,
   actorUserId?: string,
 ): Promise<EditorialWorkflowDTO> {
-  const workflow = getOrCreateWorkflow('QUESTION', questionId)
-  workflow.status = status
-  workflow.auditTrail = [
-    ...workflow.auditTrail,
-    { id: `${questionId}-audit-${workflow.auditTrail.length + 1}`, actor, action: `Changed status to ${status}${comment ? ` (${comment})` : ''}`, timestamp: new Date().toISOString() },
-  ]
-  await recordAuditEvent('QUESTION', questionId, 'editorial.status.change', actor, actorUserId, { status, comment })
-  return structuredClone(workflow)
+  return editorialWorkflowRepository.mutateWithLock('QUESTION', questionId, async (tx, locked) => {
+    const currentStatus = locked.status as EditorialStatus
+    const validTransitions: Record<EditorialStatus, EditorialStatus[]> = {
+      DRAFT: ['IN_REVIEW', 'ARCHIVED'],
+      IN_REVIEW: ['APPROVED', 'DRAFT', 'PUBLISHED'],
+      APPROVED: ['PUBLISHED', 'ARCHIVED', 'DRAFT'],
+      PUBLISHED: ['ARCHIVED', 'DRAFT'],
+      ARCHIVED: ['DRAFT'],
+    }
+
+    if (!validTransitions[currentStatus]?.includes(status)) {
+      throw new Error(`Invalid transition from ${currentStatus} to ${status}`)
+    }
+
+    const updated = await tx.editorialWorkflow.update({
+      where: { targetType_entityId: { targetType: 'QUESTION', entityId: questionId } },
+      data: { status, updatedAt: new Date() },
+      select: {
+        id: true,
+        targetType: true,
+        entityId: true,
+        status: true,
+        currentVersion: true,
+        versions: true,
+        reviewQueue: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    await recordAuditEvent('QUESTION', questionId, 'editorial.status.change', actor, actorUserId, { status, comment })
+    const auditTrail = await loadAuditTrail('QUESTION', questionId)
+
+    return mapRowToDTO({ ...(updated as typeof locked), auditTrail })
+  })
 }
 
 export async function updateLessonEditorialStatus(
@@ -185,14 +265,41 @@ export async function updateLessonEditorialStatus(
   comment?: string,
   actorUserId?: string,
 ): Promise<EditorialWorkflowDTO> {
-  const workflow = getOrCreateWorkflow('LESSON', lessonId)
-  workflow.status = status
-  workflow.auditTrail = [
-    ...workflow.auditTrail,
-    { id: `${lessonId}-audit-${workflow.auditTrail.length + 1}`, actor, action: `Changed status to ${status}${comment ? ` (${comment})` : ''}`, timestamp: new Date().toISOString() },
-  ]
-  await recordAuditEvent('LESSON', lessonId, 'editorial.status.change', actor, actorUserId, { status, comment })
-  return structuredClone(workflow)
+  return editorialWorkflowRepository.mutateWithLock('LESSON', lessonId, async (tx, locked) => {
+    const currentStatus = locked.status as EditorialStatus
+    const validTransitions: Record<EditorialStatus, EditorialStatus[]> = {
+      DRAFT: ['IN_REVIEW', 'ARCHIVED'],
+      IN_REVIEW: ['APPROVED', 'DRAFT', 'PUBLISHED'],
+      APPROVED: ['PUBLISHED', 'ARCHIVED', 'DRAFT'],
+      PUBLISHED: ['ARCHIVED', 'DRAFT'],
+      ARCHIVED: ['DRAFT'],
+    }
+
+    if (!validTransitions[currentStatus]?.includes(status)) {
+      throw new Error(`Invalid transition from ${currentStatus} to ${status}`)
+    }
+
+    const updated = await tx.editorialWorkflow.update({
+      where: { targetType_entityId: { targetType: 'LESSON', entityId: lessonId } },
+      data: { status, updatedAt: new Date() },
+      select: {
+        id: true,
+        targetType: true,
+        entityId: true,
+        status: true,
+        currentVersion: true,
+        versions: true,
+        reviewQueue: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    await recordAuditEvent('LESSON', lessonId, 'editorial.status.change', actor, actorUserId, { status, comment })
+    const auditTrail = await loadAuditTrail('LESSON', lessonId)
+
+    return mapRowToDTO({ ...(updated as typeof locked), auditTrail })
+  })
 }
 
 export async function addReviewComment(
@@ -202,18 +309,39 @@ export async function addReviewComment(
   actor = 'Reviewer',
   actorUserId?: string,
 ): Promise<EditorialWorkflowDTO> {
-  const workflow = getOrCreateWorkflow('QUESTION', questionId)
-  const item = workflow.reviewQueue.find((entry) => entry.id === reviewId)
-  if (item) {
-    item.comments = [...item.comments, comment]
-    item.reviewer = actor
-  }
-  workflow.auditTrail = [
-    ...workflow.auditTrail,
-    { id: `${questionId}-audit-${workflow.auditTrail.length + 1}`, actor, action: `Added review comment to ${reviewId}`, timestamp: new Date().toISOString() },
-  ]
-  await recordAuditEvent('QUESTION', questionId, 'editorial.review.comment', actor, actorUserId, { reviewId, comment })
-  return structuredClone(workflow)
+  return editorialWorkflowRepository.mutateWithLock('QUESTION', questionId, async (tx, locked) => {
+    const reviewQueue = (locked.reviewQueue as Prisma.JsonArray) ?? []
+    const nextQueue = reviewQueue.map((item) => {
+      const r = item as Record<string, unknown>
+      if (r.id !== reviewId) return item
+      return {
+        ...r,
+        comments: [...(Array.isArray(r.comments) ? (r.comments as string[]) : []), comment],
+        reviewer: actor,
+      }
+    })
+
+    const updated = await tx.editorialWorkflow.update({
+      where: { targetType_entityId: { targetType: 'QUESTION', entityId: questionId } },
+      data: { reviewQueue: nextQueue, updatedAt: new Date() },
+      select: {
+        id: true,
+        targetType: true,
+        entityId: true,
+        status: true,
+        currentVersion: true,
+        versions: true,
+        reviewQueue: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    await recordAuditEvent('QUESTION', questionId, 'editorial.review.comment', actor, actorUserId, { reviewId, comment })
+    const auditTrail = await loadAuditTrail('QUESTION', questionId)
+
+    return mapRowToDTO({ ...(updated as typeof locked), auditTrail })
+  })
 }
 
 export async function addLessonReviewComment(
@@ -223,70 +351,187 @@ export async function addLessonReviewComment(
   actor = 'Reviewer',
   actorUserId?: string,
 ): Promise<EditorialWorkflowDTO> {
-  const workflow = getOrCreateWorkflow('LESSON', lessonId)
-  const item = workflow.reviewQueue.find((entry) => entry.id === reviewId)
-  if (item) {
-    item.comments = [...item.comments, comment]
-    item.reviewer = actor
-  }
-  workflow.auditTrail = [
-    ...workflow.auditTrail,
-    { id: `${lessonId}-audit-${workflow.auditTrail.length + 1}`, actor, action: `Added review comment to ${reviewId}`, timestamp: new Date().toISOString() },
-  ]
-  await recordAuditEvent('LESSON', lessonId, 'editorial.review.comment', actor, actorUserId, { reviewId, comment })
-  return structuredClone(workflow)
+  return editorialWorkflowRepository.mutateWithLock('LESSON', lessonId, async (tx, locked) => {
+    const reviewQueue = (locked.reviewQueue as Prisma.JsonArray) ?? []
+    const nextQueue = reviewQueue.map((item) => {
+      const r = item as Record<string, unknown>
+      if (r.id !== reviewId) return item
+      return {
+        ...r,
+        comments: [...(Array.isArray(r.comments) ? (r.comments as string[]) : []), comment],
+        reviewer: actor,
+      }
+    })
+
+    const updated = await tx.editorialWorkflow.update({
+      where: { targetType_entityId: { targetType: 'LESSON', entityId: lessonId } },
+      data: { reviewQueue: nextQueue, updatedAt: new Date() },
+      select: {
+        id: true,
+        targetType: true,
+        entityId: true,
+        status: true,
+        currentVersion: true,
+        versions: true,
+        reviewQueue: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    await recordAuditEvent('LESSON', lessonId, 'editorial.review.comment', actor, actorUserId, { reviewId, comment })
+    const auditTrail = await loadAuditTrail('LESSON', lessonId)
+
+    return mapRowToDTO({ ...(updated as typeof locked), auditTrail })
+  })
 }
 
-export async function assignReviewer(questionId: string, reviewId: string, reviewer: string, actorUserId?: string): Promise<EditorialWorkflowDTO> {
-  const workflow = getOrCreateWorkflow('QUESTION', questionId)
-  const item = workflow.reviewQueue.find((entry) => entry.id === reviewId)
-  if (item) {
-    item.reviewer = reviewer
-  }
-  workflow.auditTrail = [
-    ...workflow.auditTrail,
-    { id: `${questionId}-audit-${workflow.auditTrail.length + 1}`, actor: reviewer, action: `Assigned reviewer to ${reviewId}`, timestamp: new Date().toISOString() },
-  ]
-  await recordAuditEvent('QUESTION', questionId, 'editorial.review.assign', reviewer, actorUserId, { reviewId })
-  return structuredClone(workflow)
+export async function assignReviewer(
+  questionId: string,
+  reviewId: string,
+  reviewer: string,
+  actorUserId?: string,
+): Promise<EditorialWorkflowDTO> {
+  return editorialWorkflowRepository.mutateWithLock('QUESTION', questionId, async (tx, locked) => {
+    const reviewQueue = (locked.reviewQueue as Prisma.JsonArray) ?? []
+    const nextQueue = reviewQueue.map((item) => {
+      const r = item as Record<string, unknown>
+      if (r.id !== reviewId) return item
+      return { ...r, reviewer }
+    })
+
+    const updated = await tx.editorialWorkflow.update({
+      where: { targetType_entityId: { targetType: 'QUESTION', entityId: questionId } },
+      data: { reviewQueue: nextQueue, updatedAt: new Date() },
+      select: {
+        id: true,
+        targetType: true,
+        entityId: true,
+        status: true,
+        currentVersion: true,
+        versions: true,
+        reviewQueue: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    await recordAuditEvent('QUESTION', questionId, 'editorial.review.assign', reviewer, actorUserId, { reviewId })
+    const auditTrail = await loadAuditTrail('QUESTION', questionId)
+
+    return mapRowToDTO({ ...(updated as typeof locked), auditTrail })
+  })
 }
 
-export async function assignLessonReviewer(lessonId: string, reviewId: string, reviewer: string, actorUserId?: string): Promise<EditorialWorkflowDTO> {
-  const workflow = getOrCreateWorkflow('LESSON', lessonId)
-  const item = workflow.reviewQueue.find((entry) => entry.id === reviewId)
-  if (item) {
-    item.reviewer = reviewer
-  }
-  workflow.auditTrail = [
-    ...workflow.auditTrail,
-    { id: `${lessonId}-audit-${workflow.auditTrail.length + 1}`, actor: reviewer, action: `Assigned reviewer to ${reviewId}`, timestamp: new Date().toISOString() },
-  ]
-  await recordAuditEvent('LESSON', lessonId, 'editorial.review.assign', reviewer, actorUserId, { reviewId })
-  return structuredClone(workflow)
+export async function assignLessonReviewer(
+  lessonId: string,
+  reviewId: string,
+  reviewer: string,
+  actorUserId?: string,
+): Promise<EditorialWorkflowDTO> {
+  return editorialWorkflowRepository.mutateWithLock('LESSON', lessonId, async (tx, locked) => {
+    const reviewQueue = (locked.reviewQueue as Prisma.JsonArray) ?? []
+    const nextQueue = reviewQueue.map((item) => {
+      const r = item as Record<string, unknown>
+      if (r.id !== reviewId) return item
+      return { ...r, reviewer }
+    })
+
+    const updated = await tx.editorialWorkflow.update({
+      where: { targetType_entityId: { targetType: 'LESSON', entityId: lessonId } },
+      data: { reviewQueue: nextQueue, updatedAt: new Date() },
+      select: {
+        id: true,
+        targetType: true,
+        entityId: true,
+        status: true,
+        currentVersion: true,
+        versions: true,
+        reviewQueue: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    await recordAuditEvent('LESSON', lessonId, 'editorial.review.assign', reviewer, actorUserId, { reviewId })
+    const auditTrail = await loadAuditTrail('LESSON', lessonId)
+
+    return mapRowToDTO({ ...(updated as typeof locked), auditTrail })
+  })
 }
 
-export async function bulkUpdateReviewQueue(questionId: string, reviewIds: string[], status: EditorialStatus): Promise<EditorialWorkflowDTO> {
-  const workflow = getOrCreateWorkflow('QUESTION', questionId)
-  workflow.status = status
-  workflow.reviewQueue = workflow.reviewQueue.map((item) => (reviewIds.includes(item.id) ? { ...item, status: 'pending' } : item))
-  workflow.auditTrail = [
-    ...workflow.auditTrail,
-    { id: `${questionId}-audit-${workflow.auditTrail.length + 1}`, actor: 'Admin', action: `Bulk updated ${reviewIds.length} review items`, timestamp: new Date().toISOString() },
-  ]
-  await recordAuditEvent('QUESTION', questionId, 'editorial.review.bulkUpdate', 'Admin', undefined, { reviewIds, status })
-  return structuredClone(workflow)
+export async function bulkUpdateReviewQueue(
+  questionId: string,
+  reviewIds: string[],
+  status: EditorialStatus,
+  actorUserId?: string,
+): Promise<EditorialWorkflowDTO> {
+  return editorialWorkflowRepository.mutateWithLock('QUESTION', questionId, async (tx, locked) => {
+    const reviewQueue = (locked.reviewQueue as Prisma.JsonArray) ?? []
+    const nextQueue = reviewQueue.map((item) => {
+      const r = item as Record<string, unknown>
+      if (!reviewIds.includes(r.id as string)) return item
+      return { ...r, status: 'pending' as const }
+    })
+
+    const updated = await tx.editorialWorkflow.update({
+      where: { targetType_entityId: { targetType: 'QUESTION', entityId: questionId } },
+      data: { status, reviewQueue: nextQueue, updatedAt: new Date() },
+      select: {
+        id: true,
+        targetType: true,
+        entityId: true,
+        status: true,
+        currentVersion: true,
+        versions: true,
+        reviewQueue: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    await recordAuditEvent('QUESTION', questionId, 'editorial.review.bulkUpdate', 'Admin', actorUserId, { reviewIds, status })
+    const auditTrail = await loadAuditTrail('QUESTION', questionId)
+
+    return mapRowToDTO({ ...(updated as typeof locked), auditTrail })
+  })
 }
 
-export async function bulkUpdateLessonReviewQueue(lessonId: string, reviewIds: string[], status: EditorialStatus, actorUserId?: string): Promise<EditorialWorkflowDTO> {
-  const workflow = getOrCreateWorkflow('LESSON', lessonId)
-  workflow.status = status
-  workflow.reviewQueue = workflow.reviewQueue.map((item) => (reviewIds.includes(item.id) ? { ...item, status: 'pending' } : item))
-  workflow.auditTrail = [
-    ...workflow.auditTrail,
-    { id: `${lessonId}-audit-${workflow.auditTrail.length + 1}`, actor: 'Admin', action: `Bulk updated ${reviewIds.length} review items`, timestamp: new Date().toISOString() },
-  ]
-  await recordAuditEvent('LESSON', lessonId, 'editorial.review.bulkUpdate', 'Admin', actorUserId, { reviewIds, status })
-  return structuredClone(workflow)
+export async function bulkUpdateLessonReviewQueue(
+  lessonId: string,
+  reviewIds: string[],
+  status: EditorialStatus,
+  actorUserId?: string,
+): Promise<EditorialWorkflowDTO> {
+  return editorialWorkflowRepository.mutateWithLock('LESSON', lessonId, async (tx, locked) => {
+    const reviewQueue = (locked.reviewQueue as Prisma.JsonArray) ?? []
+    const nextQueue = reviewQueue.map((item) => {
+      const r = item as Record<string, unknown>
+      if (!reviewIds.includes(r.id as string)) return item
+      return { ...r, status: 'pending' as const }
+    })
+
+    const updated = await tx.editorialWorkflow.update({
+      where: { targetType_entityId: { targetType: 'LESSON', entityId: lessonId } },
+      data: { status, reviewQueue: nextQueue, updatedAt: new Date() },
+      select: {
+        id: true,
+        targetType: true,
+        entityId: true,
+        status: true,
+        currentVersion: true,
+        versions: true,
+        reviewQueue: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    await recordAuditEvent('LESSON', lessonId, 'editorial.review.bulkUpdate', 'Admin', actorUserId, { reviewIds, status })
+    const auditTrail = await loadAuditTrail('LESSON', lessonId)
+
+    return mapRowToDTO({ ...(updated as typeof locked), auditTrail })
+  })
 }
 
 export async function createVersionSnapshot(
@@ -320,20 +565,55 @@ export async function createVersionSnapshotForTarget(
   data?: Record<string, unknown>,
   actorUserId?: string,
 ): Promise<EditorialVersionDTO> {
-  const workflow = getOrCreateWorkflow(targetType, entityId)
-  const snapshot = createVersionSnapshotInternal(workflow, entityId, targetType, summary, author, status, publishedAt, data)
-  workflow.auditTrail = [
-    ...workflow.auditTrail,
-    { id: `${entityId}-audit-${workflow.auditTrail.length + 1}`, actor: author, action: `Created version ${snapshot.version}`, timestamp: new Date().toISOString() },
-  ]
-  await recordAuditEvent(targetType, entityId, 'editorial.version.create', author, actorUserId, { version: snapshot.version, status })
-  return structuredClone(snapshot)
+  return editorialWorkflowRepository.mutateWithLock(targetType, entityId, async (tx, locked) => {
+    const currentVersions = (locked.versions as Prisma.JsonArray) ?? []
+    const nextVersion = currentVersions.length > 0
+      ? Math.max(...currentVersions.map((v) => (v as Record<string, unknown>).version as number)) + 1
+      : 1
+
+    const snapshot = buildVersionSnapshot(entityId, summary, author, status, publishedAt, nextVersion, data)
+
+    const nextVersions = [
+      ...currentVersions.map((v) => {
+        const version = v as Record<string, unknown>
+        return { ...version, isCurrent: false }
+      }),
+      snapshot,
+    ] as Prisma.InputJsonArray
+
+    const updated = await tx.editorialWorkflow.update({
+      where: { targetType_entityId: { targetType, entityId } },
+      data: {
+        currentVersion: nextVersion,
+        versions: nextVersions,
+        updatedAt: new Date(),
+      },
+      select: {
+        id: true,
+        targetType: true,
+        entityId: true,
+        status: true,
+        currentVersion: true,
+        versions: true,
+        reviewQueue: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    await recordAuditEvent(targetType, entityId, 'editorial.version.create', author, actorUserId, { version: nextVersion, status })
+    const auditTrail = await loadAuditTrail(targetType, entityId)
+
+    const dto = mapRowToDTO({ ...(updated as typeof locked), auditTrail })
+    return dto.versions.find((v) => v.version === nextVersion) as EditorialVersionDTO
+  })
 }
 
 export async function compareVersions(questionId: string, fromVersion: number, toVersion: number): Promise<VersionComparisonDTO> {
-  const workflow = getOrCreateWorkflow('QUESTION', questionId)
-  const from = workflow.versions.find((version) => version.version === fromVersion)
-  const to = workflow.versions.find((version) => version.version === toVersion)
+  const row = await initializeWorkflow('QUESTION', questionId)
+  const dto = mapRowToDTO(row)
+  const from = dto.versions.find((version) => version.version === fromVersion)
+  const to = dto.versions.find((version) => version.version === toVersion)
 
   return {
     fromVersion,
@@ -370,124 +650,257 @@ export async function restoreVersionForTarget(
   actor = 'Editor',
   actorUserId?: string,
 ): Promise<EditorialWorkflowDTO> {
-  const workflow = getOrCreateWorkflow(targetType, entityId)
-  const version = workflow.versions.find((entry) => entry.id === versionId)
-  const restoredVersion = version
-    ? createVersionSnapshotInternal(workflow, entityId, targetType, `Restored version ${version.version}`, actor, 'DRAFT', null, version.data)
-    : createVersionSnapshotInternal(workflow, entityId, targetType, 'Restored unknown version', actor, 'DRAFT', null, undefined)
+  return editorialWorkflowRepository.mutateWithLock(targetType, entityId, async (tx, locked) => {
+    const currentVersions = (locked.versions as Prisma.JsonArray) ?? []
+    const version = currentVersions.find((v) => (v as Record<string, unknown>).id === versionId)
+    const sourceVersion = version ? (version as Record<string, unknown>) : null
 
-  workflow.status = 'DRAFT'
-  workflow.auditTrail = [
-    ...workflow.auditTrail,
-    { id: `${entityId}-audit-${workflow.auditTrail.length + 1}`, actor, action: `Restored version ${version?.version ?? 'unknown'}`, timestamp: new Date().toISOString() },
-  ]
-  await recordAuditEvent(targetType, entityId, 'editorial.version.restore', actor, actorUserId, { restoredVersion: restoredVersion.version, sourceVersion: version?.version })
-  return structuredClone(workflow)
+    const nextVersion = currentVersions.length > 0
+      ? Math.max(...currentVersions.map((v) => (v as Record<string, unknown>).version as number)) + 1
+      : 1
+
+    const restoredSnapshot = buildVersionSnapshot(
+      entityId,
+      sourceVersion ? `Restored version ${sourceVersion.version as number}` : 'Restored unknown version',
+      actor,
+      'DRAFT',
+      null,
+      nextVersion,
+      (sourceVersion?.data as Record<string, unknown> | undefined) ?? undefined,
+    )
+
+    const nextVersions = [...currentVersions, restoredSnapshot]
+
+    const updated = await tx.editorialWorkflow.update({
+      where: { targetType_entityId: { targetType, entityId } },
+      data: {
+        status: 'DRAFT',
+        currentVersion: nextVersion,
+        versions: nextVersions as Prisma.InputJsonArray,
+        updatedAt: new Date(),
+      },
+      select: {
+        id: true,
+        targetType: true,
+        entityId: true,
+        status: true,
+        currentVersion: true,
+        versions: true,
+        reviewQueue: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    await recordAuditEvent(targetType, entityId, 'editorial.version.restore', actor, actorUserId, {
+      restoredVersion: nextVersion,
+      sourceVersion: sourceVersion?.version as number | undefined,
+    })
+    const auditTrail = await loadAuditTrail(targetType, entityId)
+
+    return mapRowToDTO({ ...(updated as typeof locked), auditTrail })
+  })
 }
 
 export async function publishQuestion(questionId: string, actor = 'Editor', scheduledFor?: string, actorUserId?: string): Promise<EditorialWorkflowDTO> {
   const result = await publishingService.publish('QUESTION', questionId)
-  const workflow = getOrCreateWorkflow('QUESTION', questionId)
-  workflow.status = result.workflowState
-  workflow.auditTrail = [
-    ...workflow.auditTrail,
-    { id: `${questionId}-audit-${workflow.auditTrail.length + 1}`, actor, action: 'Published question', timestamp: new Date().toISOString() },
-  ]
-  const currentVersion = workflow.versions.find((version) => version.version === workflow.currentVersion)
-  if (currentVersion) {
-    currentVersion.status = 'PUBLISHED'
-    currentVersion.publishedAt = result.publishedAt
-  }
-  await recordAuditEvent('QUESTION', questionId, 'editorial.publish', actor, actorUserId)
-  return structuredClone(workflow)
+  return editorialWorkflowRepository.mutateWithLock('QUESTION', questionId, async (tx, locked) => {
+    const currentVersions = (locked.versions as Prisma.JsonArray) ?? []
+    const nextVersions = currentVersions.map((v) => {
+      const version = v as Record<string, unknown>
+      if (version.version !== locked.currentVersion) return v
+      return { ...version, status: 'PUBLISHED', publishedAt: result.publishedAt }
+    })
+
+    const updated = await tx.editorialWorkflow.update({
+      where: { targetType_entityId: { targetType: 'QUESTION', entityId: questionId } },
+      data: { status: result.workflowState, versions: nextVersions, updatedAt: new Date() },
+      select: {
+        id: true,
+        targetType: true,
+        entityId: true,
+        status: true,
+        currentVersion: true,
+        versions: true,
+        reviewQueue: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    await recordAuditEvent('QUESTION', questionId, 'editorial.publish', actor, actorUserId)
+    const auditTrail = await loadAuditTrail('QUESTION', questionId)
+
+    return mapRowToDTO({ ...(updated as typeof locked), auditTrail })
+  })
 }
 
 export async function unpublishQuestion(questionId: string, actor = 'Editor', actorUserId?: string): Promise<EditorialWorkflowDTO> {
   const result = await publishingService.unpublish('QUESTION', questionId)
-  const workflow = getOrCreateWorkflow('QUESTION', questionId)
-  workflow.status = result.workflowState
-  workflow.auditTrail = [
-    ...workflow.auditTrail,
-    { id: `${questionId}-audit-${workflow.auditTrail.length + 1}`, actor, action: 'Unpublished question', timestamp: new Date().toISOString() },
-  ]
-  const currentVersion = workflow.versions.find((version) => version.version === workflow.currentVersion)
-  if (currentVersion) {
-    currentVersion.status = 'DRAFT'
-    currentVersion.publishedAt = null
-  }
-  await recordAuditEvent('QUESTION', questionId, 'editorial.unpublish', actor, actorUserId)
-  return structuredClone(workflow)
+  return editorialWorkflowRepository.mutateWithLock('QUESTION', questionId, async (tx, locked) => {
+    const currentVersions = (locked.versions as Prisma.JsonArray) ?? []
+    const nextVersions = currentVersions.map((v) => {
+      const version = v as Record<string, unknown>
+      if (version.version !== locked.currentVersion) return v
+      return { ...version, status: 'DRAFT', publishedAt: null }
+    })
+
+    const updated = await tx.editorialWorkflow.update({
+      where: { targetType_entityId: { targetType: 'QUESTION', entityId: questionId } },
+      data: { status: result.workflowState, versions: nextVersions, updatedAt: new Date() },
+      select: {
+        id: true,
+        targetType: true,
+        entityId: true,
+        status: true,
+        currentVersion: true,
+        versions: true,
+        reviewQueue: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    await recordAuditEvent('QUESTION', questionId, 'editorial.unpublish', actor, actorUserId)
+    const auditTrail = await loadAuditTrail('QUESTION', questionId)
+
+    return mapRowToDTO({ ...(updated as typeof locked), auditTrail })
+  })
 }
 
 export async function publishLesson(lessonId: string, actor = 'Editor', actorUserId?: string): Promise<EditorialWorkflowDTO> {
   const result = await publishingService.publish('LESSON', lessonId)
-  const workflow = getOrCreateWorkflow('LESSON', lessonId)
-  workflow.status = result.workflowState
-  workflow.auditTrail = [
-    ...workflow.auditTrail,
-    { id: `${lessonId}-audit-${workflow.auditTrail.length + 1}`, actor, action: 'Published lesson', timestamp: new Date().toISOString() },
-  ]
-  const currentVersion = workflow.versions.find((version) => version.version === workflow.currentVersion)
-  if (currentVersion) {
-    currentVersion.status = 'PUBLISHED'
-    currentVersion.publishedAt = result.publishedAt
-  }
-  await recordAuditEvent('LESSON', lessonId, 'editorial.publish', actor, actorUserId)
-  return structuredClone(workflow)
+  return editorialWorkflowRepository.mutateWithLock('LESSON', lessonId, async (tx, locked) => {
+    const currentVersions = (locked.versions as Prisma.JsonArray) ?? []
+    const nextVersions = currentVersions.map((v) => {
+      const version = v as Record<string, unknown>
+      if (version.version !== locked.currentVersion) return v
+      return { ...version, status: 'PUBLISHED', publishedAt: result.publishedAt }
+    })
+
+    const updated = await tx.editorialWorkflow.update({
+      where: { targetType_entityId: { targetType: 'LESSON', entityId: lessonId } },
+      data: { status: result.workflowState, versions: nextVersions, updatedAt: new Date() },
+      select: {
+        id: true,
+        targetType: true,
+        entityId: true,
+        status: true,
+        currentVersion: true,
+        versions: true,
+        reviewQueue: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    await recordAuditEvent('LESSON', lessonId, 'editorial.publish', actor, actorUserId)
+    const auditTrail = await loadAuditTrail('LESSON', lessonId)
+
+    return mapRowToDTO({ ...(updated as typeof locked), auditTrail })
+  })
 }
 
 export async function unpublishLesson(lessonId: string, actor = 'Editor', actorUserId?: string): Promise<EditorialWorkflowDTO> {
   const result = await publishingService.unpublish('LESSON', lessonId)
-  const workflow = getOrCreateWorkflow('LESSON', lessonId)
-  workflow.status = result.workflowState
-  workflow.auditTrail = [
-    ...workflow.auditTrail,
-    { id: `${lessonId}-audit-${workflow.auditTrail.length + 1}`, actor, action: 'Unpublished lesson', timestamp: new Date().toISOString() },
-  ]
-  const currentVersion = workflow.versions.find((version) => version.version === workflow.currentVersion)
-  if (currentVersion) {
-    currentVersion.status = 'DRAFT'
-    currentVersion.publishedAt = null
-  }
-  await recordAuditEvent('LESSON', lessonId, 'editorial.unpublish', actor, actorUserId)
-  return structuredClone(workflow)
+  return editorialWorkflowRepository.mutateWithLock('LESSON', lessonId, async (tx, locked) => {
+    const currentVersions = (locked.versions as Prisma.JsonArray) ?? []
+    const nextVersions = currentVersions.map((v) => {
+      const version = v as Record<string, unknown>
+      if (version.version !== locked.currentVersion) return v
+      return { ...version, status: 'DRAFT', publishedAt: null }
+    })
+
+    const updated = await tx.editorialWorkflow.update({
+      where: { targetType_entityId: { targetType: 'LESSON', entityId: lessonId } },
+      data: { status: result.workflowState, versions: nextVersions, updatedAt: new Date() },
+      select: {
+        id: true,
+        targetType: true,
+        entityId: true,
+        status: true,
+        currentVersion: true,
+        versions: true,
+        reviewQueue: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    await recordAuditEvent('LESSON', lessonId, 'editorial.unpublish', actor, actorUserId)
+    const auditTrail = await loadAuditTrail('LESSON', lessonId)
+
+    return mapRowToDTO({ ...(updated as typeof locked), auditTrail })
+  })
 }
 
 export async function submitLessonForReview(lessonId: string, actor = 'Editor', comment?: string, actorUserId?: string): Promise<EditorialWorkflowDTO> {
-  const workflow = getOrCreateWorkflow('LESSON', lessonId)
-  workflow.status = 'IN_REVIEW'
-  const reviewItem = {
-    id: `${lessonId}-review-${workflow.reviewQueue.length + 1}`,
-    prompt: 'Lesson submitted for review',
-    warnings: [],
-    status: 'pending' as const,
-    comments: comment ? [comment] : [],
-    reviewer: undefined,
-  }
-  workflow.reviewQueue = [...workflow.reviewQueue, reviewItem]
-  workflow.auditTrail = [
-    ...workflow.auditTrail,
-    { id: `${lessonId}-audit-${workflow.auditTrail.length + 1}`, actor, action: `Submitted lesson for review${comment ? ` (${comment})` : ''}`, timestamp: new Date().toISOString() },
-  ]
-  await recordAuditEvent('LESSON', lessonId, 'editorial.review.submit', actor, actorUserId, { comment })
-  return structuredClone(workflow)
+  return editorialWorkflowRepository.mutateWithLock('LESSON', lessonId, async (tx, locked) => {
+    const reviewQueue = (locked.reviewQueue as Prisma.JsonArray) ?? []
+    const reviewItem = {
+      id: `${lessonId}-review-${reviewQueue.length + 1}`,
+      prompt: 'Lesson submitted for review',
+      warnings: [] as string[],
+      status: 'pending' as const,
+      comments: comment ? [comment] : [],
+      reviewer: undefined,
+    }
+    const nextQueue = [...reviewQueue, reviewItem]
+
+    const updated = await tx.editorialWorkflow.update({
+      where: { targetType_entityId: { targetType: 'LESSON', entityId: lessonId } },
+      data: { status: 'IN_REVIEW', reviewQueue: nextQueue, updatedAt: new Date() },
+      select: {
+        id: true,
+        targetType: true,
+        entityId: true,
+        status: true,
+        currentVersion: true,
+        versions: true,
+        reviewQueue: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    await recordAuditEvent('LESSON', lessonId, 'editorial.review.submit', actor, actorUserId, { comment })
+    const auditTrail = await loadAuditTrail('LESSON', lessonId)
+
+    return mapRowToDTO({ ...(updated as typeof locked), auditTrail })
+  })
 }
 
 export async function approveLessonReview(lessonId: string, actor = 'Editor', actorUserId?: string): Promise<EditorialWorkflowDTO> {
   const result = await publishingService.approve('LESSON', lessonId)
-  const workflow = getOrCreateWorkflow('LESSON', lessonId)
-  workflow.status = result.workflowState
-  workflow.auditTrail = [
-    ...workflow.auditTrail,
-    { id: `${lessonId}-audit-${workflow.auditTrail.length + 1}`, actor, action: 'Approved lesson review', timestamp: new Date().toISOString() },
-  ]
-  const currentVersion = workflow.versions.find((version) => version.version === workflow.currentVersion)
-  if (currentVersion) {
-    currentVersion.status = 'PUBLISHED'
-    currentVersion.publishedAt = result.publishedAt
-  }
-  await recordAuditEvent('LESSON', lessonId, 'editorial.review.approve', actor, actorUserId)
-  return structuredClone(workflow)
+  return editorialWorkflowRepository.mutateWithLock('LESSON', lessonId, async (tx, locked) => {
+    const currentVersions = (locked.versions as Prisma.JsonArray) ?? []
+    const nextVersions = currentVersions.map((v) => {
+      const version = v as Record<string, unknown>
+      if (version.version !== locked.currentVersion) return v
+      return { ...version, status: 'PUBLISHED', publishedAt: result.publishedAt }
+    })
+
+    const updated = await tx.editorialWorkflow.update({
+      where: { targetType_entityId: { targetType: 'LESSON', entityId: lessonId } },
+      data: { status: result.workflowState, versions: nextVersions, updatedAt: new Date() },
+      select: {
+        id: true,
+        targetType: true,
+        entityId: true,
+        status: true,
+        currentVersion: true,
+        versions: true,
+        reviewQueue: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    await recordAuditEvent('LESSON', lessonId, 'editorial.review.approve', actor, actorUserId)
+    const auditTrail = await loadAuditTrail('LESSON', lessonId)
+
+    return mapRowToDTO({ ...(updated as typeof locked), auditTrail })
+  })
 }
 
 export async function rejectLessonReview(
@@ -497,14 +910,28 @@ export async function rejectLessonReview(
   actorUserId?: string,
 ): Promise<EditorialWorkflowDTO> {
   const result = await publishingService.reject('LESSON', lessonId, reason)
-  const workflow = getOrCreateWorkflow('LESSON', lessonId)
-  workflow.status = result.workflowState
-  workflow.auditTrail = [
-    ...workflow.auditTrail,
-    { id: `${lessonId}-audit-${workflow.auditTrail.length + 1}`, actor, action: `Rejected lesson review (${reason})`, timestamp: new Date().toISOString() },
-  ]
-  await recordAuditEvent('LESSON', lessonId, 'editorial.review.reject', actor, actorUserId, { reason })
-  return structuredClone(workflow)
+  return editorialWorkflowRepository.mutateWithLock('LESSON', lessonId, async (tx, locked) => {
+    const updated = await tx.editorialWorkflow.update({
+      where: { targetType_entityId: { targetType: 'LESSON', entityId: lessonId } },
+      data: { status: result.workflowState, updatedAt: new Date() },
+      select: {
+        id: true,
+        targetType: true,
+        entityId: true,
+        status: true,
+        currentVersion: true,
+        versions: true,
+        reviewQueue: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    await recordAuditEvent('LESSON', lessonId, 'editorial.review.reject', actor, actorUserId, { reason })
+    const auditTrail = await loadAuditTrail('LESSON', lessonId)
+
+    return mapRowToDTO({ ...(updated as typeof locked), auditTrail })
+  })
 }
 
 export async function sendLessonBackToDraft(
@@ -513,34 +940,74 @@ export async function sendLessonBackToDraft(
   comment?: string,
   actorUserId?: string,
 ): Promise<EditorialWorkflowDTO> {
-  const workflow = getOrCreateWorkflow('LESSON', lessonId)
-  workflow.status = 'DRAFT'
-  workflow.auditTrail = [
-    ...workflow.auditTrail,
-    { id: `${lessonId}-audit-${workflow.auditTrail.length + 1}`, actor, action: `Sent lesson back to draft${comment ? ` (${comment})` : ''}`, timestamp: new Date().toISOString() },
-  ]
-  await recordAuditEvent('LESSON', lessonId, 'editorial.review.send-back', actor, actorUserId, { comment })
-  return structuredClone(workflow)
+  return editorialWorkflowRepository.mutateWithLock('LESSON', lessonId, async (tx, locked) => {
+    const updated = await tx.editorialWorkflow.update({
+      where: { targetType_entityId: { targetType: 'LESSON', entityId: lessonId } },
+      data: { status: 'DRAFT', updatedAt: new Date() },
+      select: {
+        id: true,
+        targetType: true,
+        entityId: true,
+        status: true,
+        currentVersion: true,
+        versions: true,
+        reviewQueue: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    await recordAuditEvent('LESSON', lessonId, 'editorial.review.send-back', actor, actorUserId, { comment })
+    const auditTrail = await loadAuditTrail('LESSON', lessonId)
+
+    return mapRowToDTO({ ...(updated as typeof locked), auditTrail })
+  })
 }
 
 export async function archiveQuestion(questionId: string, actor = 'Editor'): Promise<EditorialWorkflowDTO> {
-  const workflow = getOrCreateWorkflow('QUESTION', questionId)
-  workflow.status = 'ARCHIVED'
-  workflow.auditTrail = [
-    ...workflow.auditTrail,
-    { id: `${questionId}-audit-${workflow.auditTrail.length + 1}`, actor, action: 'Archived question', timestamp: new Date().toISOString() },
-  ]
-  return structuredClone(workflow)
+  return editorialWorkflowRepository.mutateWithLock('QUESTION', questionId, async (tx, locked) => {
+    const updated = await tx.editorialWorkflow.update({
+      where: { targetType_entityId: { targetType: 'QUESTION', entityId: questionId } },
+      data: { status: 'ARCHIVED', updatedAt: new Date() },
+      select: {
+        id: true,
+        targetType: true,
+        entityId: true,
+        status: true,
+        currentVersion: true,
+        versions: true,
+        reviewQueue: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    const auditTrail = await loadAuditTrail('QUESTION', questionId)
+    return mapRowToDTO({ ...(updated as typeof locked), auditTrail })
+  })
 }
 
 export async function restoreArchivedQuestion(questionId: string, actor = 'Editor'): Promise<EditorialWorkflowDTO> {
-  const workflow = getOrCreateWorkflow('QUESTION', questionId)
-  workflow.status = 'DRAFT'
-  workflow.auditTrail = [
-    ...workflow.auditTrail,
-    { id: `${questionId}-audit-${workflow.auditTrail.length + 1}`, actor, action: 'Restored archived question', timestamp: new Date().toISOString() },
-  ]
-  return structuredClone(workflow)
+  return editorialWorkflowRepository.mutateWithLock('QUESTION', questionId, async (tx, locked) => {
+    const updated = await tx.editorialWorkflow.update({
+      where: { targetType_entityId: { targetType: 'QUESTION', entityId: questionId } },
+      data: { status: 'DRAFT', updatedAt: new Date() },
+      select: {
+        id: true,
+        targetType: true,
+        entityId: true,
+        status: true,
+        currentVersion: true,
+        versions: true,
+        reviewQueue: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+
+    const auditTrail = await loadAuditTrail('QUESTION', questionId)
+    return mapRowToDTO({ ...(updated as typeof locked), auditTrail })
+  })
 }
 
 export async function bulkApproveWorkflowQuestions(questionIds: string[], actor = 'Editor'): Promise<Record<string, EditorialWorkflowDTO>> {
@@ -557,13 +1024,43 @@ export async function bulkAssignReviewerToQuestions(questionIds: string[], revie
   const result: Record<string, EditorialWorkflowDTO> = {}
 
   for (const questionId of questionIds) {
-    const workflow = getOrCreateWorkflow('QUESTION', questionId)
-    workflow.auditTrail = [
-      ...workflow.auditTrail,
-      { id: `${questionId}-audit-${workflow.auditTrail.length + 1}`, actor: reviewer, action: `Assigned reviewer ${reviewer} to question`, timestamp: new Date().toISOString() },
-    ]
-    result[questionId] = structuredClone(workflow)
+    const workflow = await getEditorialWorkflow(questionId)
+    result[questionId] = workflow
   }
 
   return result
 }
+
+export class EditorialWorkflowService {
+  getEditorialWorkflow = getEditorialWorkflow
+  getLessonEditorialWorkflow = getLessonEditorialWorkflow
+  updateEditorialStatus = updateEditorialStatus
+  updateLessonEditorialStatus = updateLessonEditorialStatus
+  addReviewComment = addReviewComment
+  addLessonReviewComment = addLessonReviewComment
+  assignReviewer = assignReviewer
+  assignLessonReviewer = assignLessonReviewer
+  bulkUpdateReviewQueue = bulkUpdateReviewQueue
+  bulkUpdateLessonReviewQueue = bulkUpdateLessonReviewQueue
+  createVersionSnapshot = createVersionSnapshot
+  createLessonVersionSnapshot = createLessonVersionSnapshot
+  createVersionSnapshotForTarget = createVersionSnapshotForTarget
+  compareVersions = compareVersions
+  restoreVersion = restoreVersion
+  restoreLessonVersion = restoreLessonVersion
+  restoreVersionForTarget = restoreVersionForTarget
+  publishQuestion = publishQuestion
+  unpublishQuestion = unpublishQuestion
+  publishLesson = publishLesson
+  unpublishLesson = unpublishLesson
+  submitLessonForReview = submitLessonForReview
+  approveLessonReview = approveLessonReview
+  rejectLessonReview = rejectLessonReview
+  sendLessonBackToDraft = sendLessonBackToDraft
+  archiveQuestion = archiveQuestion
+  restoreArchivedQuestion = restoreArchivedQuestion
+  bulkApproveWorkflowQuestions = bulkApproveWorkflowQuestions
+  bulkAssignReviewerToQuestions = bulkAssignReviewerToQuestions
+}
+
+export const editorialWorkflowService = new EditorialWorkflowService()

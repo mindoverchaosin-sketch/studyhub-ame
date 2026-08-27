@@ -23,6 +23,13 @@ export class AuditRepository {
     })
   }
 
+  async listForTarget(targetType: string, targetId: string) {
+    return prisma.auditLog.findMany({
+      where: { targetType, targetId },
+      orderBy: { createdAt: 'asc' },
+    })
+  }
+
   async listAuditLogs(params: AuditLogQueryDTO = {}): Promise<AuditLogListDTO> {
     const search = params.search?.trim()
     const where: Prisma.AuditLogWhereInput = {
