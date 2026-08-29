@@ -36,6 +36,7 @@ import {
   getQuestionById,
 } from '@/server/services/question.service'
 import { requirePermission } from '@/auth'
+import { withAuditLogging } from '@/server/actions/audit-helpers'
 
 export async function getAdminQuestionLibraryAction(filters: Parameters<typeof getAdminQuestionLibrary>[0]) {
   await requirePermission('manageQuestions')
@@ -78,15 +79,31 @@ export async function bulkUpdateReviewQueueAction(questionId: string, reviewIds:
 }
 
 export async function bulkPublishQuestionsAction(questionIds: string[]) {
-  await requirePermission('manageQuestions')
-  await bulkUpdateQuestionStatus(questionIds, 'PUBLISHED')
-  return questionIds
+  const session = await requirePermission('manageQuestions')
+  return withAuditLogging({
+    permission: 'manageQuestions',
+    action: 'question.bulkPublish',
+    entityType: 'QUESTION',
+    metadata: { source: 'editorial-workflow', questionIds },
+    run: async () => {
+      await bulkUpdateQuestionStatus(questionIds, 'PUBLISHED')
+      return questionIds
+    },
+  })
 }
 
 export async function bulkArchiveQuestionsAction(questionIds: string[]) {
-  await requirePermission('manageQuestions')
-  await bulkUpdateQuestionStatus(questionIds, 'ARCHIVED')
-  return questionIds
+  const session = await requirePermission('manageQuestions')
+  return withAuditLogging({
+    permission: 'manageQuestions',
+    action: 'question.bulkArchive',
+    entityType: 'QUESTION',
+    metadata: { source: 'editorial-workflow', questionIds },
+    run: async () => {
+      await bulkUpdateQuestionStatus(questionIds, 'ARCHIVED')
+      return questionIds
+    },
+  })
 }
 
 export async function bulkApproveQuestionsAction(questionIds: string[]) {
@@ -135,13 +152,13 @@ export async function unpublishQuestionAction(questionId: string, actor = 'Admin
 }
 
 export async function archiveQuestionAction(questionId: string, actor = 'Admin') {
-  await requirePermission('manageQuestions')
-  return archiveQuestion(questionId, actor)
+  const session = await requirePermission('manageQuestions')
+  return archiveQuestion(questionId, actor, session.user.id)
 }
 
 export async function restoreArchivedQuestionAction(questionId: string, actor = 'Admin') {
-  await requirePermission('manageQuestions')
-  return restoreArchivedQuestion(questionId, actor)
+  const session = await requirePermission('manageQuestions')
+  return restoreArchivedQuestion(questionId, actor, session.user.id)
 }
 
 export async function updateLessonEditorialStatusAction(lessonId: string, status: EditorialStatus, actor = 'Admin', comment?: string) {

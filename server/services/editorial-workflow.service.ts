@@ -978,7 +978,7 @@ export async function sendLessonBackToDraft(
   })
 }
 
-export async function archiveQuestion(questionId: string, actor = 'Editor'): Promise<EditorialWorkflowDTO> {
+export async function archiveQuestion(questionId: string, actor = 'Editor', actorUserId?: string): Promise<EditorialWorkflowDTO> {
   return editorialWorkflowRepository.mutateWithLock('QUESTION', questionId, async (tx, locked) => {
     const updated = await tx.editorialWorkflow.update({
       where: { targetType_entityId: { targetType: 'QUESTION', entityId: questionId } },
@@ -996,12 +996,14 @@ export async function archiveQuestion(questionId: string, actor = 'Editor'): Pro
       },
     })
 
+    await recordAuditEvent('QUESTION', questionId, 'editorial.archive', actor, actorUserId)
     const auditTrail = await loadAuditTrail('QUESTION', questionId)
+
     return mapRowToDTO({ ...(updated as typeof locked), auditTrail })
   })
 }
 
-export async function restoreArchivedQuestion(questionId: string, actor = 'Editor'): Promise<EditorialWorkflowDTO> {
+export async function restoreArchivedQuestion(questionId: string, actor = 'Editor', actorUserId?: string): Promise<EditorialWorkflowDTO> {
   return editorialWorkflowRepository.mutateWithLock('QUESTION', questionId, async (tx, locked) => {
     const updated = await tx.editorialWorkflow.update({
       where: { targetType_entityId: { targetType: 'QUESTION', entityId: questionId } },
@@ -1019,7 +1021,9 @@ export async function restoreArchivedQuestion(questionId: string, actor = 'Edito
       },
     })
 
+    await recordAuditEvent('QUESTION', questionId, 'editorial.restore', actor, actorUserId)
     const auditTrail = await loadAuditTrail('QUESTION', questionId)
+
     return mapRowToDTO({ ...(updated as typeof locked), auditTrail })
   })
 }

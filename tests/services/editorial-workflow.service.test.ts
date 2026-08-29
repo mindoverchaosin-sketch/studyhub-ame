@@ -900,6 +900,100 @@ describe('EditorialWorkflowService', () => {
       expect(result.reviewQueue).toHaveLength(0)
     })
   })
+
+  describe('archiveQuestion', () => {
+    it('records editorial.archive audit event with actorUserId', async () => {
+      const service = new EditorialWorkflowService()
+      const baseRow = createMockWorkflowRow()
+      prismaEditorialWorkflowFindUniqueMock.mockResolvedValue(baseRow)
+      questionFindByIdMock.mockResolvedValue({ id: 'q-1' })
+
+      prismaTransactionMock.mockImplementation(async (fn: any) => {
+        const updateFn = vi.fn().mockImplementation(async (args: any) => {
+          return { ...baseRow, ...args.data, updatedAt: new Date() }
+        })
+        return fn(createMockTransactionClient(baseRow, updateFn))
+      })
+      auditListForTargetMock.mockResolvedValue([])
+
+      const result = await service.archiveQuestion('q-1', 'Admin', 'user-1')
+
+      expect(result.status).toBe('ARCHIVED')
+      expect(auditRecordEventMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'editorial.archive',
+          metadata: expect.objectContaining({ actor: 'Admin' }),
+        })
+      )
+    })
+
+    it('does not record audit event without actorUserId', async () => {
+      const service = new EditorialWorkflowService()
+      const baseRow = createMockWorkflowRow()
+      prismaEditorialWorkflowFindUniqueMock.mockResolvedValue(baseRow)
+      questionFindByIdMock.mockResolvedValue({ id: 'q-1' })
+
+      prismaTransactionMock.mockImplementation(async (fn: any) => {
+        const updateFn = vi.fn().mockImplementation(async (args: any) => {
+          return { ...baseRow, ...args.data, updatedAt: new Date() }
+        })
+        return fn(createMockTransactionClient(baseRow, updateFn))
+      })
+      auditListForTargetMock.mockResolvedValue([])
+
+      const result = await service.archiveQuestion('q-1', 'Admin')
+
+      expect(result.status).toBe('ARCHIVED')
+      expect(auditRecordEventMock).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('restoreArchivedQuestion', () => {
+    it('records editorial.restore audit event with actorUserId', async () => {
+      const service = new EditorialWorkflowService()
+      const baseRow = createMockWorkflowRow()
+      prismaEditorialWorkflowFindUniqueMock.mockResolvedValue(baseRow)
+      questionFindByIdMock.mockResolvedValue({ id: 'q-1' })
+
+      prismaTransactionMock.mockImplementation(async (fn: any) => {
+        const updateFn = vi.fn().mockImplementation(async (args: any) => {
+          return { ...baseRow, ...args.data, updatedAt: new Date() }
+        })
+        return fn(createMockTransactionClient(baseRow, updateFn))
+      })
+      auditListForTargetMock.mockResolvedValue([])
+
+      const result = await service.restoreArchivedQuestion('q-1', 'Admin', 'user-1')
+
+      expect(result.status).toBe('DRAFT')
+      expect(auditRecordEventMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'editorial.restore',
+          metadata: expect.objectContaining({ actor: 'Admin' }),
+        })
+      )
+    })
+
+    it('does not record audit event without actorUserId', async () => {
+      const service = new EditorialWorkflowService()
+      const baseRow = createMockWorkflowRow()
+      prismaEditorialWorkflowFindUniqueMock.mockResolvedValue(baseRow)
+      questionFindByIdMock.mockResolvedValue({ id: 'q-1' })
+
+      prismaTransactionMock.mockImplementation(async (fn: any) => {
+        const updateFn = vi.fn().mockImplementation(async (args: any) => {
+          return { ...baseRow, ...args.data, updatedAt: new Date() }
+        })
+        return fn(createMockTransactionClient(baseRow, updateFn))
+      })
+      auditListForTargetMock.mockResolvedValue([])
+
+      const result = await service.restoreArchivedQuestion('q-1', 'Admin')
+
+      expect(result.status).toBe('DRAFT')
+      expect(auditRecordEventMock).not.toHaveBeenCalled()
+    })
+  })
 })
 
 describe('EditorialWorkflowRepository', () => {

@@ -40,8 +40,17 @@ export async function createModuleAction(input: Record<string, unknown>) {
 
 export async function createModuleFormAction(formData: FormData) {
   await requirePermission('manageModules')
-  const result = await moduleManagementService.createModule(readModuleInput(formData) as any)
-  revalidatePath('/admin/modules')
+  const result = await withAuditLogging({
+    permission: 'manageModules',
+    action: 'module.create',
+    entityType: 'MODULE',
+    metadata: { source: 'content-management' },
+    run: async () => {
+      const created = await moduleManagementService.createModule(readModuleInput(formData) as any)
+      revalidatePath('/admin/modules')
+      return created
+    },
+  })
   return result
 }
 
@@ -64,8 +73,18 @@ export async function updateModuleAction(moduleId: string, input: Record<string,
 
 export async function updateModuleFormAction(moduleId: string, formData: FormData) {
   await requirePermission('manageModules')
-  const result = await moduleManagementService.updateModule(moduleId, readModuleInput(formData) as any)
-  revalidatePath('/admin/modules')
+  const result = await withAuditLogging({
+    permission: 'manageModules',
+    action: 'module.update',
+    entityType: 'MODULE',
+    entityId: moduleId,
+    metadata: { source: 'content-management' },
+    run: async () => {
+      const updated = await moduleManagementService.updateModule(moduleId, readModuleInput(formData) as any)
+      revalidatePath('/admin/modules')
+      return updated
+    },
+  })
   return result
 }
 
@@ -89,8 +108,18 @@ export async function archiveModuleAction(moduleId: string) {
 export async function archiveModuleFormAction(formData: FormData) {
   await requirePermission('manageModules')
   const moduleId = String(formData.get('moduleId') ?? '')
-  const result = await moduleManagementService.archiveModule(moduleId)
-  revalidatePath('/admin/modules')
+  const result = await withAuditLogging({
+    permission: 'manageModules',
+    action: 'module.archive',
+    entityType: 'MODULE',
+    entityId: moduleId,
+    metadata: { source: 'content-management' },
+    run: async () => {
+      const archived = await moduleManagementService.archiveModule(moduleId)
+      revalidatePath('/admin/modules')
+      return archived
+    },
+  })
   return result
 }
 
@@ -114,7 +143,17 @@ export async function unarchiveModuleAction(moduleId: string) {
 export async function unarchiveModuleFormAction(formData: FormData) {
   await requirePermission('manageModules')
   const moduleId = String(formData.get('moduleId') ?? '')
-  const result = await moduleManagementService.unarchiveModule(moduleId)
-  revalidatePath('/admin/modules')
+  const result = await withAuditLogging({
+    permission: 'manageModules',
+    action: 'module.unarchive',
+    entityType: 'MODULE',
+    entityId: moduleId,
+    metadata: { source: 'content-management' },
+    run: async () => {
+      const restored = await moduleManagementService.unarchiveModule(moduleId)
+      revalidatePath('/admin/modules')
+      return restored
+    },
+  })
   return result
 }

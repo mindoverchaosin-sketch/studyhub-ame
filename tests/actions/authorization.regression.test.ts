@@ -69,6 +69,12 @@ const generateDailyPlanMock = vi.fn()
 const processCompletedAttemptMock = vi.fn()
 const canAccessExamTemplateMock = vi.fn()
 
+vi.mock('@/server/services/audit-log.service', () => ({
+  auditLogService: {
+    recordEvent: vi.fn().mockResolvedValue(undefined),
+  },
+}))
+
 const editorialWorkflowServiceMocks = {
   addLessonReviewComment: vi.fn(),
   addReviewComment: vi.fn(),
@@ -232,6 +238,42 @@ describe.sequential('authorization regression tests', () => {
 
     await expect(sendLessonBackToDraftAction('l-1', 'Admin', 'Needs revision')).resolves.toEqual({ status: 'DRAFT', reviewQueue: [] })
     expect(editorialWorkflowServiceMocks.sendLessonBackToDraft).toHaveBeenCalledWith('l-1', 'Admin', 'Needs revision', 'admin-1')
+  })
+
+  it('should propagate actor ID through archiveQuestionAction', async () => {
+    requirePermissionMock.mockResolvedValue({ user: { id: 'admin-1' } })
+    editorialWorkflowServiceMocks.archiveQuestion.mockResolvedValue({ status: 'ARCHIVED', reviewQueue: [] })
+    const { archiveQuestionAction } = await import('../../features/admin/actions/editorial-workflow.actions')
+
+    await expect(archiveQuestionAction('q-1', 'Admin')).resolves.toEqual({ status: 'ARCHIVED', reviewQueue: [] })
+    expect(editorialWorkflowServiceMocks.archiveQuestion).toHaveBeenCalledWith('q-1', 'Admin', 'admin-1')
+  })
+
+  it('should propagate actor ID through restoreArchivedQuestionAction', async () => {
+    requirePermissionMock.mockResolvedValue({ user: { id: 'admin-1' } })
+    editorialWorkflowServiceMocks.restoreArchivedQuestion.mockResolvedValue({ status: 'DRAFT', reviewQueue: [] })
+    const { restoreArchivedQuestionAction } = await import('../../features/admin/actions/editorial-workflow.actions')
+
+    await expect(restoreArchivedQuestionAction('q-1', 'Admin')).resolves.toEqual({ status: 'DRAFT', reviewQueue: [] })
+    expect(editorialWorkflowServiceMocks.restoreArchivedQuestion).toHaveBeenCalledWith('q-1', 'Admin', 'admin-1')
+  })
+
+  it('should produce audit event for bulkPublishQuestionsAction', async () => {
+    requirePermissionMock.mockResolvedValue({ user: { id: 'admin-1' } })
+    bulkUpdateQuestionStatusMock.mockResolvedValue(undefined)
+    const { bulkPublishQuestionsAction } = await import('../../features/admin/actions/editorial-workflow.actions')
+
+    await expect(bulkPublishQuestionsAction(['q-1'])).resolves.toEqual(['q-1'])
+    expect(bulkUpdateQuestionStatusMock).toHaveBeenCalledWith(['q-1'], 'PUBLISHED')
+  })
+
+  it('should produce audit event for bulkArchiveQuestionsAction', async () => {
+    requirePermissionMock.mockResolvedValue({ user: { id: 'admin-1' } })
+    bulkUpdateQuestionStatusMock.mockResolvedValue(undefined)
+    const { bulkArchiveQuestionsAction } = await import('../../features/admin/actions/editorial-workflow.actions')
+
+    await expect(bulkArchiveQuestionsAction(['q-1'])).resolves.toEqual(['q-1'])
+    expect(bulkUpdateQuestionStatusMock).toHaveBeenCalledWith(['q-1'], 'ARCHIVED')
   })
 
   it('should forbid student from updating another student goal progress', async () => {

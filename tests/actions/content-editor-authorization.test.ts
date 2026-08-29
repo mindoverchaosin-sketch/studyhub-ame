@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const requirePermissionMock = vi.hoisted(() => vi.fn())
 const revalidatePathMock = vi.hoisted(() => vi.fn())
+const auditRecordEventMock = vi.hoisted(() => vi.fn())
 
 vi.mock('next/cache', () => ({
   revalidatePath: revalidatePathMock,
@@ -16,6 +17,7 @@ vi.mock('@/server/services/module-management.service', () => ({
     createModule: vi.fn().mockResolvedValue({ id: 'module-1' }),
     updateModule: vi.fn().mockResolvedValue({ id: 'module-1' }),
     archiveModule: vi.fn().mockResolvedValue({ id: 'module-1' }),
+    unarchiveModule: vi.fn().mockResolvedValue({ id: 'module-1' }),
   })),
 }))
 
@@ -56,7 +58,7 @@ vi.mock('@/server/services/question-bank-management.service', () => ({
 
 vi.mock('@/server/services/audit-log.service', () => ({
   auditLogService: {
-    recordEvent: vi.fn().mockResolvedValue(undefined),
+    recordEvent: auditRecordEventMock,
   },
 }))
 
@@ -106,6 +108,48 @@ describe('Content Editor authorization', () => {
     it('allows archiveModuleAction with manageModules permission', async () => {
       const { archiveModuleAction } = await import('@/server/actions/content-management.actions')
       const result = await archiveModuleAction('module-1')
+
+      expect(requirePermissionMock).toHaveBeenCalledWith('manageModules')
+      expect(result).toBeDefined()
+    })
+
+    it('allows createModuleFormAction with manageModules permission', async () => {
+      const { createModuleFormAction } = await import('@/server/actions/content-management.actions')
+      const formData = new FormData()
+      formData.set('title', 'Test Module')
+      const result = await createModuleFormAction(formData)
+
+      expect(requirePermissionMock).toHaveBeenCalledWith('manageModules')
+      expect(result).toBeDefined()
+      expect(result.id).toBe('module-1')
+    })
+
+    it('allows updateModuleFormAction with manageModules permission', async () => {
+      const { updateModuleFormAction } = await import('@/server/actions/content-management.actions')
+      const formData = new FormData()
+      formData.set('title', 'Updated Module')
+      const result = await updateModuleFormAction('module-1', formData)
+
+      expect(requirePermissionMock).toHaveBeenCalledWith('manageModules')
+      expect(result).toBeDefined()
+      expect(result.id).toBe('module-1')
+    })
+
+    it('allows archiveModuleFormAction with manageModules permission', async () => {
+      const { archiveModuleFormAction } = await import('@/server/actions/content-management.actions')
+      const formData = new FormData()
+      formData.set('moduleId', 'module-1')
+      const result = await archiveModuleFormAction(formData)
+
+      expect(requirePermissionMock).toHaveBeenCalledWith('manageModules')
+      expect(result).toBeDefined()
+    })
+
+    it('allows unarchiveModuleFormAction with manageModules permission', async () => {
+      const { unarchiveModuleFormAction } = await import('@/server/actions/content-management.actions')
+      const formData = new FormData()
+      formData.set('moduleId', 'module-1')
+      const result = await unarchiveModuleFormAction(formData)
 
       expect(requirePermissionMock).toHaveBeenCalledWith('manageModules')
       expect(result).toBeDefined()
@@ -360,6 +404,76 @@ describe('Content Editor authorization', () => {
       await publishQuestionBankAction('qb-1')
 
       expect(requirePermissionMock).toHaveBeenCalledWith('publishContent')
+    })
+  })
+
+  describe('module form action audit logging', () => {
+    beforeEach(() => {
+      requirePermissionMock.mockResolvedValue(contentEditorSession)
+      auditRecordEventMock.mockClear()
+    })
+
+    it('createModuleFormAction produces audit event with actor ID', async () => {
+      const { createModuleFormAction } = await import('@/server/actions/content-management.actions')
+      const formData = new FormData()
+      formData.set('title', 'Test Module')
+      await createModuleFormAction(formData)
+
+      expect(auditRecordEventMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'module.create',
+          entityType: 'MODULE',
+          metadata: expect.objectContaining({ source: 'content-management' }),
+        })
+      )
+    })
+
+    it('updateModuleFormAction produces audit event with actor ID', async () => {
+      const { updateModuleFormAction } = await import('@/server/actions/content-management.actions')
+      const formData = new FormData()
+      formData.set('title', 'Updated Module')
+      await updateModuleFormAction('module-1', formData)
+
+      expect(auditRecordEventMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'module.update',
+          entityType: 'MODULE',
+          entityId: 'module-1',
+          metadata: expect.objectContaining({ source: 'content-management' }),
+        })
+      )
+    })
+
+    it('archiveModuleFormAction produces audit event with actor ID', async () => {
+      const { archiveModuleFormAction } = await import('@/server/actions/content-management.actions')
+      const formData = new FormData()
+      formData.set('moduleId', 'module-1')
+      await archiveModuleFormAction(formData)
+
+      expect(auditRecordEventMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'module.archive',
+          entityType: 'MODULE',
+          entityId: 'module-1',
+          metadata: expect.objectContaining({ source: 'content-management' }),
+        })
+      )
+    })
+
+    it('unarchiveModuleFormAction produces audit event with actor ID', async () => {
+      const { unarchiveModuleFormAction } = await import('@/server/actions/content-management.actions')
+      const formData = new FormData()
+      formData.set('moduleId', 'module-1')
+      await unarchiveModuleFormAction(formData)
+
+      expect(auditRecordEventMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'module.unarchive',
+          entityType: 'MODULE',
+          entityId: 'module-1',
+          metadata: expect.objectContaining({ source: 'content-management' }),
+        })
+      )
     })
   })
 })
