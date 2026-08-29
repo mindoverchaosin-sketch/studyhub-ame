@@ -1,6 +1,6 @@
 import { examTemplateRepository } from '@/server/repositories/exam-template.repository'
 import type { ExamTemplateDTO } from '@/server/application/dto/exam-template.dto'
-import { ValidationError } from '@/auth'
+import { NotFoundError, ValidationError } from '@/auth'
 
 function normalizePremiumFlag(value: unknown): boolean {
   if (typeof value === 'boolean') return value
@@ -69,6 +69,7 @@ export async function createTemplate(input: Partial<ExamTemplateDTO>): Promise<E
 
 export async function updateTemplate(id: string, input: Partial<ExamTemplateDTO>): Promise<ExamTemplateDTO> {
   const existing = await examTemplateRepository.getTemplate(id)
+  if (!existing) throw new NotFoundError('Exam template not found.')
   const isPremium = typeof input.isPremium === 'boolean' ? input.isPremium : existing?.isPremium ?? false
 
   const updated = await examTemplateRepository.updateTemplate(id, {
@@ -84,6 +85,8 @@ export async function deleteTemplate(id: string): Promise<void> {
 }
 
 export async function activateTemplate(id: string, active: boolean): Promise<ExamTemplateDTO> {
+  const existing = await examTemplateRepository.getTemplate(id)
+  if (!existing) throw new NotFoundError('Exam template not found.')
   const updated = await examTemplateRepository.activateTemplate(id, active)
   return mapToDTO(updated)
 }

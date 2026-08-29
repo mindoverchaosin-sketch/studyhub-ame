@@ -6,6 +6,7 @@ const { mockExamTemplateRepository } = vi.hoisted(() => ({
     getTemplate: vi.fn().mockResolvedValue(null),
     createTemplate: vi.fn().mockImplementation((d) => Promise.resolve({ id: 't1', ...d, createdAt: new Date(), updatedAt: new Date() })),
     updateTemplate: vi.fn().mockImplementation((id, d) => Promise.resolve({ id, ...d, createdAt: new Date(), updatedAt: new Date() })),
+    activateTemplate: vi.fn().mockImplementation((id, active) => Promise.resolve({ id, active, createdAt: new Date(), updatedAt: new Date() })),
   },
 }))
 
@@ -56,6 +57,15 @@ describe('exam-template.service', () => {
   })
 
   it('supports updating premium explicitly', async () => {
+    mockExamTemplateRepository.getTemplate.mockResolvedValueOnce({
+      id: 't1',
+      name: 'Sample',
+      questionCount: 10,
+      isPremium: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
     const dto = await service.updateTemplate('t1', { name: 'Updated Sample', isPremium: false })
 
     expect(mockExamTemplateRepository.updateTemplate).toHaveBeenCalledWith('t1', expect.objectContaining({ isPremium: false }))
@@ -65,5 +75,19 @@ describe('exam-template.service', () => {
   it('listTemplates returns array', async () => {
     const list = await service.listTemplates()
     expect(Array.isArray(list)).toBe(true)
+  })
+
+  it('updateTemplate throws NotFoundError for non-existent template', async () => {
+    mockExamTemplateRepository.getTemplate.mockResolvedValueOnce(null)
+
+    await expect(service.updateTemplate('missing', { name: 'X' })).rejects.toThrow('Exam template not found.')
+    expect(mockExamTemplateRepository.updateTemplate).not.toHaveBeenCalled()
+  })
+
+  it('activateTemplate throws NotFoundError for non-existent template', async () => {
+    mockExamTemplateRepository.getTemplate.mockResolvedValueOnce(null)
+
+    await expect(service.activateTemplate('missing', true)).rejects.toThrow('Exam template not found.')
+    expect(mockExamTemplateRepository.activateTemplate).not.toHaveBeenCalled()
   })
 })

@@ -282,6 +282,7 @@ describe('QuestionBankManagementService', () => {
         questionCount: 0,
       }
 
+      questionBankRepositoryMock.findById.mockResolvedValue({ id: 'qb-1' })
       questionBankRepositoryMock.archive.mockResolvedValue({ id: 'qb-1', status: 'ARCHIVED' })
       questionBankRepositoryMock.findByIdWithCount.mockResolvedValue(mockQB)
 
@@ -290,6 +291,18 @@ describe('QuestionBankManagementService', () => {
       expect(result.success).toBe(true)
       expect(result.questionBank?.status).toBe('ARCHIVED')
       expect(questionBankRepositoryMock.archive).toHaveBeenCalledWith('qb-1')
+    })
+
+    it('should return success false when question bank not found', async () => {
+      questionBankRepositoryMock.findById.mockResolvedValue(null)
+
+      const result = await service.archiveQuestionBank('nonexistent')
+
+      expect(result.success).toBe(false)
+      expect(result.errors).toContainEqual(
+        expect.objectContaining({ field: 'title', message: 'Question bank not found.' })
+      )
+      expect(questionBankRepositoryMock.archive).not.toHaveBeenCalled()
     })
   })
 
@@ -307,6 +320,7 @@ describe('QuestionBankManagementService', () => {
         questionCount: 0,
       }
 
+      questionBankRepositoryMock.findById.mockResolvedValue({ id: 'qb-1' })
       questionBankRepositoryMock.publish.mockResolvedValue({ id: 'qb-1', status: 'PUBLISHED' })
       questionBankRepositoryMock.findByIdWithCount.mockResolvedValue(mockQB)
 
@@ -315,6 +329,18 @@ describe('QuestionBankManagementService', () => {
       expect(result.success).toBe(true)
       expect(result.questionBank?.status).toBe('PUBLISHED')
       expect(questionBankRepositoryMock.publish).toHaveBeenCalledWith('qb-1')
+    })
+
+    it('should return success false when question bank not found', async () => {
+      questionBankRepositoryMock.findById.mockResolvedValue(null)
+
+      const result = await service.publishQuestionBank('nonexistent')
+
+      expect(result.success).toBe(false)
+      expect(result.errors).toContainEqual(
+        expect.objectContaining({ field: 'title', message: 'Question bank not found.' })
+      )
+      expect(questionBankRepositoryMock.publish).not.toHaveBeenCalled()
     })
   })
 

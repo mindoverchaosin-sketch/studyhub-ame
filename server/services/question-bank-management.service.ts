@@ -191,6 +191,13 @@ export class QuestionBankManagementService {
   }
 
   async archiveQuestionBank(id: string): Promise<QuestionBankManagementResult> {
+    const existing = await questionBankRepository.findById(id)
+    if (!existing) {
+      return {
+        success: false,
+        errors: [{ field: 'title', message: 'Question bank not found.' }],
+      }
+    }
     try {
       const archived = await questionBankRepository.archive(id)
       const withCount = await questionBankRepository.findByIdWithCount(archived.id)
@@ -209,6 +216,13 @@ export class QuestionBankManagementService {
   }
 
   async publishQuestionBank(id: string): Promise<QuestionBankManagementResult> {
+    const existing = await questionBankRepository.findById(id)
+    if (!existing) {
+      return {
+        success: false,
+        errors: [{ field: 'title', message: 'Question bank not found.' }],
+      }
+    }
     try {
       const published = await questionBankRepository.publish(id)
       const withCount = await questionBankRepository.findByIdWithCount(published.id)
