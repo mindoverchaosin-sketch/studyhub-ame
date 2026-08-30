@@ -82,6 +82,16 @@ export class StudyMaterialManagementService {
     }
     const resourceUrl = validateStudyMaterialUrl(input.url)
     const lesson = await resolveLessonForBinding(input.lessonId, input.moduleId)
+
+    let displayOrder: number
+    if (input.displayOrder !== undefined) {
+      displayOrder = input.displayOrder
+    } else {
+      const existing = await resourceRepository.findByModule(lesson.moduleId)
+      const maxOrder = existing.reduce((max, r) => Math.max(max, (r as any).displayOrder ?? 0), 0)
+      displayOrder = maxOrder + 1
+    }
+
     const created = await resourceRepository.create({
       moduleId: lesson.moduleId,
       lessonId: lesson.id,
@@ -90,6 +100,7 @@ export class StudyMaterialManagementService {
       url: resourceUrl,
       isPremium: input.isPremium ?? false,
       status: input.status ?? 'DRAFT',
+      displayOrder,
     } as any)
 
     return { id: created.id, status: created.status }
@@ -98,6 +109,7 @@ export class StudyMaterialManagementService {
   async updateResource(resourceId: string, input: ResourceUpdateInput): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' | 'IN_REVIEW' }> {
     const resourceUrl = input.url === undefined ? undefined : validateStudyMaterialUrl(input.url)
     let bindingUpdate: { lessonId: string; moduleId: string } | undefined
+    let displayOrderUpdate: { displayOrder: number } | undefined
 
     if (input.lessonId !== undefined) {
       const resource = await resourceRepository.findById(resourceId)
@@ -109,6 +121,16 @@ export class StudyMaterialManagementService {
         throw new Error('Target lesson belongs to a different module than the study material')
       }
       bindingUpdate = { lessonId: lesson.id, moduleId: resource.moduleId }
+
+      if (input.displayOrder === undefined && lesson.id !== resource.lessonId) {
+        const existing = await resourceRepository.findByModule(resource.moduleId)
+        const maxOrder = existing.reduce((max, r) => Math.max(max, (r as any).displayOrder ?? 0), 0)
+        displayOrderUpdate = { displayOrder: maxOrder + 1 }
+      }
+    }
+
+    if (input.displayOrder !== undefined) {
+      displayOrderUpdate = { displayOrder: input.displayOrder }
     }
 
     const updated = await resourceRepository.update(resourceId, {
@@ -118,6 +140,7 @@ export class StudyMaterialManagementService {
       ...(input.isPremium !== undefined ? { isPremium: input.isPremium } : {}),
       ...(input.status ? { status: input.status } : {}),
       ...bindingUpdate,
+      ...displayOrderUpdate,
     } as any)
 
     return { id: updated.id, status: updated.status }

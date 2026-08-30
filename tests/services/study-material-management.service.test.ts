@@ -33,7 +33,7 @@ describe('StudyMaterialManagementService', () => {
     vi.resetModules()
   })
 
-  it('creates study materials bound to a validated lesson without relying on unsupported schema fields', async () => {
+  it('creates study materials bound to a validated lesson and persists displayOrder when provided', async () => {
     const { resourceRepository } = setupRepositoryMocks()
     const service = await importService()
 
@@ -46,9 +46,34 @@ describe('StudyMaterialManagementService', () => {
       materialType: 'NOTES',
       url: '/media/notes.txt',
       status: 'DRAFT',
+      displayOrder: 3,
     }))
     expect(resourceRepository.create).not.toHaveBeenCalledWith(expect.objectContaining({ description: 'Intro' }))
-    expect(resourceRepository.create).not.toHaveBeenCalledWith(expect.objectContaining({ displayOrder: 3 }))
+  })
+
+  it('creates study materials with max+1 displayOrder when omitted', async () => {
+    const { resourceRepository } = setupRepositoryMocks()
+    resourceRepository.findByModule.mockResolvedValue([
+      { id: 'r0', displayOrder: 2 },
+      { id: 'r1', displayOrder: 5 },
+    ])
+    const service = await importService()
+
+    await service.createResource({ moduleId: 'm1', lessonId: 'l1', title: 'Notes', type: 'NOTES', url: '/media/notes.txt' })
+
+    const payload = resourceRepository.create.mock.calls[0][0]
+    expect(payload.displayOrder).toBe(6)
+  })
+
+  it('creates first resource with displayOrder=1 when module is empty', async () => {
+    const { resourceRepository } = setupRepositoryMocks()
+    resourceRepository.findByModule.mockResolvedValue([])
+    const service = await importService()
+
+    await service.createResource({ moduleId: 'm1', lessonId: 'l1', title: 'Notes', type: 'NOTES', url: '/media/notes.txt' })
+
+    const payload = resourceRepository.create.mock.calls[0][0]
+    expect(payload.displayOrder).toBe(1)
   })
 
   it('persists moduleId derived from the validated lesson', async () => {
@@ -94,30 +119,103 @@ describe('StudyMaterialManagementService', () => {
     expect(resourceRepository.create).not.toHaveBeenCalled()
   })
 
-  describe('moving a material between lessons', () => {
-    it('updates lessonId and moduleId together in one repository update', async () => {
+  describe('displayOrder persistence', () => {
+    it('persists explicit displayOrder on update when provided', async () => {
+      const { resourceRepository } = setupRepositoryMocks({ resourceRow: undefined })
+      const service = await importService()
+
+      await service.updateResource('r1', { displayOrder: 7 })
+
+      expect(resourceRepository.update).toHaveBeenCalledWith('r1', { displayOrder: 7 })
+    })
+
+    it('preserves existing displayOrder when omitted on update without lesson change', async () => {
+      const { resourceRepository } = setupRepositoryMocks({ resourceRow: undefined })
+      const service = await importService()
+
+      await service.updateResource('r1', { title: 'Renamed' })
+
+      const payload = resourceRepository.update.mock.calls[0][1]
+      expect(payload).toEqual({ title: 'Renamed' })
+      expect(payload).not.toHaveProperty('displayOrder')
+    })
+
+    it('assigns max+1 when moving resource to a different lesson in same module', async () => {
       const { resourceRepository } = setupRepositoryMocks({
         lesson: { id: 'l2', moduleId: 'm1', deletedAt: null },
-        resourceRow: undefined,
+        resourceRow: { id: 'r1', moduleId: 'm1', lessonId: 'l1', displayOrder: 2 },
       })
+      resourceRepository.findByModule.mockResolvedValue([
+        { id: 'r0', displayOrder: 1 },
+        { id: 'r1', displayOrder: 2 },
+        { id: 'r2', displayOrder: 3 },
+      ])
+      const service = await importService()
+
+      await service.updateResource('r1', { lessonId: 'l2' })
+
+      expect(resourceRepository.update).toHaveBeenCalledWith('r1', { lessonId: 'l2', moduleId: 'm1', displayOrder: 4 })
+    })
+
+    it('preserves displayOrder when moving within same lesson', async () => {
+      const { resourceRepository } = setupRepositoryMocks({
+        lesson: { id: 'l1', moduleId: 'm1', deletedAt: null },
+        resourceRow: { id: 'r1', moduleId: 'm1', lessonId: 'l1', displayOrder: 2 },
+      })
+      const service = await importService()
+
+      await service.updateResource('r1', { lessonId: 'l1', title: 'Renamed' })
+
+      const payload = resourceRepository.update.mock.calls[0][1]
+      expect(payload).toEqual({ title: 'Renamed', lessonId: 'l1', moduleId: 'm1' })
+      expect(payload).not.toHaveProperty('displayOrder')
+    })
+
+    it('persists explicit displayOrder even when moving to a different lesson', async () => {
+      const { resourceRepository } = setupRepositoryMocks({
+        lesson: { id: 'l2', moduleId: 'm1', deletedAt: null },
+        resourceRow: { id: 'r1', moduleId: 'm1', lessonId: 'l1', displayOrder: 2 },
+      })
+      const service = await importService()
+
+      await service.updateResource('r1', { lessonId: 'l2', displayOrder: 10 })
+
+      expect(resourceRepository.update).toHaveBeenCalledWith('r1', { lessonId: 'l2', moduleId: 'm1', displayOrder: 10 })
+    })
+  })
+
+  describe('moving a material between lessons', () => {
+    it('updates lessonId and moduleId together in one repository update without displayOrder when moving', async () => {
+      const { resourceRepository } = setupRepositoryMocks({
+        lesson: { id: 'l2', moduleId: 'm1', deletedAt: null },
+        resourceRow: { id: 'r1', moduleId: 'm1', lessonId: 'l1', displayOrder: 2 },
+      })
+      resourceRepository.findByModule.mockResolvedValue([
+        { id: 'r0', displayOrder: 1 },
+        { id: 'r1', displayOrder: 2 },
+      ])
       const service = await importService()
 
       await service.updateResource('r1', { lessonId: 'l2' })
 
       expect(resourceRepository.update).toHaveBeenCalledTimes(1)
-      expect(resourceRepository.update).toHaveBeenCalledWith('r1', { lessonId: 'l2', moduleId: 'm1' })
+      expect(resourceRepository.update).toHaveBeenCalledWith('r1', { lessonId: 'l2', moduleId: 'm1', displayOrder: 3 })
     })
 
-    it('keeps other fields intact while rebinding alongside them', async () => {
+    it('keeps other fields intact while rebinding alongside them and assigns max+1', async () => {
       const { resourceRepository } = setupRepositoryMocks({
         lesson: { id: 'l2', moduleId: 'm1', deletedAt: null },
-        resourceRow: undefined,
+        resourceRow: { id: 'r1', moduleId: 'm1', lessonId: 'l1', displayOrder: 2 },
       })
+      resourceRepository.findByModule.mockResolvedValue([
+        { id: 'r0', displayOrder: 1 },
+        { id: 'r1', displayOrder: 2 },
+      ])
       const service = await importService()
 
       await service.updateResource('r1', { lessonId: 'l2', title: 'Renamed', isPremium: true })
 
-      expect(resourceRepository.update).toHaveBeenCalledWith('r1', { title: 'Renamed', isPremium: true, lessonId: 'l2', moduleId: 'm1' })
+      expect(resourceRepository.update).toHaveBeenCalledWith('r1', { title: 'Renamed', isPremium: true, lessonId: 'l2', moduleId: 'm1', displayOrder: 3 })
     })
 
     it('rejects moving to a lesson in another module without updating', async () => {
@@ -169,7 +267,17 @@ describe('StudyMaterialManagementService', () => {
     })
   })
 
-  it('creates, updates, publishes, archives, and reorders study materials', async () => {
+  it('delegates reorderResources to repository.reorder unchanged', async () => {
+    const { resourceRepository } = setupRepositoryMocks()
+    const service = await importService()
+
+    const result = await service.reorderResources('m1', ['r1', 'r2', 'r3'])
+
+    expect(resourceRepository.reorder).toHaveBeenCalledWith('m1', ['r1', 'r2', 'r3'])
+    expect(result).toEqual([{ id: 'r1' }])
+  })
+
+  it('creates with displayOrder=1 when module is empty in integration flow', async () => {
     const { resourceRepository, lessonRepository } = setupRepositoryMocks()
     resourceRepository.update
       .mockResolvedValueOnce({ id: 'r1', status: 'PUBLISHED' })
@@ -184,6 +292,7 @@ describe('StudyMaterialManagementService', () => {
     const reordered = await service.reorderResources('m1', ['r1'])
 
     expect(created.status).toBe('DRAFT')
+    expect(resourceRepository.create).toHaveBeenCalledWith(expect.objectContaining({ displayOrder: 1 }))
     expect(published.status).toBe('PUBLISHED')
     expect(archived.status).toBe('ARCHIVED')
     expect(unpublished.status).toBe('DRAFT')
