@@ -451,6 +451,7 @@ model StudyMaterial {
   url          String
   isPremium    Boolean           @default(false)
   status       Status            @default(DRAFT)
+  displayOrder Int               @default(0)
   publishedAt  DateTime?
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
@@ -462,6 +463,7 @@ model StudyMaterial {
   @@index([moduleId])
   @@index([lessonId])
   @@index([materialType])
+  @@index([moduleId, displayOrder])
 }
 
 model PreviousOfficialPaper {

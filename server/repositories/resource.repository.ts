@@ -81,16 +81,52 @@ export class ResourceRepository {
   }
 
   async reorder(moduleId: string, orderedIds: string[]) {
-    const resources = await prisma.studyMaterial.findMany({
-      where: { moduleId, id: { in: orderedIds } },
-      orderBy: { createdAt: 'asc' },
+    return prisma.$transaction(async (tx) => {
+      const resources = await tx.studyMaterial.findMany({
+        where: { moduleId, deletedAt: null },
+      })
+
+      const resourcesById = new Map(resources.map((resource) => [resource.id, resource]))
+
+      const scopeIds = new Set(resources.map((resource) => resource.id))
+      const seen = new Set<string>()
+      const validOrderedIds = orderedIds.filter((id) => {
+        if (seen.has(id)) return false
+        seen.add(id)
+        return scopeIds.has(id)
+      })
+
+      for (const [index, id] of validOrderedIds.entries()) {
+        await tx.studyMaterial.update({
+          where: { id },
+          data: { displayOrder: index + 1 },
+        })
+      }
+
+      const orderedSet = new Set(validOrderedIds)
+      const omittedResources = resources
+        .filter((resource) => !orderedSet.has(resource.id))
+        .sort((a, b) => {
+          if (a.displayOrder !== b.displayOrder) return a.displayOrder - b.displayOrder
+          return a.createdAt.getTime() - b.createdAt.getTime()
+        })
+
+      let nextOrder = validOrderedIds.length + 1
+      for (const resource of omittedResources) {
+        if (resource.displayOrder !== nextOrder) {
+          await tx.studyMaterial.update({
+            where: { id: resource.id },
+            data: { displayOrder: nextOrder },
+          })
+        }
+        nextOrder++
+      }
+
+      return tx.studyMaterial.findMany({
+        where: { moduleId, deletedAt: null },
+        orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
+      })
     })
-
-    const resourcesById = new Map(resources.map((resource) => [resource.id, resource]))
-
-    return orderedIds
-      .filter((id) => resourcesById.has(id))
-      .map((id) => resourcesById.get(id)!)
   }
 }
 
