@@ -35,11 +35,14 @@ export async function seedAdmin() {
   })
 
   // Create admin profile
-  await prisma.adminProfile.create({
-    data: {
+  await prisma.adminProfile.upsert({
+    where: { userId: adminUser.id },
+    update: { status: 'APPROVED' },
+    create: {
       userId: adminUser.id,
       fullName: 'Administrator',
       department: 'Management',
+      status: 'APPROVED',
       permissions: {
         canManageCourses: true,
         canManageUsers: true,

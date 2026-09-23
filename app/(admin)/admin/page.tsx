@@ -1,7 +1,5 @@
 import { redirect } from "next/navigation";
-import { requirePermission } from "@/auth";
-import AdminLayout from "@/components/admin/AdminLayout";
-import { getDashboardSummaryAction } from "@/server/actions/admin-dashboard.actions";
+import { requirePermission } from "@/auth";import { getDashboardSummaryAction } from "@/server/actions/admin-dashboard.actions";
 
 export default async function AdminDashboardPage() {
   try {
@@ -13,8 +11,7 @@ export default async function AdminDashboardPage() {
   const dashboard = await getDashboardSummaryAction();
 
   return (
-    <AdminLayout>
-      <div className="space-y-8">
+    <div className="space-y-8">
         <section className="rounded-[2rem] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-8 text-white shadow-[0_25px_80px_rgba(15,23,42,0.18)]">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl">
@@ -122,6 +119,5 @@ export default async function AdminDashboardPage() {
           </div>
         </section>
       </div>
-    </AdminLayout>
   );
 }

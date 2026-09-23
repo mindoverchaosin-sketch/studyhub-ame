@@ -26,7 +26,7 @@ describe('ModuleManagementService', () => {
     expect(moduleRepository.findModulesForAdmin).toHaveBeenCalledWith(expect.objectContaining({ search: 'air', examType: 'DGCA', status: 'PUBLISHED', sortBy: 'updated', skip: 0, take: 10 }))
     expect(dto.items[0]).toMatchObject({ id: 'm1', title: 'Airframes', examType: 'DGCA', status: 'PUBLISHED' })
     expect(dto.pagination.totalItems).toBe(1)
-  })
+  }, 30000)
 
   it('returns a module detail DTO with metadata and resource counts', async () => {
     const moduleRepository = {

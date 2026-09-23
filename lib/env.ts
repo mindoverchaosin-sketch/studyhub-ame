@@ -6,6 +6,7 @@ const aiProviderSchema = z.enum(['mock', 'openai', 'anthropic', 'gemini', 'googl
 const rawEnvSchema = z.object({
   NODE_ENV: nodeEnvSchema.optional(),
   DATABASE_URL: z.string().trim().min(1).optional(),
+  DIRECT_URL: z.string().trim().min(1).optional(),
   NEXTAUTH_URL: z.string().trim().url().optional(),
   NEXTAUTH_SECRET: z.string().trim().min(32).optional(),
   AUTH_SECRET: z.string().trim().min(32).optional(),
@@ -76,6 +77,7 @@ const parsed = rawEnvSchema.parse(process.env)
 const env = {
   NODE_ENV: parsed.NODE_ENV ?? 'development',
   DATABASE_URL: parsed.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/postgres',
+  DIRECT_URL: parsed.DIRECT_URL,
   NEXTAUTH_URL: parsed.NEXTAUTH_URL ?? 'http://localhost:3000',
   NEXTAUTH_SECRET: parsed.NEXTAUTH_SECRET ?? parsed.AUTH_SECRET,
   AI_PROVIDER: parsed.AI_PROVIDER ?? 'mock',
@@ -115,6 +117,7 @@ const validatedEnvSchema = z
   .object({
     NODE_ENV: nodeEnvSchema,
     DATABASE_URL: z.string().trim().min(1).optional(),
+    DIRECT_URL: z.string().trim().min(1).optional(),
     NEXTAUTH_URL: z.string().trim().url().optional(),
     NEXTAUTH_SECRET: z.string().trim().min(32).optional(),
     AI_PROVIDER: aiProviderSchema,

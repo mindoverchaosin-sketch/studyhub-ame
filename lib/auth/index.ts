@@ -190,7 +190,9 @@ export async function requireRole(role: UserRole): Promise<AuthSession> {
 export async function requireApprovedRole(role: UserRole): Promise<AuthSession> {
   const session = await requireAuth()
 
-  if (session.user.role !== role) {
+  const allowedRoles = role === 'ADMIN' ? ['ADMIN', 'SUPER_ADMIN'] : [role]
+
+  if (!allowedRoles.includes(session.user.role as string)) {
     throw new ForbiddenError(`${role} access required.`)
   }
 
@@ -200,11 +202,11 @@ export async function requireApprovedRole(role: UserRole): Promise<AuthSession> 
     throw new ForbiddenError(`${role} account is inactive.`)
   }
 
-  if (role === 'ADMIN' && dbUser.adminProfile?.status !== 'APPROVED') {
+  if (session.user.role === 'ADMIN' && dbUser.adminProfile?.status !== 'APPROVED') {
     throw new ForbiddenError('Admin access is pending approval or suspended.')
   }
 
-  if (role === 'INSTRUCTOR' && dbUser.instructorProfile?.status !== 'APPROVED') {
+  if (session.user.role === 'INSTRUCTOR' && dbUser.instructorProfile?.status !== 'APPROVED') {
     throw new ForbiddenError('Instructor access is pending approval or suspended.')
   }
 

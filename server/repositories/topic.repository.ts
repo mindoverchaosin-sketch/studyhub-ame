@@ -4,22 +4,22 @@ import type { Prisma } from '@prisma/client'
 export class TopicRepository {
   async findBySection(sectionId: string) {
     return prisma.lesson.findMany({
-      where: { moduleId: sectionId },
+      where: { moduleId: sectionId, status: 'PUBLISHED', deletedAt: null },
       include: { module: true },
       orderBy: { displayOrder: 'asc' },
     })
   }
 
   async findBySlug(slug: string) {
-    return prisma.lesson.findUnique({
-      where: { slug },
+    return prisma.lesson.findFirst({
+      where: { slug, status: 'PUBLISHED', deletedAt: null },
       include: { module: true },
     })
   }
 
   async findById(id: string) {
-    return prisma.lesson.findUnique({
-      where: { id },
+    return prisma.lesson.findFirst({
+      where: { id, status: 'PUBLISHED', deletedAt: null },
       include: { module: true },
     })
   }

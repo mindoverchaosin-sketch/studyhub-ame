@@ -12,6 +12,35 @@ export class QuestionBankRepository {
     return prisma.questionBank.findUnique({ where: { id } })
   }
 
+  async findStudentQuestionStates(studentId: string, questionIds: string[]) {
+    if (questionIds.length === 0) return []
+
+    return prisma.studentQuestionState.findMany({
+      where: { studentId, questionId: { in: questionIds } },
+      select: { questionId: true, selectedOption: true, answeredAt: true },
+    })
+  }
+
+  async findAnsweredQuestionIds(studentId: string) {
+    const states = await prisma.studentQuestionState.findMany({
+      where: { studentId, answeredAt: { not: null } },
+      select: { questionId: true },
+    })
+
+    return states.map((state) => state.questionId)
+  }
+
+  async upsertStudentQuestionState(studentId: string, questionId: string, selectedOption: number | null) {
+    const answeredAt = selectedOption === null ? null : new Date()
+
+    return prisma.studentQuestionState.upsert({
+      where: { studentId_questionId: { studentId, questionId } },
+      update: { selectedOption, answeredAt },
+      create: { studentId, questionId, selectedOption, answeredAt },
+      select: { questionId: true, selectedOption: true, answeredAt: true },
+    })
+  }
+
   async findPublishedWithQuestions(search?: string) {
     return prisma.questionBank.findMany({
       where: {

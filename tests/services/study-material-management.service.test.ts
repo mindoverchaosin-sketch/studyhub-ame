@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const validLesson = { id: 'l1', moduleId: 'm1', deletedAt: null }
 
-function setupRepositoryMocks(overrides: { lesson?: Record<string, unknown> | null; resourceRow?: Record<string, unknown> | null } = {}) {
+function setupRepositoryMocks(overrides: { lesson?: Record<string, unknown> | null; resourceRow?: Record<string, unknown> | null; module?: Record<string, unknown> | null } = {}) {
   const resourceRepository = {
     findByModule: vi.fn().mockResolvedValue([]),
     findById: vi.fn().mockResolvedValue(overrides.resourceRow === undefined ? { id: 'r1', moduleId: 'm1', title: 'Notes', materialType: 'NOTES', url: '/media/notes.txt', isPremium: false, status: 'DRAFT', publishedAt: null, createdAt: new Date('2024-01-01'), updatedAt: new Date('2024-02-01') } : overrides.resourceRow),
@@ -17,8 +17,13 @@ function setupRepositoryMocks(overrides: { lesson?: Record<string, unknown> | nu
     }),
   }
 
+  const moduleRepository = {
+    findById: vi.fn().mockResolvedValue(overrides.module === undefined ? { id: 'm1', status: 'PUBLISHED', deletedAt: null } : overrides.module),
+  }
+
   vi.doMock('@/server/repositories/resource.repository', () => ({ resourceRepository }))
   vi.doMock('@/server/repositories/lesson.repository', () => ({ lessonRepository }))
+  vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository }))
 
   return { resourceRepository, lessonRepository }
 }
@@ -45,6 +50,7 @@ describe('StudyMaterialManagementService', () => {
       title: 'Notes',
       materialType: 'NOTES',
       url: '/media/notes.txt',
+      sourceType: 'LEGACY_RESOURCE',
       status: 'DRAFT',
       displayOrder: 3,
     }))
@@ -92,6 +98,14 @@ describe('StudyMaterialManagementService', () => {
     const service = await importService()
 
     await expect(service.createResource({ moduleId: 'm1', lessonId: 'l9', title: 'Notes', type: 'NOTES', url: '/media/notes.txt' })).rejects.toThrow('does not belong to the requested module')
+    expect(resourceRepository.create).not.toHaveBeenCalled()
+  })
+
+  it('rejects binding to an unavailable module', async () => {
+    const { resourceRepository } = setupRepositoryMocks({ module: { id: 'm1', status: 'DRAFT', deletedAt: null } })
+    const service = await importService()
+
+    await expect(service.createResource({ moduleId: 'm1', lessonId: 'l1', title: 'Notes', type: 'NOTES', url: '/media/notes.txt' })).rejects.toThrow('Published module for binding not found')
     expect(resourceRepository.create).not.toHaveBeenCalled()
   })
 

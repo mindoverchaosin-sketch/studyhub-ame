@@ -13,7 +13,7 @@ type AdminNavItemProps = {
 
 export default function AdminNavItem({ href, label, icon, disabled }: AdminNavItemProps) {
   const pathname = usePathname()
-  const isActive = pathname === href
+  const isActive = pathname === href || pathname.startsWith(`${href}/`)
 
   return (
     <li>

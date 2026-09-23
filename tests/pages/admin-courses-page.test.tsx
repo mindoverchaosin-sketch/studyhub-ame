@@ -5,7 +5,6 @@ const mocks = vi.hoisted(() => ({
   requirePermission: vi.fn(),
   redirect: vi.fn((location: string): never => { throw new Error(`REDIRECT:${location}`) }),
   getAdminCourses: vi.fn(),
-  AdminLayout: vi.fn(({ children }: { children: React.ReactNode }) => <div data-testid="admin-layout">{children}</div>),
   PageHeader: vi.fn(() => <div data-testid="page-header" />),
   AdminCoursesTable: vi.fn(() => <div data-testid="admin-courses-table" />),
   Container: vi.fn(({ children }: { children: React.ReactNode }) => <div data-testid="container">{children}</div>),
@@ -15,7 +14,6 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/auth', () => ({ requirePermission: mocks.requirePermission }))
 vi.mock('next/navigation', () => ({ redirect: mocks.redirect }))
 vi.mock('@/server/services/course.service', () => ({ getAdminCourses: mocks.getAdminCourses }))
-vi.mock('@/components/admin/AdminLayout', () => ({ default: mocks.AdminLayout }))
 vi.mock('@/features/admin/components/PageHeader', () => ({ default: mocks.PageHeader }))
 vi.mock('@/features/admin/components/AdminCoursesTable', () => ({ default: mocks.AdminCoursesTable }))
 vi.mock('@/components/ui/Container', () => ({ default: mocks.Container }))
@@ -34,7 +32,7 @@ describe('AdminCoursesPage', () => {
     const { default: AdminCoursesPage } = await import('@/app/(admin)/admin/courses/page')
     await expect(AdminCoursesPage()).rejects.toThrow('REDIRECT:/login')
     expect(mocks.requirePermission).toHaveBeenCalledWith('manageCourses')
-    expect(mocks.AdminLayout).not.toHaveBeenCalled()
+    expect(mocks.getAdminCourses).not.toHaveBeenCalled()
   })
 
   it('renders the page for an authorized admin', async () => {
@@ -45,6 +43,6 @@ describe('AdminCoursesPage', () => {
     expect(mocks.getAdminCourses).toHaveBeenCalled()
 
     render(result)
-    expect(screen.getByTestId('admin-layout')).toBeInTheDocument()
+    expect(screen.getByText('No courses available')).toBeInTheDocument()
   })
 })

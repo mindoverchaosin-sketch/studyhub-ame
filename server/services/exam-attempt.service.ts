@@ -135,7 +135,7 @@ export async function generateExamAttempt(templateId: string, studentId: string)
     // Fetch questions from the referenced question bank when available
     let pool: Question[] = []
     if (template.questionBankId) {
-      pool = await questionRepository.findByBank(template.questionBankId)
+      pool = await questionRepository.findPublishedByBank(template.questionBankId)
     }
     // fallback: if pool empty, use all published questions
     if (!pool || pool.length === 0) {

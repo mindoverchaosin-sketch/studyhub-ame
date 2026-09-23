@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
-import { getExamTemplate, generateAttempt } from '@/server/actions/exam.actions'
+import { getStudentExamTemplate, generateAttempt } from '@/server/actions/exam.actions'
 import { requireStudent } from '@/auth'
 import Link from 'next/link'
 
@@ -22,7 +22,7 @@ type Props = {
 
 export default async function ExamStartPage({ params }: Props) {
   await requireStudent()
-  const template = await getExamTemplate(params.templateId)
+  const template = await getStudentExamTemplate(params.templateId)
   if (!template) return notFound()
 
   return (

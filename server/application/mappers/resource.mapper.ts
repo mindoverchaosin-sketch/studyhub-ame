@@ -9,7 +9,7 @@ export function mapResourceEntityToDTO(resource: ResourceEntity): ResourceDTO {
     title: resource.title,
     description: null,
     type: resource.materialType,
-    url: resource.url,
+    url: resource.url ?? '',
     isPremium: resource.isPremium,
     status: resource.status,
     publishedAt: resource.publishedAt,

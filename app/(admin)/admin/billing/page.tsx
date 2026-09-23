@@ -1,7 +1,5 @@
 import { redirect } from 'next/navigation'
-import { requirePermission } from '@/auth'
-import AdminLayout from '@/components/admin/AdminLayout'
-import PageHeader from '@/components/admin/PageHeader'
+import { requirePermission } from '@/auth'import PageHeader from '@/components/admin/PageHeader'
 import { getBillingDashboard } from '@/server/actions/billing.actions'
 
 export default async function BillingDashboardPage() {
@@ -26,8 +24,7 @@ export default async function BillingDashboardPage() {
   const planEntries = Object.entries(dashboard.planDistribution)
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <PageHeader
           title="Billing Overview"
           description="Read-only subscription and plan health metrics for the billing dashboard."
@@ -59,6 +56,5 @@ export default async function BillingDashboardPage() {
           </div>
         </section>
       </div>
-    </AdminLayout>
   )
 }

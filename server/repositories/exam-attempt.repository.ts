@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 export class ExamAttemptRepository {
   async createAttempt(data: any) {
@@ -37,6 +38,21 @@ export class ExamAttemptRepository {
   async getAttemptQuestionsByAttemptIds(attemptIds: string[]) {
     if (!attemptIds.length) return []
     return (prisma as any).examAttemptQuestion.findMany({ where: { attemptId: { in: attemptIds } }, orderBy: { displayOrder: 'asc' } })
+  }
+
+  async getAnsweredQuestionIdsByStudent(studentId: string) {
+    const rows = await prisma.$queryRaw<Array<{ questionId: string }>>(Prisma.sql`
+      SELECT DISTINCT attempt_question."questionId"
+      FROM "ExamAttemptQuestion" AS attempt_question
+      INNER JOIN "ExamAttemptAnswer" AS attempt_answer
+        ON attempt_answer."attemptQuestionId" = attempt_question."id"
+      INNER JOIN "ExamAttempt" AS attempt
+        ON attempt."id" = attempt_question."attemptId"
+      WHERE attempt."studentId" = ${studentId}
+        AND attempt_answer."selectedOption" IS NOT NULL
+    `)
+
+    return rows.map((row) => row.questionId)
   }
 
   async loadAttempt(id: string) {

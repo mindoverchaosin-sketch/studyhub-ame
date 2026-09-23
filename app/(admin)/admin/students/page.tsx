@@ -1,8 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { requirePermission } from "@/auth";
-import AdminLayout from "@/components/admin/AdminLayout";
-import PageHeader from "@/components/admin/PageHeader";
+import { requirePermission } from "@/auth";import PageHeader from "@/components/admin/PageHeader";
 import { getStudentDirectoryAction } from "@/server/actions/student-management.actions";
 
 export default async function StudentsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
@@ -26,8 +24,7 @@ export default async function StudentsPage({ searchParams }: { searchParams?: Pr
   });
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <PageHeader
           title="Students"
           description="Review enrolled learners, monitor account health, and manage student access from a single workspace."
@@ -124,6 +121,5 @@ export default async function StudentsPage({ searchParams }: { searchParams?: Pr
           </div>
         </div>
       </div>
-    </AdminLayout>
   );
 }

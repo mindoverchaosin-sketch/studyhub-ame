@@ -148,7 +148,7 @@ describe('Premium Enforcement — exam-template entitlement path', () => {
     it('creates attempts for free templates without an entitlement check', async () => {
       const { generateAttempt } = await import('@/server/actions/exam.actions')
 
-      templateGetTemplate.mockResolvedValue({ id: 'template-free', isPremium: false })
+      templateGetTemplate.mockResolvedValue({ id: 'template-free', isPremium: false, active: true })
       attemptGenerateExamAttempt.mockResolvedValue({ id: 'attempt-free' })
 
       await expect(generateAttempt('template-free', 'student-123')).resolves.toEqual({
@@ -167,6 +167,7 @@ describe('Premium Enforcement — exam-template entitlement path', () => {
         id: 'template-premium',
         isPremium: true,
         moduleId: undefined,
+        active: true,
       })
 
       await expect(generateAttempt('template-premium', 'student-123')).rejects.toThrow(
@@ -184,6 +185,7 @@ describe('Premium Enforcement — exam-template entitlement path', () => {
         id: 'template-premium',
         isPremium: true,
         moduleId: 'module-1',
+        active: true,
       })
       attemptGenerateExamAttempt.mockResolvedValue({ id: 'attempt-premium' })
 

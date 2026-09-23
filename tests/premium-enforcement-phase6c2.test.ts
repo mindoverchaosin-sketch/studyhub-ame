@@ -114,7 +114,7 @@ describe('Phase 6C.2 premium enforcement execution paths', () => {
   })
 
   it('keeps premium mock-test denial before attempt creation', async () => {
-    mocks.templateGetTemplate.mockResolvedValue({ id: 'template-1', isPremium: true, moduleId: undefined })
+    mocks.templateGetTemplate.mockResolvedValue({ id: 'template-1', isPremium: true, moduleId: undefined, active: true })
     mocks.canAccessExamTemplate.mockResolvedValue({ allowed: false, requiredFeature: 'unlimitedMockExams' })
     const { generateAttempt } = await import('@/server/actions/exam.actions')
 

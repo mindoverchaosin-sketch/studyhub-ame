@@ -124,6 +124,10 @@ export class QuestionRepository {
     return prisma.question.findMany({ where: { questionBankId } })
   }
 
+  async findPublishedByBank(questionBankId: string) {
+    return prisma.question.findMany({ where: { questionBankId, status: 'PUBLISHED', deletedAt: null } })
+  }
+
   async create(input: Prisma.QuestionCreateInput) {
     return prisma.question.create({ data: input })
   }

@@ -50,17 +50,32 @@ npm ci
 npm run build
 ```
 
+For the standalone output, deploy the generated `.next/standalone` directory together with the static assets:
+
+```bash
+cp -r public .next/standalone/public
+cp -r .next/static .next/standalone/.next/static
+```
+
 ## Production start commands
 
 ```bash
 npm run start
 ```
 
+This runs:
+
+```bash
+node .next/standalone/server.js
+```
+
 If the runtime requires a custom port:
 
 ```bash
-PORT=3000 npm run start
+PORT=3000 node .next/standalone/server.js
 ```
+
+The production process must run from the directory containing `.next/standalone/server.js`. Do not use `next start` with `output: 'standalone'`.
 
 ## Rollback strategy
 

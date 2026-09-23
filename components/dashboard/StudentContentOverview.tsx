@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { FiArrowRight, FiBookOpen, FiLock, FiMessageSquare, FiTarget } from 'react-icons/fi'
 import { entitlementService } from '@/server/domains/billing/entitlements/entitlement.service'
-import { listExamTemplates } from '@/server/actions/exam.actions'
+import { listStudentExamTemplates } from '@/server/actions/exam.actions'
 import { getAllCourses } from '@/server/services/course.service'
 import { getModulesByCourse } from '@/server/services/module.service'
 import { getStudentQuestionBanks } from '@/server/services/student-question-bank.service'
@@ -13,7 +13,7 @@ export default async function StudentContentOverview({ userId }: Props) {
   const [courses, questionBanks, templates, hasPremiumModules, canUseAITutor] = await Promise.all([
     getAllCourses(),
     getStudentQuestionBanks(userId),
-    listExamTemplates({ active: true, pageSize: 100 }) as Promise<ExamTemplateDTO[]>,
+    listStudentExamTemplates({ pageSize: 100 }) as Promise<ExamTemplateDTO[]>,
     entitlementService.canAccessPremiumModules(userId),
     entitlementService.canUseAITutor(userId),
   ])

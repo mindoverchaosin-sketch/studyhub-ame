@@ -1,6 +1,4 @@
-import { redirect } from 'next/navigation'
-import AdminLayout from '@/components/admin/AdminLayout'
-import PageHeader from '@/components/admin/PageHeader'
+import { redirect } from 'next/navigation'import PageHeader from '@/components/admin/PageHeader'
 import { requirePermission } from '@/auth'
 import { getInvoices } from '@/server/actions/billing.actions'
 
@@ -14,8 +12,7 @@ export default async function InvoiceDirectoryPage() {
   const invoices = await getInvoices({ page: 1, pageSize: 20 })
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <PageHeader title="Invoice management" description="Track invoice lifecycle states, due dates, and payment status for subscriptions." />
 
         <section className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
@@ -57,6 +54,5 @@ export default async function InvoiceDirectoryPage() {
           </div>
         </section>
       </div>
-    </AdminLayout>
   )
 }

@@ -101,6 +101,7 @@ export class BulkQuestionManagementService {
       optionD: options[3] ?? '',
       correctAnswer: typeof question.correctOptionIndex === 'number' ? options[question.correctOptionIndex] ?? null : null,
       explanation: question.explanation ?? null,
+      status: question.status,
       difficulty: question.difficulty,
       questionBankId: question.questionBankId,
     }

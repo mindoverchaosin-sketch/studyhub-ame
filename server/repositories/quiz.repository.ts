@@ -43,6 +43,18 @@ export class QuizRepository {
     })
   }
 
+  async findPublishedWithQuestions(id: string) {
+    return prisma.quiz.findFirst({
+      where: { id, status: 'PUBLISHED', deletedAt: null },
+      include: {
+        questionBanks: {
+          where: { status: 'PUBLISHED', deletedAt: null },
+          include: { questions: { where: { status: 'PUBLISHED', deletedAt: null } } },
+        },
+      },
+    })
+  }
+
   async findAllPublished() {
     return prisma.quiz.findMany({
       where: { status: 'PUBLISHED' },

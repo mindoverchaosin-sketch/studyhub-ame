@@ -48,6 +48,7 @@ export function mapQuestionEntityToDTO(question: QuestionEntity): QuestionDTO {
     optionD: getOptionValue(options, 3),
     correctAnswer: mapCorrectAnswer(options, question.correctOptionIndex),
     explanation: question.explanation ?? null,
+    status: question.status,
     difficulty: question.difficulty,
     questionBankId: question.questionBankId,
   }

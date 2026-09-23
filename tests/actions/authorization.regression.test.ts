@@ -186,7 +186,7 @@ describe.sequential('authorization regression tests', () => {
 
   it('should allow admin to generate an exam attempt for any student', async () => {
     requireStudentMock.mockResolvedValue({ user: { id: 'admin-1', role: 'ADMIN' } })
-    getTemplateMock.mockResolvedValue({ id: 'template-1', isPremium: false })
+    getTemplateMock.mockResolvedValue({ id: 'template-1', isPremium: false, active: true })
     generateExamAttemptMock.mockResolvedValue({ id: 'generated-attempt' })
     const { generateAttempt } = await import('../../server/actions/exam.actions')
 

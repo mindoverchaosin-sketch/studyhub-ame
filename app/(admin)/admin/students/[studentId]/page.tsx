@@ -1,8 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { requirePermission } from "@/auth";
-import AdminLayout from "@/components/admin/AdminLayout";
-import PageHeader from "@/components/admin/PageHeader";
+import { requirePermission } from "@/auth";import PageHeader from "@/components/admin/PageHeader";
 import { getStudentDetailAction, reactivateStudentAction, resetStudentProgressAction, suspendStudentAction } from "@/server/actions/student-management.actions";
 
 export default async function StudentDetailPage({ params }: { params: Promise<{ studentId: string }> }) {
@@ -16,8 +14,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
   const detail = await getStudentDetailAction(studentId);
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <PageHeader
           title={detail.fullName}
           description="Inspect learner profile, engagement, and operational controls."
@@ -114,6 +111,5 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
           </div>
         </div>
       </div>
-    </AdminLayout>
   );
 }

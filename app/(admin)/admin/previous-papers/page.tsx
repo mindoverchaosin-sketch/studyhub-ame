@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
 import { requirePermission } from '@/auth'
-import AdminLayout from '@/components/admin/AdminLayout'
 import PageHeader from '@/components/admin/PageHeader'
 import PreviousOfficialPaperManager from '@/components/admin/PreviousOfficialPaperManager'
 import { courseRepository } from '@/server/repositories/course.repository'
@@ -20,5 +19,14 @@ export default async function PreviousPapersAdminPage() {
     moduleRepository.findAll(),
   ])
 
-  return <AdminLayout><PageHeader title="Previous official papers" description="Manage published and archived official exam paper references." /><PreviousOfficialPaperManager papers={papers} courses={courses.map((course) => ({ id: course.id, title: course.title }))} modules={modules.map((module) => ({ id: module.id, title: module.title, courseId: module.courseId }))} /></AdminLayout>
+  return (
+    <>
+      <PageHeader title="Previous official papers" description="Manage published and archived official exam paper references." />
+      <PreviousOfficialPaperManager
+        papers={papers}
+        courses={courses.map((course) => ({ id: course.id, title: course.title }))}
+        modules={modules.map((module) => ({ id: module.id, title: module.title, courseId: module.courseId }))}
+      />
+    </>
+  )
 }

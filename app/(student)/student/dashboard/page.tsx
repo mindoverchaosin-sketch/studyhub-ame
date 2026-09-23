@@ -161,7 +161,7 @@ export default async function StudentDashboardPage() {
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Study Time</p>
                 <p className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">{summary.weeklyStudyMinutes}h</p>
               </div>
-              <div className="text-sm text-slate-600">Goal: 8h / week</div>
+              <div className="text-sm text-slate-600">Goal: {studentDashboard.dailyGoal.weeklyStudyGoalMinutes} min / week</div>
             </Card>
           </section>
 
@@ -191,14 +191,14 @@ export default async function StudentDashboardPage() {
                 <div className="mt-5">
                   <div className="flex items-center justify-between text-sm text-slate-600">
                     <span>Progress</span>
-                    <span>{continueLearning.lastMockExam ?? 42}%</span>
+                    <span>{continueLearning.lastMockExam ?? "No activity yet"}{continueLearning.lastMockExam !== null && continueLearning.lastMockExam !== undefined ? "%" : ""}</span>
                   </div>
                   <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-200">
-                    <div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-500" style={{ width: `${Math.max(8, continueLearning.lastMockExam ?? 42)}%` }} />
+                    <div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-500" style={{ width: `${Math.max(0, continueLearning.lastMockExam ?? 0)}%` }} />
                   </div>
                   <div className="mt-3 flex items-center gap-2 text-sm text-slate-500">
                     <FiClock className="h-4 w-4" />
-                    Estimated time remaining: 25 min
+                    {continueLearning.lastLesson ? "Continue your saved lesson progress" : "No lesson activity yet"}
                   </div>
                 </div>
               </div>
@@ -210,7 +210,7 @@ export default async function StudentDashboardPage() {
                   <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-600">Today&apos;s goal</p>
                   <h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Stay consistent</h3>
                 </div>
-                <div className="rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">{goals.completionPercentage ?? 68}%</div>
+                <div className="rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">{goals.completionPercentage ?? 0}%</div>
               </div>
 
               <div className="mt-6 space-y-4">

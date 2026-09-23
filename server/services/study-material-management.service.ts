@@ -1,6 +1,7 @@
 import type { ResourceDTO } from '@/server/application/dto/resource.dto'
 import { resourceRepository } from '@/server/repositories/resource.repository'
 import { lessonRepository } from '@/server/repositories/lesson.repository'
+import { moduleRepository } from '@/server/repositories/module.repository'
 import { NotFoundError } from '@/auth'
 
 export type ResourceCreateInput = {
@@ -53,6 +54,13 @@ async function resolveLessonForBinding(lessonId: string, expectedModuleId?: stri
     throw new Error('Lesson does not belong to the requested module')
   }
 
+  if (expectedModuleId !== undefined) {
+    const module = await moduleRepository.findById(expectedModuleId)
+    if (!module || module.status !== 'PUBLISHED' || module.deletedAt) {
+      throw new Error('Published module for binding not found')
+    }
+  }
+
   return lesson
 }
 
@@ -67,7 +75,7 @@ export class StudyMaterialManagementService {
       title: resource.title,
       description: null,
       type: resource.materialType,
-      url: resource.url,
+      url: resource.url ?? '',
       isPremium: resource.isPremium,
       status: resource.status,
       publishedAt: resource.publishedAt,
@@ -98,6 +106,7 @@ export class StudyMaterialManagementService {
       title: input.title,
       materialType: input.type as any,
       url: resourceUrl,
+      sourceType: 'LEGACY_RESOURCE',
       isPremium: input.isPremium ?? false,
       status: input.status ?? 'DRAFT',
       displayOrder,

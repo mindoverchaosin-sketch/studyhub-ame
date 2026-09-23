@@ -1,5 +1,6 @@
 export type CourseBrowserCourse = {
   id: string;
+  slug: string;
   title: string;
   description: string | null;
   examType: string;

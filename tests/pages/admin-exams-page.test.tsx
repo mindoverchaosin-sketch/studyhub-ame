@@ -5,13 +5,11 @@ const mocks = vi.hoisted(() => ({
   requirePermission: vi.fn(),
   redirect: vi.fn((location: string): never => { throw new Error(`REDIRECT:${location}`) }),
   listExamTemplates: vi.fn(),
-  AdminLayout: vi.fn(({ children }: { children: React.ReactNode }) => <div data-testid="admin-layout">{children}</div>),
 }))
 
 vi.mock('@/auth', () => ({ requirePermission: mocks.requirePermission }))
 vi.mock('next/navigation', () => ({ redirect: mocks.redirect }))
 vi.mock('@/server/actions/exam.actions', () => ({ listExamTemplates: mocks.listExamTemplates }))
-vi.mock('@/components/admin/AdminLayout', () => ({ default: mocks.AdminLayout }))
 
 describe('AdminExamsPage', () => {
   beforeEach(() => {
@@ -26,7 +24,7 @@ describe('AdminExamsPage', () => {
     const { default: AdminExamsPage } = await import('@/app/(admin)/admin/exams/page')
     await expect(AdminExamsPage()).rejects.toThrow('REDIRECT:/login')
     expect(mocks.requirePermission).toHaveBeenCalledWith('manageModules')
-    expect(mocks.AdminLayout).not.toHaveBeenCalled()
+    expect(mocks.listExamTemplates).not.toHaveBeenCalled()
   })
 
   it('renders the page for an authorized admin', async () => {
@@ -37,6 +35,7 @@ describe('AdminExamsPage', () => {
     expect(mocks.listExamTemplates).toHaveBeenCalledWith({ pageSize: 50 })
 
     render(result)
-    expect(screen.getByTestId('admin-layout')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /mock exams/i })).toBeInTheDocument()
+    expect(screen.getByText('No templates found')).toBeInTheDocument()
   })
 })

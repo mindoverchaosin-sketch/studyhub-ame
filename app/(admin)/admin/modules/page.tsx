@@ -1,7 +1,5 @@
 import { redirect } from "next/navigation";
-import { requirePermission } from "@/auth";
-import AdminLayout from "@/components/admin/AdminLayout";
-import PageHeader from "@/components/admin/PageHeader";
+import { requirePermission } from "@/auth";import PageHeader from "@/components/admin/PageHeader";
 import ModuleDirectoryPanel from "@/components/admin/modules/ModuleDirectoryPanel";
 import { createModuleFormAction } from "@/server/actions/content-management.actions";
 import { ModuleManagementService } from "@/server/services/module-management.service";
@@ -31,8 +29,7 @@ export default async function ModulesPage({ searchParams }: { searchParams?: Pro
   });
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <PageHeader
           title="Module management"
           description="Create, edit, and archive training modules without changing student-facing learning experiences."
@@ -100,6 +97,5 @@ export default async function ModulesPage({ searchParams }: { searchParams?: Pro
 
         <ModuleDirectoryPanel directory={directory} query={query} examType={examType} status={status} sortBy={sortBy} page={page} />
       </div>
-    </AdminLayout>
   );
 }

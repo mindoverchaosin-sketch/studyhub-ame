@@ -133,6 +133,23 @@ async function main() {
           userId: adminUser.id,
           fullName: 'Administrator',
           department: 'Management',
+          status: 'APPROVED',
+          permissions: {
+            canManageCourses: true,
+            canManageUsers: true,
+            canViewAnalytics: true,
+          },
+        },
+      })
+    } else {
+      await prisma.adminProfile.upsert({
+        where: { userId: existingAdmin.id },
+        update: { status: 'APPROVED' },
+        create: {
+          userId: existingAdmin.id,
+          fullName: 'Administrator',
+          department: 'Management',
+          status: 'APPROVED',
           permissions: {
             canManageCourses: true,
             canManageUsers: true,

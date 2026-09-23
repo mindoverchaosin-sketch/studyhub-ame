@@ -2,17 +2,15 @@ import "dotenv/config";
 import { defineConfig } from "@prisma/config";
 
 // Prisma 7+ expects datasource connection URLs to be provided via a config file
-// (prisma.config.ts) or programmatically. This file reads DATABASE_URL from the
-// environment (loaded from .env by dotenv) and supplies it to the Prisma CLI
-// and runtime via the config API.
+// (prisma.config.ts) or programmatically. Runtime Prisma Client stays on
+// DATABASE_URL, while Prisma CLI/migration operations prefer a direct Neon
+// connection via DIRECT_URL when available.
 
 export default defineConfig({
   datasource: {
-    url: process.env.DATABASE_URL,
+    url: process.env.DIRECT_URL ?? process.env.DATABASE_URL,
   },
-  // The datasource URL is provided to Prisma via the DATABASE_URL environment variable
-  // Read from .env file via dotenv/config import above
   migrations: {
-  seed: "tsx prisma/seed.ts",
+    seed: "tsx prisma/seed.ts",
   },
 });

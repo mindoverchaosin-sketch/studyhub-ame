@@ -32,7 +32,7 @@ export default function CourseCard({ course }: CourseCardProps) {
 
       <div className="mt-6 flex items-center justify-between">
         <span className="text-sm text-slate-500">{course.completedTopics}/{course.totalTopics} topics completed</span>
-        <Link href={`/student/courses/${course.title.toLowerCase().replace(/\s+/g, "-")}`} className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 transition hover:text-blue-700">
+        <Link href={`/student/courses/${course.slug}`} className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 transition hover:text-blue-700">
           Continue
           <FiArrowRight className="h-4 w-4" />
         </Link>

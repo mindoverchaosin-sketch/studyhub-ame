@@ -51,6 +51,7 @@ export default function QuizPlayer({ data }: QuizPlayerProps) {
   const [mode, setMode] = useState<"practice" | "mock">("practice");
   const [paused, setPaused] = useState(false);
   const [hasLoadedProgress, setHasLoadedProgress] = useState(false);
+  const [startedAt, setStartedAt] = useState<number>(() => Date.now());
   const storageKey = `quiz-progress-${data.quiz.id}`;
 
   const questions = data.questions;
@@ -69,6 +70,7 @@ export default function QuizPlayer({ data }: QuizPlayerProps) {
           setMode(parsed.mode ?? "practice");
           setPaused(parsed.paused ?? false);
           setTimeLeft(parsed.timeLeft ?? (data.quiz.timeLimitMinutes ? data.quiz.timeLimitMinutes * 60 : null));
+          setStartedAt(parsed.startedAt ?? Date.now());
         } catch {
           // Ignore malformed saves and continue with defaults.
         }
@@ -94,8 +96,8 @@ export default function QuizPlayer({ data }: QuizPlayerProps) {
 
   useEffect(() => {
     if (!hasLoadedProgress) return;
-    window.localStorage.setItem(storageKey, JSON.stringify({ answers, questionStates, currentIndex, mode, paused, timeLeft }));
-  }, [answers, questionStates, currentIndex, mode, paused, timeLeft, hasLoadedProgress, storageKey]);
+    window.localStorage.setItem(storageKey, JSON.stringify({ answers, questionStates, currentIndex, mode, paused, timeLeft, startedAt }));
+  }, [answers, questionStates, currentIndex, mode, paused, timeLeft, startedAt, hasLoadedProgress, storageKey]);
 
   useEffect(() => {
     if (timeLeft === 0 && !submitted && !isSubmitting && mode === "mock") {
@@ -139,15 +141,20 @@ export default function QuizPlayer({ data }: QuizPlayerProps) {
 
   const handleSubmit = async (timedOut = false) => {
     setIsSubmitting(true);
-    const resultData = await submitQuizAction(data.quiz.id, answers, Date.now(), {
-      questionStates,
-      mode,
-      durationMinutes: data.quiz.timeLimitMinutes ? Math.max(1, Math.ceil((data.quiz.timeLimitMinutes * 60 - (timeLeft ?? 0)) / 60)) : 1,
-      timedOut,
-    });
-    setResult(resultData);
-    setSubmitted(true);
-    setIsSubmitting(false);
+    try {
+      const resultData = await submitQuizAction(data.quiz.id, answers, startedAt, {
+        questionStates,
+        mode,
+        durationMinutes: Math.max(1, Math.ceil((Date.now() - startedAt) / 60000)),
+        timedOut,
+      });
+      setResult(resultData);
+      setSubmitted(true);
+    } catch {
+      window.alert("We couldn't submit your quiz. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (submitted && result) {

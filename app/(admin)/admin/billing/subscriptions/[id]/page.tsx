@@ -1,7 +1,5 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
-import AdminLayout from '@/components/admin/AdminLayout'
-import PageHeader from '@/components/admin/PageHeader'
+import { redirect } from 'next/navigation'import PageHeader from '@/components/admin/PageHeader'
 import SubscriptionAdminActions from '@/components/admin/billing/SubscriptionAdminActions'
 import { requirePermission } from '@/auth'
 import { getSubscription } from '@/server/actions/billing.actions'
@@ -25,8 +23,7 @@ export default async function SubscriptionDetailPage({ params }: Props) {
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <PageHeader title="Subscription details" description="Inspect plan state, lifecycle dates, and entitlements for a student subscription." />
 
         <section className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
@@ -62,6 +59,5 @@ export default async function SubscriptionDetailPage({ params }: Props) {
           </div>
         </section>
       </div>
-    </AdminLayout>
   )
 }

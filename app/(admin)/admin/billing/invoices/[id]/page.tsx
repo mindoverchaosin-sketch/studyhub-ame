@@ -1,7 +1,5 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
-import AdminLayout from '@/components/admin/AdminLayout'
-import PageHeader from '@/components/admin/PageHeader'
+import { redirect } from 'next/navigation'import PageHeader from '@/components/admin/PageHeader'
 import InvoiceAdminActions from '@/components/admin/billing/InvoiceAdminActions'
 import { requirePermission } from '@/auth'
 import { getInvoice } from '@/server/actions/billing.actions'
@@ -25,8 +23,7 @@ export default async function InvoiceDetailPage({ params }: Props) {
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <PageHeader title={invoice.invoiceNumber} description="Review invoice metadata, subscription context, and lifecycle state." />
 
         <section className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
@@ -70,6 +67,5 @@ export default async function InvoiceDetailPage({ params }: Props) {
           </div>
         </section>
       </div>
-    </AdminLayout>
   )
 }

@@ -1,6 +1,4 @@
-import { redirect } from 'next/navigation'
-import AdminLayout from '@/components/admin/AdminLayout'
-import PageHeader from '@/components/admin/PageHeader'
+import { redirect } from 'next/navigation'import PageHeader from '@/components/admin/PageHeader'
 import { requirePermission } from '@/auth'
 import { getPlan, savePlanChanges } from '@/server/actions/billing.actions'
 
@@ -23,8 +21,7 @@ export default async function EditBillingPlanPage({ params }: Props) {
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <PageHeader
           title={`Edit ${plan.name}`}
           description="Update plan pricing, order, visibility, and feature list."
@@ -87,6 +84,5 @@ export default async function EditBillingPlanPage({ params }: Props) {
           </form>
         </section>
       </div>
-    </AdminLayout>
   )
 }

@@ -4,6 +4,7 @@ import { progressRepository } from '@/server/repositories/progress.repository'
 import { mapQuizEntityToDTO, mapQuizWithQuestionsEntityToDTO } from '@/server/application/mappers/quiz.mapper'
 import { invalidateServiceCache } from '@/server/services/cache'
 import { upsertLessonProgress } from '@/server/services/progress.service'
+import { lessonRepository } from '@/server/repositories/lesson.repository'
 
 export type QuizSubmissionMode = 'practice' | 'mock'
 
@@ -15,6 +16,7 @@ export type QuizSubmissionInput = {
   mode: QuizSubmissionMode
   durationMinutes: number
   timedOut: boolean
+  lessonId?: string
   questionStates?: Record<string, {
     markedForReview?: boolean
     bookmarked?: boolean
@@ -61,7 +63,7 @@ export async function getQuizById(id: string): Promise<QuizDTO | null> {
 }
 
 export async function getQuizWithQuestions(id: string): Promise<QuizDTO | null> {
-  const quiz = await quizRepository.findWithQuestions(id)
+  const quiz = await quizRepository.findPublishedWithQuestions(id)
   return quiz ? mapQuizWithQuestionsEntityToDTO(quiz) : null
 }
 
@@ -74,7 +76,7 @@ export async function getQuizCount(): Promise<number> {
 }
 
 export async function submitQuizAttempt(input: QuizSubmissionInput): Promise<QuizAttemptResultDTO> {
-  const quiz = await quizRepository.findWithQuestions(input.quizId)
+  const quiz = await quizRepository.findPublishedWithQuestions(input.quizId)
 
   if (!quiz) {
     return {
@@ -129,12 +131,15 @@ export async function submitQuizAttempt(input: QuizSubmissionInput): Promise<Qui
   const accuracy = total > 0 ? Math.round((correctCount / total) * 100) : 0
   const passed = score >= quiz.passingScore
   const durationMinutes = Math.max(1, Math.ceil((Date.now() - input.startedAt) / 60000))
-  const lessonId = quiz.moduleId
-
-  await upsertLessonProgress(input.studentId, lessonId, {
-    status: passed ? 'COMPLETED' : 'IN_PROGRESS',
-    percentComplete: score,
-  })
+  if (input.lessonId) {
+    const lesson = await lessonRepository.findById(input.lessonId)
+    if (lesson && lesson.moduleId === quiz.moduleId && lesson.status === 'PUBLISHED' && !lesson.deletedAt) {
+      await upsertLessonProgress(input.studentId, lesson.id, {
+        status: passed ? 'COMPLETED' : 'IN_PROGRESS',
+        percentComplete: score,
+      })
+    }
+  }
 
   await progressRepository.createQuizAttempt({
     userId: input.studentId,

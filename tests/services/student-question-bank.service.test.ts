@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   findPublishedWithQuestions: vi.fn(),
   findById: vi.fn(),
+  findStudentQuestionStates: vi.fn(),
   questionFindById: vi.fn(),
   canAccessQuestionBank: vi.fn(),
   canAccessQuestion: vi.fn(),
@@ -12,6 +13,7 @@ vi.mock('@/server/repositories/question-bank.repository', () => ({
   questionBankRepository: {
     findPublishedWithQuestions: mocks.findPublishedWithQuestions,
     findById: mocks.findById,
+    findStudentQuestionStates: mocks.findStudentQuestionStates,
   },
 }))
 
@@ -30,6 +32,7 @@ describe('student question bank service', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.findPublishedWithQuestions.mockResolvedValue([])
+    mocks.findStudentQuestionStates.mockResolvedValue([])
     mocks.canAccessQuestionBank.mockResolvedValue({ allowed: true })
     mocks.canAccessQuestion.mockResolvedValue({ allowed: true })
   })
@@ -61,6 +64,22 @@ describe('student question bank service', () => {
 
     expect(result[0]).toMatchObject({ isPremium: true, locked: true, questionCount: 1 })
     expect(result[0].questions).toHaveLength(0)
+  })
+
+  it('hydrates each question with the current student answer state', async () => {
+    mocks.findPublishedWithQuestions.mockResolvedValue([{
+      id: 'free-bank', title: 'Free Bank', description: null, status: 'PUBLISHED', isPremium: false,
+      createdAt: new Date(), updatedAt: new Date(), deletedAt: null,
+      questions: [{ id: 'q1', questionBankId: 'free-bank', prompt: 'What is lift?', options: ['A', 'B'], correctOptionIndex: 0, explanation: null, difficulty: 'BEGINNER', status: 'PUBLISHED', deletedAt: null }],
+    }])
+    const answeredAt = new Date('2026-09-04T10:00:00.000Z')
+    mocks.findStudentQuestionStates.mockResolvedValue([{ questionId: 'q1', selectedOption: 1, answeredAt }])
+
+    const { getStudentQuestionBanks } = await import('@/server/services/student-question-bank.service')
+    const result = await getStudentQuestionBanks('student-1')
+
+    expect(result[0].questions[0]).toMatchObject({ selectedOption: 1, answeredAt: answeredAt.toISOString(), isAnswered: true })
+    expect(mocks.findStudentQuestionStates).toHaveBeenCalledWith('student-1', ['q1'])
   })
 
   it('allows a premium bank and its questions for an entitled student', async () => {

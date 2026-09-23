@@ -13,6 +13,7 @@ export type QuestionDTO = {
   optionD: string
   correctAnswer: string | null
   explanation: string | null
+  status: "DRAFT" | "IN_REVIEW" | "PUBLISHED" | "ARCHIVED" | "SCHEDULED"
   difficulty: "BEGINNER" | "INTERMEDIATE" | "ADVANCED"
   questionBankId: string
 }

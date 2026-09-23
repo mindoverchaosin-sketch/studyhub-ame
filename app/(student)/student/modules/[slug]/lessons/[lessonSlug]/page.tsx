@@ -10,6 +10,7 @@ import { getModuleBySlug } from "@/server/services/module.service";
 import { contentAccessService } from "@/server/services/content-access.service";
 import { getTopicBySlug } from "@/server/services/topic.service";
 import { getTopicLearningPageData } from "@/features/topics/actions/topic-learning";
+import LessonCompletionButton from "@/components/student/LessonCompletionButton";
 
 export default async function StudentLessonPage({ params }: { params: Promise<{ slug: string; lessonSlug: string }> }) {
   const session = await requireStudent();
@@ -73,12 +74,8 @@ export default async function StudentLessonPage({ params }: { params: Promise<{ 
                   <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{data.topic.title}</p>
                 </div>
               <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" size="sm" type="button">
-                  <span className="flex items-center gap-2"><FiFlag className="h-4 w-4" />Mark complete</span>
-                </Button>
-                <Button variant="primary" size="sm" type="button">
-                  <span className="flex items-center gap-2"><FiDownload className="h-4 w-4" />Resources</span>
-                </Button>
+                <LessonCompletionButton lessonId={topic.id} completed={data.progress.completed} />
+                {data.resources.length > 0 ? <a href="#lesson-resources" className="inline-flex items-center justify-center rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white"><span className="flex items-center gap-2"><FiDownload className="h-4 w-4" />Resources</span></a> : null}
               </div>
             </div>
 
@@ -98,7 +95,7 @@ export default async function StudentLessonPage({ params }: { params: Promise<{ 
               </div>
             </div>
 
-            <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-5">
+            <div id="lesson-resources" className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-5">
               <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.24em] text-slate-600">
                 <FiList className="h-4 w-4" />Notes
               </div>

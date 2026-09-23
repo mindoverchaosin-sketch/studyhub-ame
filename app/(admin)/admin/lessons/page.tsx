@@ -1,7 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/auth";
-import AdminLayout from "@/components/admin/AdminLayout";
-import { LessonsManager } from "@/components/admin/cms/LessonsManager";
+import { requireAdmin } from "@/auth";import { LessonsManager } from "@/components/admin/cms/LessonsManager";
 import { CmsSearchPanel } from "@/components/admin/cms/CmsSearchPanel";
 import { cmsSearchService } from "@/server/services/cms-search.service";
 
@@ -22,8 +20,7 @@ export default async function LessonsPage() {
   const searchItems = cmsSearchService.search(sampleItems, '', 'all', 'all');
 
   return (
-    <AdminLayout>
-      <div className="space-y-8">
+    <div className="space-y-8">
         <LessonsManager />
         <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-950">Unified content search</h2>
@@ -33,6 +30,5 @@ export default async function LessonsPage() {
           </div>
         </div>
       </div>
-    </AdminLayout>
   );
 }

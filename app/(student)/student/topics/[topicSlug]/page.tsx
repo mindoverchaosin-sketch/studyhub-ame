@@ -99,9 +99,9 @@ export default async function TopicLearningPage({ params }: TopicLearningPagePro
                   <p className="font-semibold text-slate-950">{data.quiz.title}</p>
                   <p className="mt-2 text-sm leading-7 text-slate-600">{data.quiz.description || "A quick assessment for the key ideas in this topic."}</p>
                 </div>
-                <button className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">
+                <Link href={`/student/quiz/${data.quiz.id}`} className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">
                   Start Quiz
-                </button>
+                </Link>
               </div>
             ) : (
               <EmptyState title="No quiz available" description="A quiz will be linked here when one is published for this topic." />

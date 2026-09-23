@@ -2,6 +2,14 @@ import * as templateService from '@/server/services/exam-template.service'
 import * as attemptService from '@/server/services/exam-attempt.service'
 import { requireStudent, requirePermission, requireOwnership, requireAuth } from '@/auth'
 import { contentAccessService } from '@/server/services/content-access.service'
+import type { ExamTemplateDTO } from '@/server/application/dto/exam-template.dto'
+
+export type StudentExamTemplateDTO = Pick<ExamTemplateDTO, 'id' | 'name' | 'description' | 'moduleId' | 'courseId' | 'durationMinutes' | 'questionCount' | 'passingPercentage' | 'shuffleQuestions' | 'shuffleAnswers' | 'negativeMarkingEnabled' | 'active' | 'isPremium'>
+
+function toStudentExamTemplate(template: ExamTemplateDTO): StudentExamTemplateDTO {
+  const { id, name, description, moduleId, courseId, durationMinutes, questionCount, passingPercentage, shuffleQuestions, shuffleAnswers, negativeMarkingEnabled, active, isPremium } = template
+  return { id, name, description, moduleId, courseId, durationMinutes, questionCount, passingPercentage, shuffleQuestions, shuffleAnswers, negativeMarkingEnabled, active, isPremium }
+}
 
 function normalizeExamTemplateInput(input: any) {
   if (input instanceof FormData) {
@@ -34,6 +42,18 @@ export async function getExamTemplate(id: string) {
   return templateService.getTemplate(id)
 }
 
+export async function listStudentExamTemplates(params: { search?: string; page?: number; pageSize?: number } = {}): Promise<StudentExamTemplateDTO[]> {
+  await requireStudent()
+  const templates = await templateService.listTemplates({ ...params, active: true })
+  return templates.filter((template: ExamTemplateDTO) => template.active).map(toStudentExamTemplate)
+}
+
+export async function getStudentExamTemplate(id: string): Promise<StudentExamTemplateDTO | null> {
+  await requireStudent()
+  const template = await templateService.getTemplate(id)
+  return template?.active ? toStudentExamTemplate(template) : null
+}
+
 export async function createExamTemplate(input: any) {
   await requirePermission('manageModules')
   return templateService.createTemplate(normalizeExamTemplateInput(input))
@@ -48,12 +68,17 @@ export async function generateAttempt(templateId: string, studentId: string) {
   const session = await requireStudent()
   requireOwnership(studentId, session.user.id, true, session.user.role)
 
-  // Check premium access for the exam template
+  // Validate template state before attempt generation
   const template = await templateService.getTemplate(templateId)
   if (!template) {
     throw new Error('Template not found.')
   }
 
+  if (!template.active) {
+    throw new Error('This exam is no longer available.')
+  }
+
+  // Check premium access for the exam template
   if (template.isPremium) {
     // Determine context: if template is tied to a module, use premiumModules feature
     // Otherwise, use unlimitedMockExams for standalone templates

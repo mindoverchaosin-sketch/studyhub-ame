@@ -6,6 +6,7 @@ import { progressRepository } from '@/server/repositories/progress.repository'
 import { sectionRepository } from '@/server/repositories/section.repository'
 import { userRepository } from '@/server/repositories/user.repository'
 import { getAdaptiveLearningData } from '@/server/services/adaptive-learning.service'
+import { questionBankRepository } from '@/server/repositories/question-bank.repository'
 import { getCacheKey, withServiceCache } from '@/server/services/cache'
 import { instrumentService } from '@/lib/logger'
 import { timeAsync, timeSync } from '@/lib/timing'
@@ -52,11 +53,12 @@ export async function getDashboardSummary(studentId: string): Promise<DashboardS
   return instrumentService('DashboardService', 'getDashboardSummary', async () => {
     return withServiceCache(cacheKey, 60_000, async () => {
       try {
-        const [moduleProgressRows, lessonProgressRows, streakData, attempts, adaptiveData] = await timeAsync('dashboard', 'load_summary_data', async () => Promise.all([
+        const [moduleProgressRows, lessonProgressRows, streakData, attempts, independentQuestionIds, adaptiveData] = await timeAsync('dashboard', 'load_summary_data', async () => Promise.all([
           progressRepository.findModuleProgressByUser(studentId),
           progressRepository.findLessonProgressByUser(studentId),
           progressRepository.findStudyStreak(studentId),
           examAttemptRepository.listAttempts(studentId),
+          questionBankRepository.findAnsweredQuestionIds(studentId),
           getAdaptiveLearningData(studentId),
         ]))
 
@@ -68,15 +70,18 @@ export async function getDashboardSummary(studentId: string): Promise<DashboardS
             : []
           const totalModules = resolvedModules.length || moduleProgressRows.length
           const completedLessons = lessonProgressRows.filter((entry: ProgressRow) => (entry.percentComplete ?? 0) >= 100).length
-          const questionsSolved = attempts.length > 0
-            ? (await examAttemptRepository.getAttemptQuestionsByAttemptIds(attempts.map((attempt: AttemptRow) => attempt.id))).length
-            : 0
+          const examQuestionIds = attempts.length > 0
+            ? await examAttemptRepository.getAnsweredQuestionIdsByStudent(studentId)
+            : []
+          const questionsSolved = new Set([...examQuestionIds, ...independentQuestionIds]).size
           const mockExamsTaken = attempts.filter((attempt: AttemptRow) => attempt.status === 'SUBMITTED').length
           const averageMockScore = mockExamsTaken > 0
             ? Math.round(attempts.reduce((sum: number, attempt: AttemptRow) => sum + (attempt.percentage ?? 0), 0) / mockExamsTaken)
             : 0
           const revisionQueueCount = adaptiveData?.reviewQueue?.length ?? 0
-          const weeklyStudyMinutes = Math.max(0, completedLessons * 15 + Math.max(0, (adaptiveData?.performanceSummary?.recentAccuracy ?? 0) / 10))
+          // Use persisted study time from adaptiveData, or zero if not available
+          // Since AdaptiveLearningDTO doesn't have weeklyStudyMinutes, use zero
+          const weeklyStudyMinutes = 0
 
           return {
             readinessScore: adaptiveData?.performanceSummary?.recentAccuracy ?? 0,

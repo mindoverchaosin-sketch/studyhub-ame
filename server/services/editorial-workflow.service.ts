@@ -3,11 +3,12 @@ import { auditRepository } from '@/server/repositories/audit.repository'
 import { EditorialWorkflowRepository, type EditorialWorkflowRow, editorialWorkflowRepository } from '@/server/repositories/editorial-workflow.repository'
 import { lessonRepository } from '@/server/repositories/lesson.repository'
 import { questionRepository } from '@/server/repositories/question.repository'
+import { resourceRepository } from '@/server/repositories/resource.repository'
 import { publishingService } from '@/server/services/publishing.service'
 import type { Prisma } from '@prisma/client'
 import { PrismaClientKnownRequestError } from '@prisma/client-runtime-utils'
 
-export type EditorialTargetType = 'QUESTION' | 'LESSON'
+export type EditorialTargetType = 'QUESTION' | 'LESSON' | 'STUDY_MATERIAL'
 export type EditorialStatus = 'DRAFT' | 'IN_REVIEW' | 'APPROVED' | 'PUBLISHED' | 'ARCHIVED'
 
 export type EditorialVersionDTO = {
@@ -173,9 +174,12 @@ async function initializeWorkflow(targetType: EditorialTargetType, entityId: str
   if (targetType === 'QUESTION') {
     const question = await questionRepository.findById(entityId)
     if (!question) throw new NotFoundError('Question not found.')
-  } else {
+  } else if (targetType === 'LESSON') {
     const lesson = await lessonRepository.findById(entityId)
     if (!lesson) throw new NotFoundError('Lesson not found.')
+  } else {
+    const material = await resourceRepository.findById(entityId)
+    if (!material) throw new NotFoundError('Study material not found.')
   }
 
   const initialStatus: EditorialStatus = targetType === 'QUESTION' ? 'IN_REVIEW' : 'DRAFT'
@@ -211,6 +215,12 @@ export async function getEditorialWorkflow(questionId: string): Promise<Editoria
 export async function getLessonEditorialWorkflow(lessonId: string): Promise<EditorialWorkflowDTO> {
   const row = await initializeWorkflow('LESSON', lessonId)
   const auditTrail = await loadAuditTrail('LESSON', lessonId)
+  return mapRowToDTO({ ...row, auditTrail })
+}
+
+export async function getStudyMaterialEditorialWorkflow(studyMaterialId: string): Promise<EditorialWorkflowDTO> {
+  const row = await initializeWorkflow('STUDY_MATERIAL', studyMaterialId)
+  const auditTrail = await loadAuditTrail('STUDY_MATERIAL', studyMaterialId)
   return mapRowToDTO({ ...row, auditTrail })
 }
 

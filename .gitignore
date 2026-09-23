@@ -167,3 +167,5 @@ sprint14_priority_lint_utf8.json
 # Optional AI / Build Artifacts
 # ------------------------------------------------------------
 *.cache
+.vercel
+.env*

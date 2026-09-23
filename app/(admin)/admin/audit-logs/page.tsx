@@ -1,7 +1,5 @@
 import { redirect } from 'next/navigation'
-import { requirePermission } from '@/auth'
-import AdminLayout from '@/components/admin/AdminLayout'
-import PageHeader from '@/components/admin/PageHeader'
+import { requirePermission } from '@/auth'import PageHeader from '@/components/admin/PageHeader'
 import { getAuditLogsAction } from '@/server/actions/audit.actions'
 
 export default async function AuditLogsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
@@ -22,8 +20,7 @@ export default async function AuditLogsPage({ searchParams }: { searchParams?: P
   const result = await getAuditLogsAction({ search, userId, action, entityType, page, pageSize })
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <PageHeader
           title="Audit logs"
           description="Review privileged admin activity for governance, troubleshooting, and change tracking."
@@ -67,6 +64,5 @@ export default async function AuditLogsPage({ searchParams }: { searchParams?: P
           </div>
         </div>
       </div>
-    </AdminLayout>
   )
 }

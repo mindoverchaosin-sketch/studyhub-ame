@@ -1,7 +1,5 @@
 import { redirect } from "next/navigation";
-import { requirePermission } from "@/auth";
-import AdminLayout from "@/components/admin/AdminLayout";
-import PageHeader from "@/components/admin/PageHeader";
+import { requirePermission } from "@/auth";import PageHeader from "@/components/admin/PageHeader";
 import { ModuleManagementService } from "@/server/services/module-management.service";
 import { archiveModuleAction, unarchiveModuleAction, updateModuleAction } from "@/server/actions/content-management.actions";
 import { approvePublishingAction, archiveContentAction, publishContentAction, rejectPublishingAction, submitForReviewAction, unpublishContentAction } from "@/server/actions/publishing.actions";
@@ -22,8 +20,7 @@ export default async function ModuleDetailPage({ params }: { params: Promise<{ m
   const resources = await resourceService.listResources(moduleId);
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <PageHeader title={module.title} description="Inspect module metadata, publication state, and resource counts." />
 
         <div className="grid gap-6 lg:grid-cols-[1.5fr_0.9fr]">
@@ -149,6 +146,5 @@ export default async function ModuleDetailPage({ params }: { params: Promise<{ m
 
         <ModuleResourcesPanel resources={resources} />
       </div>
-    </AdminLayout>
   );
 }

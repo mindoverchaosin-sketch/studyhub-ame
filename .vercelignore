@@ -1,0 +1,34 @@
+# Local secrets and dependency/build directories
+.env
+.env.*
+!.env.example
+node_modules/
+.next/
+out/
+build/
+dist/
+.vercel/
+.git/
+
+# Local artifacts, fixtures, reports, and transient files
+artifacts/
+test-upload-samples/
+tmp-import-samples/
+cookiejar/
+*.log
+*.txt
+*.json
+!package.json
+!package-lock.json
+*.diff
+*.cache
+*.tmp
+*.temp
+coverage/
+test-results/
+playwright-report/
+
+# Local tooling and workspace metadata
+.vscode/
+.kilo/
+tsconfig.tsbuildinfo

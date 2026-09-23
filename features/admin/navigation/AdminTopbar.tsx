@@ -11,7 +11,6 @@ export default function AdminTopbar() {
         <div className="flex flex-wrap items-center gap-3">
           <Link href="/admin/dashboard" className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200">Dashboard</Link>
           <Link href="/admin/courses" className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200">Courses</Link>
-          <Link href="/admin/topics" className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200">Topics</Link>
         </div>
       </div>
       <div className="flex items-center gap-3">

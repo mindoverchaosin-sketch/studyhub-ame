@@ -13,13 +13,13 @@ type ModuleAdminQueryParams = {
 export class ModuleRepository {
   async findByCourse(courseId: string) {
     return prisma.module.findMany({
-      where: { courseId },
+      where: { courseId, status: 'PUBLISHED', deletedAt: null },
       orderBy: { displayOrder: 'asc' },
     })
   }
 
   async findBySlug(slug: string) {
-    return prisma.module.findUnique({ where: { slug } })
+    return prisma.module.findFirst({ where: { slug, status: 'PUBLISHED', deletedAt: null } })
   }
 
   async findById(id: string) {
@@ -91,11 +91,11 @@ export class ModuleRepository {
   }
 
   async findWithSections(id: string) {
-    return prisma.module.findUnique({
-      where: { id },
+    return prisma.module.findFirst({
+      where: { id, status: 'PUBLISHED', deletedAt: null },
       include: {
         lessons: {
-          where: { status: 'PUBLISHED' },
+          where: { status: 'PUBLISHED', deletedAt: null },
           orderBy: { displayOrder: 'asc' },
         },
       },

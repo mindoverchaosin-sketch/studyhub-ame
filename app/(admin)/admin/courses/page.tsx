@@ -1,7 +1,5 @@
 import { redirect } from "next/navigation"
-import { requirePermission } from "@/auth"
-import AdminLayout from "@/components/admin/AdminLayout"
-import PageHeader from "@/features/admin/components/PageHeader"
+import { requirePermission } from "@/auth"import PageHeader from "@/features/admin/components/PageHeader"
 import AdminCoursesTable from "@/features/admin/components/AdminCoursesTable"
 import Container from "@/components/ui/Container"
 import Section from "@/components/ui/Section"
@@ -17,8 +15,7 @@ export default async function AdminCoursesPage() {
   const courses = await getAdminCourses()
 
   return (
-    <AdminLayout>
-      <Section className="bg-slate-50 py-12">
+    <Section className="bg-slate-50 py-12">
         <Container>
           <PageHeader
             title="Courses"
@@ -53,6 +50,5 @@ export default async function AdminCoursesPage() {
           </div>
         </Container>
       </Section>
-    </AdminLayout>
   )
 }

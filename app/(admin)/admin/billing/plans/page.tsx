@@ -1,6 +1,4 @@
-import { redirect } from 'next/navigation'
-import AdminLayout from '@/components/admin/AdminLayout'
-import PageHeader from '@/components/admin/PageHeader'
+import { redirect } from 'next/navigation'import PageHeader from '@/components/admin/PageHeader'
 import { requirePermission } from '@/auth'
 import { getPlans } from '@/server/actions/billing.actions'
 
@@ -14,8 +12,7 @@ export default async function BillingPlansPage() {
   const plans = await getPlans()
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <PageHeader
           title="Plan management"
           description="Manage plan availability, pricing, ordering, and feature visibility for billing tiers."
@@ -58,6 +55,5 @@ export default async function BillingPlansPage() {
           </div>
         </section>
       </div>
-    </AdminLayout>
   )
 }

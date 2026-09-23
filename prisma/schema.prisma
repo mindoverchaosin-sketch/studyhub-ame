@@ -141,6 +141,7 @@ model User {
   quizAttempts               QuizAttempt[]
   mockTestAttempts           MockTestAttempt[]
   bookmarks                  Bookmark[]
+  studentQuestionStates      StudentQuestionState[]
   studyStreak                StudyStreak?
   achievements               Achievement[]
   certificates               Certificate[]
@@ -443,19 +444,24 @@ model Lesson {
 }
 
 model StudyMaterial {
-  id           String            @id @default(uuid())
-  moduleId     String?
-  lessonId     String?
-  title        String
-  materialType StudyMaterialType @default(PDF)
-  url          String
-  isPremium    Boolean           @default(false)
-  status       Status            @default(DRAFT)
-  displayOrder Int               @default(0)
-  publishedAt  DateTime?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  deletedAt    DateTime?
+  id              String            @id @default(uuid())
+  moduleId        String?
+  lessonId        String?
+  title           String
+  materialType    StudyMaterialType @default(PDF)
+  url             String?
+  isPremium       Boolean           @default(false)
+  status          Status            @default(DRAFT)
+  displayOrder    Int               @default(0)
+  publishedAt     DateTime?
+  sourceType      String
+  documentContent Json?
+  documentVersion Int               @default(1)
+  lastReviewedAt  DateTime?
+  lastPublishedAt DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  deletedAt       DateTime?
 
   module Module? @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   lesson Lesson? @relation(fields: [lessonId], references: [id], onDelete: Cascade)
@@ -463,7 +469,9 @@ model StudyMaterial {
   @@index([moduleId])
   @@index([lessonId])
   @@index([materialType])
+  @@index([sourceType])
   @@index([moduleId, displayOrder])
+  @@index([status])
 }
 
 model PreviousOfficialPaper {
@@ -563,9 +571,28 @@ model Question {
   deletedAt          DateTime?
 
   questionBank QuestionBank @relation(fields: [questionBankId], references: [id], onDelete: Cascade)
+  studentStates StudentQuestionState[]
 
   @@index([questionBankId])
   @@index([difficulty])
+}
+
+model StudentQuestionState {
+  id             String    @id @default(uuid())
+  studentId      String
+  questionId     String
+  selectedOption Int?
+  answeredAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  student  User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, questionId])
+  @@index([studentId])
+  @@index([questionId])
+  @@index([studentId, answeredAt])
 }
 
 model EditorialWorkflow {

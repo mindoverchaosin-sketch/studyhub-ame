@@ -1,6 +1,4 @@
-import { redirect } from 'next/navigation'
-import AdminLayout from '@/components/admin/AdminLayout'
-import PageHeader from '@/components/admin/PageHeader'
+import { redirect } from 'next/navigation'import PageHeader from '@/components/admin/PageHeader'
 import { requirePermission } from '@/auth'
 import { getSubscriptions } from '@/server/actions/billing.actions'
 
@@ -14,8 +12,7 @@ export default async function SubscriptionDirectoryPage() {
   const subscriptions = await getSubscriptions({ page: 1, pageSize: 20 })
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <PageHeader
           title="Subscription management"
           description="Review active subscriptions, lifecycle states, and renewals for enrolled students."
@@ -57,6 +54,5 @@ export default async function SubscriptionDirectoryPage() {
           </div>
         </section>
       </div>
-    </AdminLayout>
   )
 }

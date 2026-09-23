@@ -40,6 +40,7 @@ export async function getCourseBrowserData(): Promise<{ courses: CourseBrowserCo
 
       return {
         id: course.id,
+        slug: course.slug,
         title: course.title,
         description: course.description,
         examType: course.categoryId ?? "General",

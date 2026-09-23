@@ -56,6 +56,29 @@ describe('Exam Actions - Authentication Tests', () => {
     vi.clearAllMocks()
   })
 
+  describe('student-safe exam template reads', () => {
+    it('allows an authenticated student to list active templates without admin permission', async () => {
+      mockRequireStudent.mockResolvedValue({ user: { id: 'student-1', role: 'STUDENT' } })
+      mockTemplateService.listTemplates.mockResolvedValue([{ id: 't1', name: 'Free Exam', active: true, createdAt: new Date(), updatedAt: new Date() }])
+      const { listStudentExamTemplates } = await import('@/server/actions/exam.actions')
+
+      const result = await listStudentExamTemplates()
+
+      expect(mockRequireStudent).toHaveBeenCalledOnce()
+      expect(mockRequirePermission).not.toHaveBeenCalled()
+      expect(mockTemplateService.listTemplates).toHaveBeenCalledWith({ active: true })
+      expect(result).toEqual([{ id: 't1', name: 'Free Exam', active: true }])
+    })
+
+    it('rejects unauthenticated students from listing templates', async () => {
+      mockRequireStudent.mockRejectedValue(new Error('Session required'))
+      const { listStudentExamTemplates } = await import('@/server/actions/exam.actions')
+
+      await expect(listStudentExamTemplates()).rejects.toThrow('Session required')
+      expect(mockTemplateService.listTemplates).not.toHaveBeenCalled()
+    })
+  })
+
   describe('listExamTemplates - Requires manageModules Permission', () => {
     it('denies STUDENT access to list templates', async () => {
       const { listExamTemplates } = await import('@/server/actions/exam.actions')
@@ -284,6 +307,8 @@ describe('Exam Actions - Authentication Tests', () => {
         id: 'template-1',
         name: 'Free Template',
         isPremium: false,
+        active: true,
+        deletedAt: null,
         questionCount: 20,
       })
       mockAttemptService.generateExamAttempt.mockResolvedValue({
@@ -324,6 +349,8 @@ describe('Exam Actions - Authentication Tests', () => {
         id: 'template-free',
         name: 'Free Template',
         isPremium: false,
+        active: true,
+        deletedAt: null,
       })
       mockAttemptService.generateExamAttempt.mockResolvedValue({ id: 'attempt-free' })
 
@@ -346,6 +373,8 @@ describe('Exam Actions - Authentication Tests', () => {
         name: 'Premium Template',
         isPremium: true,
         moduleId: 'module-1',
+        active: true,
+        deletedAt: null,
       })
       mockContentAccessService.canAccessExamTemplate.mockResolvedValue({
         allowed: false,
@@ -378,6 +407,8 @@ describe('Exam Actions - Authentication Tests', () => {
         name: 'Premium Template',
         isPremium: true,
         moduleId: 'module-1',
+        active: true,
+        deletedAt: null,
       })
       mockContentAccessService.canAccessExamTemplate.mockResolvedValue({
         allowed: true,
@@ -413,6 +444,8 @@ describe('Exam Actions - Authentication Tests', () => {
         name: 'Standalone Premium Mock Exam',
         isPremium: true,
         moduleId: null,
+        active: true,
+        deletedAt: null,
       })
       mockContentAccessService.canAccessExamTemplate.mockResolvedValue({
         allowed: true,
@@ -464,7 +497,7 @@ describe('Exam Actions - Authentication Tests', () => {
       })
       mockTemplateService.getTemplate.mockImplementation(async () => {
         ownershipOrder.push('template')
-        return { id: 'template-1', isPremium: false }
+        return { id: 'template-1', isPremium: false, active: true, deletedAt: null }
       })
 
       await expect(generateAttempt('template-1', 'student-2')).rejects.toThrow('Access denied.')
@@ -485,6 +518,8 @@ describe('Exam Actions - Authentication Tests', () => {
         id: 'template-1',
         name: 'Free Template',
         isPremium: false,
+        active: true,
+        deletedAt: null,
       })
       mockAttemptService.generateExamAttempt.mockResolvedValue({
         id: 'attempt-admin',
@@ -499,6 +534,53 @@ describe('Exam Actions - Authentication Tests', () => {
 
       expect(mockRequireOwnership).toHaveBeenCalledWith('student-2', 'admin-1', true, 'ADMIN')
       expect(mockAttemptService.generateExamAttempt).toHaveBeenCalledWith('template-1', 'student-2')
+    })
+
+    it('rejects inactive template before generating attempt', async () => {
+      const { generateAttempt } = await import('@/server/actions/exam.actions')
+      const studentSession = {
+        user: { id: 'student-1', role: 'STUDENT' },
+      }
+
+      mockRequireStudent.mockResolvedValue(studentSession)
+      mockRequireOwnership.mockImplementation(() => undefined)
+      mockTemplateService.getTemplate.mockResolvedValue({
+        id: 'template-inactive',
+        name: 'Inactive Template',
+        active: false,
+        isPremium: false,
+        deletedAt: null,
+      })
+
+      await expect(generateAttempt('template-inactive', 'student-1')).rejects.toThrow('This exam is no longer available.')
+
+      expect(mockAttemptService.generateExamAttempt).not.toHaveBeenCalled()
+    })
+
+    it('allows active template even after entitlement check', async () => {
+      const { generateAttempt } = await import('@/server/actions/exam.actions')
+      const studentSession = {
+        user: { id: 'student-1', role: 'STUDENT' },
+      }
+
+      mockRequireStudent.mockResolvedValue(studentSession)
+      mockRequireOwnership.mockImplementation(() => undefined)
+      mockTemplateService.getTemplate.mockResolvedValue({
+        id: 'template-active',
+        name: 'Active Template',
+        active: true,
+        isPremium: false,
+      })
+      mockAttemptService.generateExamAttempt.mockResolvedValue({
+        id: 'attempt-active',
+        templateId: 'template-active',
+        studentId: 'student-1',
+      })
+
+      const result = await generateAttempt('template-active', 'student-1')
+
+      expect(mockAttemptService.generateExamAttempt).toHaveBeenCalledWith('template-active', 'student-1')
+      expect(result.id).toBe('attempt-active')
     })
   })
 })

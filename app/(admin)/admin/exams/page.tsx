@@ -1,7 +1,5 @@
 import { redirect } from "next/navigation"
-import { requirePermission } from "@/auth"
-import AdminLayout from "@/components/admin/AdminLayout"
-import { listExamTemplates, activateExamTemplate } from "@/server/actions/exam.actions"
+import { requirePermission } from "@/auth"import { listExamTemplates, activateExamTemplate } from "@/server/actions/exam.actions"
 
 export default async function AdminExamsPage() {
   try {
@@ -13,8 +11,7 @@ export default async function AdminExamsPage() {
   const templates = await listExamTemplates({ pageSize: 50 })
 
   return (
-    <AdminLayout>
-      <div className="space-y-4 p-6">
+    <div className="space-y-4 p-6">
         <h1 className="text-2xl font-semibold">Mock Exams</h1>
         <div>
           <button className="rounded bg-blue-600 text-white px-3 py-1">Create Template</button>
@@ -41,6 +38,5 @@ export default async function AdminExamsPage() {
           )}
         </div>
       </div>
-    </AdminLayout>
   )
 }

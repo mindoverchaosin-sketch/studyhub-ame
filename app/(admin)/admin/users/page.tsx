@@ -1,8 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { requirePermission } from '@/auth';
-import AdminLayout from '@/components/admin/AdminLayout';
-import PageHeader from '@/components/admin/PageHeader';
+import { requirePermission } from '@/auth';import PageHeader from '@/components/admin/PageHeader';
 import { listUsers } from '@/server/services/user-management.service';
 
 export default async function AdminUsersPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
@@ -21,8 +19,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams?: 
   const users = await listUsers({ search: query, role: role as any, status: status as any, page, pageSize: 10 });
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <PageHeader title="User Management" description="Manage platform access, role assignments, and account status from one place." />
         <form method="GET" className="flex flex-wrap gap-3 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
           <input name="query" defaultValue={query} placeholder="Search by email or name" className="rounded-full border border-slate-300 px-3 py-2 text-sm" />
@@ -68,6 +65,5 @@ export default async function AdminUsersPage({ searchParams }: { searchParams?: 
           </table>
         </div>
       </div>
-    </AdminLayout>
   );
 }

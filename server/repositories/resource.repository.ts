@@ -5,7 +5,7 @@ export type ResourceAdminFilters = {
   moduleId?: string
   search?: string
   type?: StudyMaterialType | 'ALL'
-  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' | 'ALL'
+  status?: 'DRAFT' | 'IN_REVIEW' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' | 'ALL'
 }
 
 export class ResourceRepository {
@@ -50,6 +50,21 @@ export class ResourceRepository {
   async findPublishedById(id: string) {
     return prisma.studyMaterial.findFirst({
       where: { id, status: 'PUBLISHED', deletedAt: null },
+      include: {
+        module: {
+          select: {
+            id: true,
+            moduleNumber: true,
+            title: true,
+          },
+        },
+        lesson: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+      },
     })
   }
 

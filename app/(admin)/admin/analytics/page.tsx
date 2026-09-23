@@ -1,7 +1,5 @@
 import { redirect } from 'next/navigation'
-import { requireAdmin } from '@/auth'
-import AdminLayout from '@/components/admin/AdminLayout'
-import PageHeader from '@/components/admin/PageHeader'
+import { requireAdmin } from '@/auth'import PageHeader from '@/components/admin/PageHeader'
 import { getAnalyticsDashboardAction } from '@/server/actions/analytics.actions'
 
 // Card component for metric displays
@@ -99,8 +97,7 @@ export default async function AnalyticsPage() {
   }))
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <PageHeader title="Analytics Dashboard" description="Enterprise analytics and metrics for administrators." />
 
         {/* Overview Section */}
@@ -234,6 +231,5 @@ export default async function AnalyticsPage() {
           Last updated: {new Date(dashboard.generatedAt).toLocaleString()}
         </div>
       </div>
-    </AdminLayout>
   )
 }

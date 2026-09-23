@@ -33,7 +33,7 @@ vi.mock('@/server/services/user.service', () => ({
 
 import { PermissionService } from '../../server/services/permission.service'
 import { getPermissionMatrix } from '../../server/services/authorization.service'
-import { ForbiddenError, UnauthorizedError, requirePermission, requireRole } from '../../lib/auth'
+import { ForbiddenError, UnauthorizedError, requireApprovedRole, requirePermission, requireRole } from '../../lib/auth'
 
 describe('PermissionService', () => {
   beforeEach(() => {
@@ -122,5 +122,24 @@ describe('PermissionService', () => {
     getServerSessionMock.mockResolvedValue(null)
 
     await expect(requireRole('SUPER_ADMIN')).rejects.toThrow(UnauthorizedError)
+  })
+
+  it('allows SUPER_ADMIN and ADMIN through the privileged admin approval path', async () => {
+    getServerSessionMock.mockResolvedValue({ user: { id: 'admin-user', role: 'ADMIN' } })
+    findByIdMock.mockResolvedValue({ id: 'admin-user', isActive: true, role: { name: 'ADMIN' }, adminProfile: { status: 'APPROVED' } })
+
+    await expect(requireApprovedRole('ADMIN')).resolves.toMatchObject({ user: { role: 'ADMIN' } })
+
+    getServerSessionMock.mockResolvedValue({ user: { id: 'super-user', role: 'SUPER_ADMIN' } })
+    findByIdMock.mockResolvedValue({ id: 'super-user', isActive: true, role: { name: 'SUPER_ADMIN' } })
+
+    await expect(requireApprovedRole('ADMIN')).resolves.toMatchObject({ user: { role: 'SUPER_ADMIN' } })
+  })
+
+  it('rejects STUDENT from the privileged admin approval path', async () => {
+    getServerSessionMock.mockResolvedValue({ user: { id: 'student-user', role: 'STUDENT' } })
+    findByIdMock.mockResolvedValue({ id: 'student-user', isActive: true, role: { name: 'STUDENT' } })
+
+    await expect(requireApprovedRole('ADMIN')).rejects.toThrow('ADMIN access required.')
   })
 })

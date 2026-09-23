@@ -2,9 +2,10 @@ import { lessonRepository } from '@/server/repositories/lesson.repository'
 import { moduleRepository } from '@/server/repositories/module.repository'
 import { resourceRepository } from '@/server/repositories/resource.repository'
 import { questionRepository } from '@/server/repositories/question.repository'
+import { editorialWorkflowRepository } from '@/server/repositories/editorial-workflow.repository'
 
 export type PublishingTargetType = 'MODULE' | 'LESSON' | 'STUDY_MATERIAL' | 'QUESTION'
-export type PublishingWorkflowState = 'DRAFT' | 'IN_REVIEW' | 'PUBLISHED' | 'ARCHIVED'
+export type PublishingWorkflowState = 'DRAFT' | 'IN_REVIEW' | 'APPROVED' | 'PUBLISHED' | 'ARCHIVED'
 
 export type PublishingResult = {
   targetId: string
@@ -26,6 +27,10 @@ export class PublishingService {
       throw new Error('Approval requires a pending review')
     }
 
+    if (targetType === 'STUDY_MATERIAL') {
+      return this.transition(targetType, targetId, 'APPROVED', 'IN_REVIEW', undefined, { setPublishedAt: false })
+    }
+
     return this.transition(targetType, targetId, 'PUBLISHED', 'PUBLISHED', undefined, { setPublishedAt: true })
   }
 
@@ -39,6 +44,12 @@ export class PublishingService {
   }
 
   async publish(targetType: PublishingTargetType, targetId: string): Promise<PublishingResult> {
+    if (targetType === 'STUDY_MATERIAL') {
+      const workflow = await editorialWorkflowRepository.findByTarget('STUDY_MATERIAL', targetId)
+      if (!workflow || workflow.status !== 'APPROVED') {
+        throw new Error('Publishing requires approved study material content')
+      }
+    }
     return this.transition(targetType, targetId, 'PUBLISHED', 'PUBLISHED', undefined, { setPublishedAt: true })
   }
 

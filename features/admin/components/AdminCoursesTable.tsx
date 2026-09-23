@@ -21,6 +21,12 @@ type AdminCoursesTableProps = {
 }
 
 const PAGE_SIZE = 8
+const courseDateFormatter = new Intl.DateTimeFormat("en-US", {
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  timeZone: "UTC",
+})
 
 export default function AdminCoursesTable({ courses }: AdminCoursesTableProps) {
   const [query, setQuery] = useState("")
@@ -67,7 +73,7 @@ export default function AdminCoursesTable({ courses }: AdminCoursesTableProps) {
                   <StatusBadge label={course.isPublished ? "Published" : "Draft"} tone={course.isPublished ? "success" : "neutral"} />
                 </td>
                 <td className="px-5 py-4">{course.moduleCount}</td>
-                <td className="px-5 py-4">{new Date(course.createdAt).toLocaleDateString()}</td>
+                <td className="px-5 py-4">{courseDateFormatter.format(new Date(course.createdAt))}</td>
                 <td className="px-5 py-4">
                   <div className="flex flex-wrap gap-2">
                     <Link href={`/admin/courses/${course.id}`} className="rounded-2xl border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200">
