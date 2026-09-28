@@ -150,7 +150,7 @@ export class CmsImportService {
         } else if (row.type === 'questions') {
           if (!row.questionBankId) throw new Error('Question bank is required');
           await questionRepository.create({
-            questionBankId: row.questionBankId,
+            questionBank: { connect: { id: row.questionBankId } },
             prompt: row.title,
             explanation: row.content ?? '',
             difficulty: 'BEGINNER',

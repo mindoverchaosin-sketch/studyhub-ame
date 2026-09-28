@@ -196,7 +196,7 @@ export async function bulkImportQuestions(input: {
   for (const row of validRows) {
     await questionRepository.create({
       prompt: row.prompt,
-      questionBankId: input.questionBankId,
+      questionBank: { connect: { id: input.questionBankId } },
       questionType: 'MULTIPLE_CHOICE',
       options: row.options,
       correctOptionIndex: row.correctOptionIndex,

@@ -2,13 +2,14 @@
 
 import { requirePermission } from '@/auth'
 import { studyMaterialDocumentService } from '@/server/services/study-material-document.service'
+import type { StudyMaterialDocument } from '@/lib/study-material/document-schema'
 
 export async function createStudyMaterialDraftAction(input: { title: string; moduleId?: string; lessonId?: string; authorId?: string }) {
   await requirePermission('manageResources')
   return studyMaterialDocumentService.createDraftDocument(input)
 }
 
-export async function saveStudyMaterialDraftAction(resourceId: string, document: unknown) {
+export async function saveStudyMaterialDraftAction(resourceId: string, document: StudyMaterialDocument) {
   await requirePermission('manageResources')
   return studyMaterialDocumentService.saveDraft(resourceId, document)
 }

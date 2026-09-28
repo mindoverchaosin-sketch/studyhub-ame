@@ -147,7 +147,7 @@ export class QuestionManagementService {
 
     const options = normalizeOptions(input.options)
     const created = await questionRepository.create({
-      questionBankId: input.questionBankId,
+      questionBank: { connect: { id: input.questionBankId } },
       prompt: input.prompt.trim(),
       options,
       correctOptionIndex: input.correctOptionIndex,
