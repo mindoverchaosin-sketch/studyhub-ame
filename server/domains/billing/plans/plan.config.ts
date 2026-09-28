@@ -169,7 +169,7 @@ export function planHasFeature(planSlug: string, feature: FeatureName): boolean 
 /**
  * Get feature display name (for UI)
  */
-export function getFeatureDisplayName(feature: FeatureName): string {
+export function getFeatureDisplayName(feature: string): string {
   const names: Record<FeatureName, string> = {
     premiumModules: 'Premium Modules',
     unlimitedMockExams: 'Unlimited Mock Exams',
@@ -179,5 +179,5 @@ export function getFeatureDisplayName(feature: FeatureName): string {
     prioritySupport: 'Priority Support',
     advancedReporting: 'Advanced Reporting',
   }
-  return names[feature] || feature
+  return Object.entries(names).find(([name]) => name === feature)?.[1] ?? feature
 }

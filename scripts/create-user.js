@@ -1,11 +1,9 @@
 #!/usr/bin/env node
-require('dotenv').config()
-const { PrismaClient } = require('@prisma/client')
-const bcrypt = require('bcrypt')
-
-const prisma = new PrismaClient()
-
 async function main() {
+  await import('dotenv/config')
+  const { PrismaClient } = await import('@prisma/client')
+  const { default: bcrypt } = await import('bcrypt')
+  const prisma = new PrismaClient()
   const [email, password, name] = process.argv.slice(2)
   if (!email || !password) {
     console.error('Usage: node scripts/create-user.js email password [name]')

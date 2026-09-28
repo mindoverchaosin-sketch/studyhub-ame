@@ -1,7 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { getAnalyticsDashboardAction } from '@/server/actions/analytics.actions'
-import * as authModule from '@/auth'
-import * as analyticsService from '@/server/services/analytics.service'
 
 const mocks = vi.hoisted(() => ({
   requirePermission: vi.fn(),

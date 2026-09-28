@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import type { HTMLAttributes } from "react";
-import { useSession } from "next-auth/react";
 import { FiMenu, FiX } from "react-icons/fi";
 import AeroPrepLogo from "@/components/brand/AeroPrepLogo";
 import RoleAwareHomeLink from "@/components/brand/RoleAwareHomeLink";
@@ -24,20 +23,6 @@ type NavbarProps = HTMLAttributes<HTMLElement> & {
 export default function Navbar({ compact = false, className = "", ...props }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
-  const { data: session } = useSession();
-
-  const homeHref = session?.user?.role === "STUDENT"
-    ? "/student/dashboard"
-    : session?.user?.role === "INSTRUCTOR"
-      ? "/instructor/dashboard"
-      : session?.user?.role === "CONTENT_EDITOR"
-        ? "/content-editor/dashboard"
-        : session?.user?.role === "ADMIN"
-          ? "/admin/dashboard"
-          : session?.user?.role === "SUPER_ADMIN"
-            ? "/super-admin/dashboard"
-            : "/";
-
   const isActive = (href: string) => pathname === href || (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
   const linkClasses = (href: string) =>

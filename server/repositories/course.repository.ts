@@ -11,6 +11,7 @@ export class CourseRepository {
         title: true,
         description: true,
         categoryId: true,
+        isPremium: true,
         status: true,
         publishedAt: true,
         createdAt: true,

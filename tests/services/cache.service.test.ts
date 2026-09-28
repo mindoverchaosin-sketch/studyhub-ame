@@ -32,7 +32,7 @@ describe('service cache', () => {
   })
 
   it('prevents stale data from being served after expiry', async () => {
-    const { serviceCache, withServiceCache, getCacheKey } = await import('../../server/services/cache')
+    const { withServiceCache, getCacheKey } = await import('../../server/services/cache')
     const calls = vi.fn(async () => ({ value: 1 }))
 
     await withServiceCache(getCacheKey('study-planner', 'u3'), 1, calls)

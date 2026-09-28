@@ -13,7 +13,7 @@ vi.mock('@aws-sdk/client-s3', () => {
   return {
     S3Client: class {
       send = s3State.send
-      constructor(_options: unknown) {}
+      constructor() {}
     },
     ListObjectsV2Command: command('ListObjectsV2Command'),
     HeadObjectCommand: command('HeadObjectCommand'),

@@ -1,6 +1,6 @@
 import * as attemptService from '@/server/services/exam-attempt.service'
 import * as completionService from '@/server/services/exam-completion.service'
-import { requireStudent, requireAdmin, requireOwnership, requirePermission, NotFoundError, ForbiddenError } from '@/auth'
+import { requireStudent, requireOwnership, requirePermission, NotFoundError } from '@/auth'
 
 export async function loadAttemptAction(attemptId: string) {
   const session = await requireStudent()

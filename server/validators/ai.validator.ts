@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import type { AIContextSnapshot } from '@/types/ai'
 
 export const aiContextSchema = z
   .object({

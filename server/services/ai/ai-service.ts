@@ -197,6 +197,7 @@ export class AIService {
   }
 
   async handleRecommendations(userId: string): Promise<AIRecommendationDTO> {
+    void userId
     metricsService.recordAIRequest()
 
     const recommendations = timeSync('AIService', 'buildRecommendations', () => recommendationService.buildRecommendations({

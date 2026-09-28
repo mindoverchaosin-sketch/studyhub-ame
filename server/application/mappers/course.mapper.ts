@@ -1,7 +1,7 @@
-import type { CourseEntity, CourseWithModuleCountEntity } from '../../infrastructure/entities/course.entity'
+import type { CourseWithModuleCountEntity } from '../../infrastructure/entities/course.entity'
 import type { CourseDTO } from '../dto/course.dto'
 
-export function mapCourseEntityToDTO(course: any): CourseDTO {
+export function mapCourseEntityToDTO(course: CourseWithModuleCountEntity): CourseDTO {
   return {
     id: course.id,
     slug: course.slug,

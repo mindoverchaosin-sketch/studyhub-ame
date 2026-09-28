@@ -3,10 +3,10 @@ import { loadAttemptAction } from '@/server/actions/exam-attempt.actions'
 import { withRequestLogging } from '@/lib/request-logger'
 import { getRequestId } from '@/lib/request-context'
 
-export async function GET(req: Request, context: any) {
-  const params = context?.params ?? {}
+export async function GET(req: Request, context: { params: Promise<{ attemptId: string }> }) {
+  const { attemptId } = await context.params
   const result = await withRequestLogging(req, 'loadAttemptAction', async () => {
-    const attempt = await loadAttemptAction(params.attemptId)
+    const attempt = await loadAttemptAction(attemptId)
     if (!attempt) return null
     return attempt
   })

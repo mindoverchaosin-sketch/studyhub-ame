@@ -13,10 +13,11 @@ class MockRepository {
   createConversation = vi.fn(async (title: string, userId?: string) => ({
     id: 'conv-1',
     title,
+    userId,
     messages: [],
     createdAt: new Date().toISOString(),
     lastUpdated: new Date().toISOString(),
-  }));
+  } satisfies AIConversation));
   findConversation = vi.fn(async (id: string) => ({
     id,
     title: 'Test',

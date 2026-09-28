@@ -19,6 +19,12 @@ function createMockTx() {
   }
 }
 
+type ResourceTransactionFixture = ReturnType<typeof createMockTx>
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 vi.mock('@/lib/prisma', () => ({
   default: {
     studyMaterial: {
@@ -43,7 +49,7 @@ function resetMocks() {
 
 beforeEach(() => {
   resetMocks()
-  prismaTransactionMock.mockImplementation(async (fn: any) => fn(createMockTx() as any))
+  prismaTransactionMock.mockImplementation(async (fn: (tx: ResourceTransactionFixture) => Promise<unknown>) => fn(createMockTx()))
 })
 
 import { ResourceRepository } from '../../server/repositories/resource.repository'
@@ -177,8 +183,11 @@ describe('ResourceRepository', () => {
 
       const result = await repository.reorder('m1', ['r1', 'r1', 'r2'])
 
-      const updateCalls = prismaStudyMaterialUpdateMock.mock.calls
-      const r1Updates = updateCalls.filter((call: any) => call[0].where.id === 'r1')
+      const updateCalls: unknown[][] = prismaStudyMaterialUpdateMock.mock.calls
+      const r1Updates = updateCalls.filter(([args]) => {
+        if (!isRecord(args) || !isRecord(args.where)) return false
+        return args.where.id === 'r1'
+      })
       expect(r1Updates).toHaveLength(1)
       expect(result).toHaveLength(2)
     })

@@ -25,7 +25,7 @@ describe('resource.service', () => {
     })
 
     const { getResourcesByType } = await import('../../server/services/resource.service')
-    const res = await getResourcesByType('l1', 'VIDEO')
+    await getResourcesByType('l1', 'VIDEO')
     expect(repo.findByLessonAndType).toHaveBeenCalled()
   })
 })

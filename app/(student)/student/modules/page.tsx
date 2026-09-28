@@ -4,10 +4,8 @@ import ModulesPageClient from './ModulesPageClient'
 import { getCourseBrowserData } from '@/features/courses/actions/course-browser'
 
 export default async function StudentModulesPage() {
-  let sessionUser
-
   try {
-    sessionUser = await requireStudent()
+    await requireStudent()
   } catch {
     redirect('/login')
   }

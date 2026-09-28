@@ -12,8 +12,6 @@ interface ModuleDirectoryPanelProps {
   basePath?: string;
 }
 
-type FilterValue = "ALL" | "DGCA" | "EASA" | "BOTH" | "DRAFT" | "PUBLISHED" | "ARCHIVED" | "SCHEDULED";
-
 function formatDate(value: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" });

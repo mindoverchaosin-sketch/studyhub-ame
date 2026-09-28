@@ -2,6 +2,7 @@
 
 import { requirePermission } from '@/auth';
 import * as adminCmsService from '@/server/services/admin-cms.service';
+import type { AdminLesson, AdminMockTest } from '@/types/admin';
 
 export async function listAdminLessons(input: { search?: string; moduleId?: string; page?: number; pageSize?: number; sortBy?: 'updated' | 'title' | 'created' } = {}) {
   await requirePermission('manageModules');
@@ -13,13 +14,13 @@ export async function listAdminModules() {
   return adminCmsService.listModules();
 }
 
-export async function createAdminLesson(input: any) {
+export async function createAdminLesson(input: Partial<AdminLesson>) {
   await requirePermission('manageModules');
   const session = await requirePermission('manageModules');
   return adminCmsService.createLesson(input, session.user.id);
 }
 
-export async function updateAdminLesson(id: string, input: any) {
+export async function updateAdminLesson(id: string, input: Partial<AdminLesson>) {
   await requirePermission('manageModules');
   const session = await requirePermission('manageModules');
   return adminCmsService.updateLesson(id, input, session.user.id);
@@ -42,13 +43,13 @@ export async function listAdminMockTests(input: { search?: string; courseId?: st
   return adminCmsService.listMockTests(input);
 }
 
-export async function createAdminMockTest(input: any) {
+export async function createAdminMockTest(input: Partial<AdminMockTest>) {
   await requirePermission('manageModules');
   const session = await requirePermission('manageModules');
   return adminCmsService.createMockTest(input, session.user.id);
 }
 
-export async function updateAdminMockTest(id: string, input: any) {
+export async function updateAdminMockTest(id: string, input: Partial<AdminMockTest>) {
   await requirePermission('manageModules');
   const session = await requirePermission('manageModules');
   return adminCmsService.updateMockTest(id, input, session.user.id);

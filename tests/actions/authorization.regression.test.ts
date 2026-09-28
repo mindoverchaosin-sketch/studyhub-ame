@@ -14,26 +14,26 @@ const requireOwnershipMock = vi.fn((resourceUserId: string, currentUserId: strin
 })
 
 class ForbiddenError extends Error {
+  readonly status = 403
   constructor(message = 'Access denied.') {
     super(message)
     this.name = 'ForbiddenError'
-    ;(this as any).status = 403
   }
 }
 
 class UnauthorizedError extends Error {
+  readonly status = 401
   constructor(message = 'Authentication required.') {
     super(message)
     this.name = 'UnauthorizedError'
-    ;(this as any).status = 401
   }
 }
 
 class NotFoundError extends Error {
+  readonly status = 404
   constructor(message = 'Resource not found.') {
     super(message)
     this.name = 'NotFoundError'
-    ;(this as any).status = 404
   }
 }
 

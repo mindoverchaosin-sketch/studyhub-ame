@@ -1,9 +1,9 @@
 import prisma from '@/lib/prisma'
-import type { Prisma } from '@prisma/client'
+import type { Prisma, RoleName } from '@prisma/client'
 
 type AdminUserQueryParams = {
   search?: string
-  role?: string
+  role?: RoleName | 'ALL'
   status?: 'ACTIVE' | 'SUSPENDED'
   skip?: number
   take?: number
@@ -153,7 +153,7 @@ export class UserRepository {
           { displayName: { contains: params.search, mode: 'insensitive' } },
         ],
       } : {}),
-      ...(params.role ? { role: { is: { name: params.role as any } } } : {}),
+      ...(params.role && params.role !== 'ALL' ? { role: { is: { name: params.role } } } : {}),
       ...(params.status ? { isActive: params.status === 'ACTIVE' } : {}),
     }
 
@@ -174,7 +174,7 @@ export class UserRepository {
           { displayName: { contains: params.search, mode: 'insensitive' } },
         ],
       } : {}),
-      ...(params.role ? { role: { is: { name: params.role as any } } } : {}),
+      ...(params.role && params.role !== 'ALL' ? { role: { is: { name: params.role } } } : {}),
       ...(params.status ? { isActive: params.status === 'ACTIVE' } : {}),
     }
 

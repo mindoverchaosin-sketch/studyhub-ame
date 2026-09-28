@@ -82,10 +82,6 @@ describe('Exam Actions - Authentication Tests', () => {
   describe('listExamTemplates - Requires manageModules Permission', () => {
     it('denies STUDENT access to list templates', async () => {
       const { listExamTemplates } = await import('@/server/actions/exam.actions')
-      const studentSession = {
-        user: { id: 'student-1', role: 'STUDENT' },
-      }
-
       mockRequirePermission.mockRejectedValue(new Error('Forbidden'))
 
       await expect(listExamTemplates({ active: true })).rejects.toThrow('Forbidden')
@@ -288,7 +284,7 @@ describe('Exam Actions - Authentication Tests', () => {
         isActive: true,
       })
 
-      const result = await activateExamTemplate('template-1', true)
+      await activateExamTemplate('template-1', true)
 
       expect(mockRequirePermission).toHaveBeenCalledWith('manageModules')
       expect(mockTemplateService.activateTemplate).toHaveBeenCalled()

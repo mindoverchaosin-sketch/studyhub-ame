@@ -5,6 +5,10 @@ import { questionRepository } from '@/server/repositories/question.repository'
 
 export type QuestionStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 // Alias for compatibility
 export type QuestionManagementStatus = QuestionStatus
 
@@ -109,15 +113,18 @@ export async function getAdminQuestionLibrary(filters: AdminQuestionLibraryFilte
     difficulty: filters.difficulty,
   })
 
-  const items = rows.map((row: any) => ({
-    ...mapQuestionEntityToDTO(row),
-    status: inferQuestionStatus(row.status ?? 'DRAFT'),
-    metadata: {
-      tags: Array.isArray(row.metadata?.tags) ? row.metadata.tags : [],
-      timeEstimateMinutes: Number(row.metadata?.timeEstimateMinutes ?? 3),
-    },
-    createdAt: row.createdAt?.toISOString?.() ?? new Date().toISOString(),
-  }))
+  const items = rows.map((row) => {
+    const metadata = isRecord(row.metadata) ? row.metadata : {}
+    return {
+      ...mapQuestionEntityToDTO(row),
+      status: inferQuestionStatus(row.status ?? 'DRAFT'),
+      metadata: {
+        tags: Array.isArray(metadata.tags) ? metadata.tags.filter((tag): tag is string => typeof tag === 'string') : [],
+        timeEstimateMinutes: Number(metadata.timeEstimateMinutes ?? 3),
+      },
+      createdAt: row.createdAt?.toISOString?.() ?? new Date().toISOString(),
+    }
+  })
 
   return { items, total, page, pageSize }
 }
@@ -149,7 +156,7 @@ export async function bulkImportQuestions(input: {
   const preview: ImportPreviewRowDTO[] = []
 
   const existingQuestions = await questionRepository.findByBank(input.questionBankId)
-  const seen = new Set(existingQuestions.map((item: any) => normalizeText(item.prompt)))
+  const seen = new Set(existingQuestions.map((item) => normalizeText(item.prompt)))
 
   for (const row of dataRows) {
     const prompt = row[0] ?? ''
@@ -197,7 +204,7 @@ export async function bulkImportQuestions(input: {
       explanation: null,
       status: 'DRAFT',
       metadata: { tags: [], timeEstimateMinutes: 3 },
-    } as any)
+    })
   }
 
   return {

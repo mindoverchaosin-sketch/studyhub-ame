@@ -3,10 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mockRequireAuth = vi.fn()
 const mockRequirePermission = vi.fn()
 const mockRequireApprovedRole = vi.fn()
-const mockForbiddenError = vi.fn()
-const mockValidationError = vi.fn()
-const mockNotFoundError = vi.fn()
-
 vi.mock('@/auth', () => ({
   requireAuth: mockRequireAuth,
   requirePermission: mockRequirePermission,
@@ -408,6 +404,11 @@ describe('approval management backend', () => {
     }))
 
     const { createQuestionAction } = await import('@/server/actions/question-management.actions')
-    await expect(createQuestionAction({} as any)).rejects.toThrow('Permission required')
+    await expect(createQuestionAction({
+      prompt: 'Question',
+      options: ['A', 'B'],
+      correctOptionIndex: 0,
+      questionBankId: 'bank-1',
+    })).rejects.toThrow('Permission required')
   })
 })

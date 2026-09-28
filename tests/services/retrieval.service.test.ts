@@ -1,4 +1,5 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import type { Lesson, Question } from '@prisma/client';
 import { retrievalService } from '@/server/services/ai/retrieval.service';
 import { lessonRepository } from '@/server/repositories/lesson.repository';
 import { moduleRepository } from '@/server/repositories/module.repository';
@@ -10,30 +11,22 @@ describe('RetrievalService', () => {
   });
 
   it('builds a retrieval context from lesson and question inputs', async () => {
-    vi.spyOn(questionRepository, 'findById').mockResolvedValue({
-      id: 'q1',
-      question: 'What causes corrosion?',
-      explanation: 'Because of oxidation.',
-      topic: 'Corrosion',
-      difficulty: 'Hard',
-      standard: 'DGCA',
-      status: 'PUBLISHED',
-      module: 'Corrosion module',
-      isBookmarked: false,
-      recommended: false,
-    } as any);
+    const now = new Date();
+    const question: Question = {
+      id: 'q1', questionBankId: 'bank-1', prompt: 'What causes corrosion?', questionType: 'MULTIPLE_CHOICE', options: ['A', 'B'],
+      correctOptionIndex: 0, explanation: 'Because of oxidation.', difficulty: 'ADVANCED', status: 'PUBLISHED', metadata: null,
+      createdAt: now, updatedAt: now, deletedAt: null,
+    };
+    vi.spyOn(questionRepository, 'findById').mockResolvedValue(question);
 
-    vi.spyOn(lessonRepository, 'findById').mockResolvedValue({
-      id: 'l1',
-      title: 'Corrosion basics',
-      description: 'Corrosion is the degradation of metal caused by chemical reactions.',
-      moduleId: 'm1',
-      status: 'PUBLISHED',
-      publishedAt: new Date().toISOString(),
-      slug: 'corrosion-basics',
-    } as any);
+    const lesson: Lesson = {
+      id: 'l1', moduleId: 'm1', slug: 'corrosion-basics', title: 'Corrosion basics',
+      description: 'Corrosion is the degradation of metal caused by chemical reactions.', durationMinutes: 0, displayOrder: 0,
+      status: 'PUBLISHED', publishedAt: now, metadata: null, createdAt: now, updatedAt: now, deletedAt: null,
+    };
+    vi.spyOn(lessonRepository, 'findById').mockResolvedValue(lesson);
 
-    vi.spyOn(moduleRepository, 'getModuleDetail').mockResolvedValue(null as any);
+    vi.spyOn(moduleRepository, 'getModuleDetail').mockResolvedValue(null);
 
     const context = await retrievalService.buildRetrievalContext({
       lessonId: 'l1',

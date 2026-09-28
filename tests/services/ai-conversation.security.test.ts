@@ -48,16 +48,16 @@ vi.mock('@/services/ai/AIProviderFactory', () => ({
 
 import { AIService } from '@/server/services/ai/ai-service'
 import { ConversationService } from '@/server/services/ai/conversation.service'
-import type { AIMessage } from '@/types/ai'
+import type { AIConversation, AIMessage } from '@/types/ai'
 
 function makeRepository() {
-  const conversations = new Map<string, any>()
+  const conversations = new Map<string, AIConversation>()
   const repository = {
     createConversation: vi.fn(async (_title: string, userId?: string) => {
       const conversation = {
         id: `conv-${conversations.size + 1}`,
         title: _title,
-        userId: userId ?? null,
+        userId,
         messages: [],
         createdAt: new Date().toISOString(),
         lastUpdated: new Date().toISOString(),

@@ -24,16 +24,28 @@ vi.mock('@/lib/prisma', () => ({
 
 import { EditorialWorkflowRepository } from '../../server/repositories/editorial-workflow.repository'
 
+type TransactionFixture = {
+  editorialWorkflow: {
+    findUnique: typeof prismaEditorialWorkflowFindUniqueMock
+    update: typeof prismaEditorialWorkflowUpdateMock
+  }
+  $executeRaw: typeof prismaExecuteRawMock
+}
+
+function createTransactionFixture(): TransactionFixture {
+  return {
+    editorialWorkflow: {
+      findUnique: prismaEditorialWorkflowFindUniqueMock,
+      update: prismaEditorialWorkflowUpdateMock,
+    },
+    $executeRaw: prismaExecuteRawMock,
+  }
+}
+
 describe('EditorialWorkflowRepository', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    prismaTransactionMock.mockImplementation(async (fn: any) => fn({
-      editorialWorkflow: {
-        findUnique: prismaEditorialWorkflowFindUniqueMock,
-        update: prismaEditorialWorkflowUpdateMock,
-      },
-      $executeRaw: prismaExecuteRawMock,
-    } as any))
+    prismaTransactionMock.mockImplementation(async (fn: (tx: TransactionFixture) => Promise<unknown>) => fn(createTransactionFixture()))
   })
 
   it('creates a workflow row', async () => {
@@ -219,13 +231,7 @@ describe('EditorialWorkflowRepository', () => {
   it('acquires a FOR UPDATE lock inside a transaction', async () => {
     const repository = new EditorialWorkflowRepository()
     prismaExecuteRawMock.mockResolvedValue([])
-    prismaTransactionMock.mockImplementation(async (fn: any) => fn({
-      editorialWorkflow: {
-        findUnique: prismaEditorialWorkflowFindUniqueMock,
-        update: prismaEditorialWorkflowUpdateMock,
-      },
-      $executeRaw: prismaExecuteRawMock,
-    } as any))
+    prismaTransactionMock.mockImplementation(async (fn: (tx: TransactionFixture) => Promise<unknown>) => fn(createTransactionFixture()))
     prismaEditorialWorkflowFindUniqueMock.mockResolvedValue({
       id: 'wf-1',
       targetType: 'QUESTION',

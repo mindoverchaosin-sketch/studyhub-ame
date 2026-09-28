@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { QuizWithQuestionBanksAndQuestionsEntity, QuizWithQuestionBanksEntity } from '@/server/infrastructure/entities/quiz.entity'
 
 const { quizRepositoryMock, lessonRepositoryMock, progressRepositoryMock, upsertLessonProgressMock } = vi.hoisted(() => ({
   quizRepositoryMock: {
@@ -24,8 +25,8 @@ vi.mock('@/server/repositories/quiz.repository', () => ({ quizRepository: quizRe
 vi.mock('@/server/repositories/lesson.repository', () => ({ lessonRepository: lessonRepositoryMock }))
 vi.mock('@/server/repositories/progress.repository', () => ({ progressRepository: progressRepositoryMock }))
 vi.mock('@/server/application/mappers/quiz.mapper', () => ({
-  mapQuizEntityToDTO: (quiz: any) => ({ id: quiz.id, title: quiz.title, moduleId: quiz.moduleId, passingScore: quiz.passingScore, questions: [] }),
-  mapQuizWithQuestionsEntityToDTO: (quiz: any) => ({ id: quiz.id, title: quiz.title, moduleId: quiz.moduleId, passingScore: quiz.passingScore, questions: quiz.questionBanks?.flatMap((bank: any) => bank.questions ?? []).map((question: any) => ({ id: question.id, prompt: question.prompt })) ?? [] }),
+  mapQuizEntityToDTO: (quiz: QuizWithQuestionBanksEntity) => ({ id: quiz.id, title: quiz.title, moduleId: quiz.moduleId, passingScore: quiz.passingScore, questions: [] }),
+  mapQuizWithQuestionsEntityToDTO: (quiz: QuizWithQuestionBanksAndQuestionsEntity) => ({ id: quiz.id, title: quiz.title, moduleId: quiz.moduleId, passingScore: quiz.passingScore, questions: quiz.questionBanks.flatMap((bank) => bank.questions.map((question) => ({ id: question.id, prompt: question.prompt }))) }),
 }))
 vi.mock('@/server/services/cache', () => ({ invalidateServiceCache: vi.fn() }))
 vi.mock('@/server/services/progress.service', () => ({ upsertLessonProgress: upsertLessonProgressMock }))

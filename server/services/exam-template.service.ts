@@ -8,7 +8,9 @@ function normalizePremiumFlag(value: unknown): boolean {
   return Boolean(value)
 }
 
-function mapToDTO(entity: any): ExamTemplateDTO {
+type ExamTemplateEntity = NonNullable<Awaited<ReturnType<typeof examTemplateRepository.getTemplate>>>
+
+function mapToDTO(entity: ExamTemplateEntity): ExamTemplateDTO {
   return {
     id: entity.id,
     name: entity.name,
@@ -29,10 +31,10 @@ function mapToDTO(entity: any): ExamTemplateDTO {
   }
 }
 
-export async function listTemplates(filters: { search?: string; active?: boolean; page?: number; pageSize?: number } = {}) {
+export async function listTemplates(filters: { search?: string; courseId?: string; active?: boolean; page?: number; pageSize?: number; sortBy?: 'updated' | 'title' | 'created' } = {}) {
   const page = filters.page ?? 1
   const pageSize = filters.pageSize ?? 20
-  const rows = await examTemplateRepository.listTemplates({ search: filters.search, active: filters.active, skip: (page - 1) * pageSize, take: pageSize })
+  const rows = await examTemplateRepository.listTemplates({ search: filters.search, courseId: filters.courseId, active: filters.active, sortBy: filters.sortBy, skip: (page - 1) * pageSize, take: pageSize })
   return rows.map(mapToDTO)
 }
 
@@ -81,6 +83,8 @@ export async function updateTemplate(id: string, input: Partial<ExamTemplateDTO>
 }
 
 export async function deleteTemplate(id: string): Promise<void> {
+  const existing = await examTemplateRepository.getTemplate(id)
+  if (!existing) throw new NotFoundError('Exam template not found.')
   await examTemplateRepository.deleteTemplate(id)
 }
 

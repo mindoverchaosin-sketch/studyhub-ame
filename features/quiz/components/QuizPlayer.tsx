@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useEffectEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { QuizPlayerPageData } from "@/features/quiz/types";
 import { submitQuizAction } from "@/features/quiz/actions/quiz-player";
@@ -64,18 +64,20 @@ export default function QuizPlayer({ data }: QuizPlayerProps) {
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          setAnswers(parsed.answers ?? {});
-          setQuestionStates(parsed.questionStates ?? {});
-          setCurrentIndex(parsed.currentIndex ?? 0);
-          setMode(parsed.mode ?? "practice");
-          setPaused(parsed.paused ?? false);
-          setTimeLeft(parsed.timeLeft ?? (data.quiz.timeLimitMinutes ? data.quiz.timeLimitMinutes * 60 : null));
-          setStartedAt(parsed.startedAt ?? Date.now());
+          startTransition(() => {
+            setAnswers(parsed.answers ?? {});
+            setQuestionStates(parsed.questionStates ?? {});
+            setCurrentIndex(parsed.currentIndex ?? 0);
+            setMode(parsed.mode ?? "practice");
+            setPaused(parsed.paused ?? false);
+            setTimeLeft(parsed.timeLeft ?? (data.quiz.timeLimitMinutes ? data.quiz.timeLimitMinutes * 60 : null));
+            setStartedAt(parsed.startedAt ?? Date.now());
+          });
         } catch {
           // Ignore malformed saves and continue with defaults.
         }
       }
-      setHasLoadedProgress(true);
+      startTransition(() => setHasLoadedProgress(true));
       return;
     }
 
@@ -98,12 +100,6 @@ export default function QuizPlayer({ data }: QuizPlayerProps) {
     if (!hasLoadedProgress) return;
     window.localStorage.setItem(storageKey, JSON.stringify({ answers, questionStates, currentIndex, mode, paused, timeLeft, startedAt }));
   }, [answers, questionStates, currentIndex, mode, paused, timeLeft, startedAt, hasLoadedProgress, storageKey]);
-
-  useEffect(() => {
-    if (timeLeft === 0 && !submitted && !isSubmitting && mode === "mock") {
-      void handleSubmit(true);
-    }
-  }, [timeLeft, submitted, isSubmitting, mode]);
 
   const handleAnswer = (option: string) => {
     if (!currentQuestion) return;
@@ -156,6 +152,17 @@ export default function QuizPlayer({ data }: QuizPlayerProps) {
       setIsSubmitting(false);
     }
   };
+
+  const submitOnTimeout = useEffectEvent(() => {
+    void handleSubmit(true);
+  });
+
+  useEffect(() => {
+    if (timeLeft === 0 && !submitted && !isSubmitting && mode === "mock") {
+      const timeout = window.setTimeout(submitOnTimeout, 0);
+      return () => window.clearTimeout(timeout);
+    }
+  }, [timeLeft, submitted, isSubmitting, mode]);
 
   if (submitted && result) {
     return (

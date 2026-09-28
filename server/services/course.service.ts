@@ -26,5 +26,6 @@ export async function getCourseById(id: string): Promise<CourseDTO | null> {
 }
 
 export async function getCoursesByExamType(_examType: string): Promise<CourseDTO[]> {
+  void _examType
   return (await courseRepository.findAllPublished()).map(mapCourseEntityToDTO)
 }

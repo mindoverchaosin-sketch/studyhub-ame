@@ -79,7 +79,7 @@ export async function bulkUpdateReviewQueueAction(questionId: string, reviewIds:
 }
 
 export async function bulkPublishQuestionsAction(questionIds: string[]) {
-  const session = await requirePermission('manageQuestions')
+  await requirePermission('manageQuestions')
   return withAuditLogging({
     permission: 'manageQuestions',
     action: 'question.bulkPublish',
@@ -93,7 +93,7 @@ export async function bulkPublishQuestionsAction(questionIds: string[]) {
 }
 
 export async function bulkArchiveQuestionsAction(questionIds: string[]) {
-  const session = await requirePermission('manageQuestions')
+  await requirePermission('manageQuestions')
   return withAuditLogging({
     permission: 'manageQuestions',
     action: 'question.bulkArchive',

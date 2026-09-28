@@ -1,18 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 class NotFoundError extends Error {
+  readonly status = 404
   constructor(message = 'Resource not found.') {
     super(message)
     this.name = 'NotFoundError'
-    ;(this as any).status = 404
   }
 }
 
 class ForbiddenError extends Error {
+  readonly status = 403
   constructor(message = 'Access denied.') {
     super(message)
     this.name = 'ForbiddenError'
-    ;(this as any).status = 403
   }
 }
 

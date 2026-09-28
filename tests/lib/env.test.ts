@@ -1,10 +1,14 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+afterEach(() => {
+  vi.unstubAllEnvs()
+})
 
 describe('Environment validation', () => {
   it('loads defaults in development when no vars are set', async () => {
     const originalEnv = { ...process.env }
     vi.resetModules()
-    ;(process.env as any).NODE_ENV = 'development'
+    vi.stubEnv('NODE_ENV', 'development')
     delete process.env.DATABASE_URL
     delete process.env.NEXTAUTH_SECRET
 
@@ -22,7 +26,7 @@ describe('Environment validation', () => {
   it('fails when required production variables are missing', async () => {
     const originalEnv = { ...process.env }
     vi.resetModules()
-    ;(process.env as any).NODE_ENV = 'production'
+    vi.stubEnv('NODE_ENV', 'production')
     process.env.NEXTAUTH_URL = 'https://example.com'
     delete process.env.DATABASE_URL
     delete process.env.NEXTAUTH_SECRET

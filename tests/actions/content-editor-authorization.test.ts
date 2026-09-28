@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const validModuleInput = { title: 'Test Module', slug: 'test-module', moduleNumber: '1', courseId: 'course-1' }
+const validQuestionInput = { prompt: 'Test Question', options: ['A', 'B'], correctOptionIndex: 0, questionBankId: 'qb-1' }
+
 const requirePermissionMock = vi.hoisted(() => vi.fn())
 const revalidatePathMock = vi.hoisted(() => vi.fn())
 const auditRecordEventMock = vi.hoisted(() => vi.fn())
@@ -67,14 +70,6 @@ describe('Content Editor authorization', () => {
     user: { id: 'content-editor-1', role: 'CONTENT_EDITOR' },
   }
 
-  const studentSession = {
-    user: { id: 'student-1', role: 'STUDENT' },
-  }
-
-  const instructorSession = {
-    user: { id: 'instructor-1', role: 'INSTRUCTOR' },
-  }
-
   const forbiddenError = new Error('Access denied')
   forbiddenError.name = 'ForbiddenError'
 
@@ -89,7 +84,7 @@ describe('Content Editor authorization', () => {
 
     it('allows createModuleAction with manageModules permission', async () => {
       const { createModuleAction } = await import('@/server/actions/content-management.actions')
-      const result = await createModuleAction({ title: 'Test Module' })
+      const result = await createModuleAction(validModuleInput)
 
       expect(requirePermissionMock).toHaveBeenCalledWith('manageModules')
       expect(result).toBeDefined()
@@ -192,7 +187,7 @@ describe('Content Editor authorization', () => {
 
     it('allows createQuestionAction with manageQuestions permission', async () => {
       const { createQuestionAction } = await import('@/server/actions/question-management.actions')
-      const result = await createQuestionAction({ title: 'Test Question' })
+      const result = await createQuestionAction(validQuestionInput)
 
       expect(requirePermissionMock).toHaveBeenCalledWith('manageQuestions')
       expect(result).toBeDefined()
@@ -225,7 +220,7 @@ describe('Content Editor authorization', () => {
     it('denies STUDENT from createModuleAction', async () => {
       const { createModuleAction } = await import('@/server/actions/content-management.actions')
 
-      await expect(createModuleAction({ title: 'Test Module' })).rejects.toThrow('Access denied')
+      await expect(createModuleAction(validModuleInput)).rejects.toThrow('Access denied')
       expect(requirePermissionMock).toHaveBeenCalledWith('manageModules')
     })
 
@@ -244,7 +239,7 @@ describe('Content Editor authorization', () => {
     it('denies STUDENT from createQuestionAction', async () => {
       const { createQuestionAction } = await import('@/server/actions/question-management.actions')
 
-      await expect(createQuestionAction({ title: 'Test Question' })).rejects.toThrow('Access denied')
+      await expect(createQuestionAction(validQuestionInput)).rejects.toThrow('Access denied')
     })
   })
 
@@ -256,7 +251,7 @@ describe('Content Editor authorization', () => {
     it('denies INSTRUCTOR from createModuleAction', async () => {
       const { createModuleAction } = await import('@/server/actions/content-management.actions')
 
-      await expect(createModuleAction({ title: 'Test Module' })).rejects.toThrow('Access denied')
+      await expect(createModuleAction(validModuleInput)).rejects.toThrow('Access denied')
       expect(requirePermissionMock).toHaveBeenCalledWith('manageModules')
     })
 
@@ -330,7 +325,7 @@ describe('Content Editor authorization', () => {
 
       const { createModuleAction } = await import('@/server/actions/content-management.actions')
 
-      await expect(createModuleAction({ title: 'Test Module' })).rejects.toThrow()
+      await expect(createModuleAction(validModuleInput)).rejects.toThrow()
 
       // Verify permission was checked before any service calls
       expect(requirePermissionMock).toHaveBeenCalledWith('manageModules')
@@ -341,7 +336,7 @@ describe('Content Editor authorization', () => {
 
       const { createQuestionAction } = await import('@/server/actions/question-management.actions')
 
-      await expect(createQuestionAction({ title: 'Test Question' })).rejects.toThrow()
+      await expect(createQuestionAction(validQuestionInput)).rejects.toThrow()
 
       expect(requirePermissionMock).toHaveBeenCalledWith('manageQuestions')
     })
@@ -361,7 +356,7 @@ describe('Content Editor authorization', () => {
 
       const { createModuleAction } = await import('@/server/actions/content-management.actions')
 
-      await expect(createModuleAction({ title: 'Test Module' })).rejects.toThrow()
+      await expect(createModuleAction(validModuleInput)).rejects.toThrow()
 
       // requirePermission should have been called and rejected
       expect(requirePermissionMock).toHaveBeenCalledWith('manageModules')
@@ -376,7 +371,7 @@ describe('Content Editor authorization', () => {
     it('enforces manageModules for module operations', async () => {
       const { createModuleAction } = await import('@/server/actions/content-management.actions')
 
-      await createModuleAction({ title: 'Test Module' })
+      await createModuleAction(validModuleInput)
 
       // Verify the correct permission was requested
       expect(requirePermissionMock).toHaveBeenCalledWith('manageModules')
@@ -393,7 +388,7 @@ describe('Content Editor authorization', () => {
     it('enforces manageQuestions for question operations', async () => {
       const { createQuestionAction } = await import('@/server/actions/question-management.actions')
 
-      await createQuestionAction({ title: 'Test Question' })
+      await createQuestionAction(validQuestionInput)
 
       expect(requirePermissionMock).toHaveBeenCalledWith('manageQuestions')
     })

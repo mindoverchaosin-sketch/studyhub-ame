@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-import type { LessonAttachment, MediaAsset, MediaAssetType } from '@/types/media';
+import type { MediaAsset, MediaAssetType } from '@/types/media';
 
 export function MediaLibraryPanel({
   attachedIds,

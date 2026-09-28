@@ -1,9 +1,7 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import prisma from '@/lib/prisma';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AIConversationRepository } from '@/server/repositories/ai-conversation.repository';
 
-vi.mock('@/lib/prisma', () => ({
-  default: {
+const mockPrisma = vi.hoisted(() => ({
     aIConversation: {
       create: vi.fn(),
       findUnique: vi.fn(),
@@ -15,13 +13,14 @@ vi.mock('@/lib/prisma', () => ({
       create: vi.fn(),
     },
     $transaction: vi.fn(),
-  },
+  }));
+
+vi.mock('@/lib/prisma', () => ({
+  default: mockPrisma,
 }));
 
 describe('AIConversationRepository', () => {
   const repository = new AIConversationRepository();
-  const mockPrisma = prisma as any;
-
   beforeEach(() => {
     vi.clearAllMocks();
   });

@@ -1,6 +1,4 @@
 import { requirePermission } from '@/auth'
-import QuestionBankDirectoryPanel from '@/components/admin/questions/QuestionBankDirectoryPanel'
-import QuestionBankPanel from '@/components/admin/questions/QuestionBankPanel'
 import { getAdminQuestionBanks, getAdminQuestionLibrary } from '@/server/services/question.service'
 import { questionBankManagementService } from '@/server/services/question-bank-management.service'
 import QuestionBankPageClient from './QuestionBankPageClient'

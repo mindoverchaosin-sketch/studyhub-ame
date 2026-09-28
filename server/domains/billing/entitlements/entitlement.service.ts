@@ -10,7 +10,7 @@
  */
 
 import { subscriptionRepository } from '@/server/domains/billing/subscriptions/subscription.repository'
-import { planHasFeature, getPlanBySlug } from '@/server/domains/billing/plans/plan.config'
+import { getPlanBySlug } from '@/server/domains/billing/plans/plan.config'
 import type { EntitlementCheckDTO, EntitlementListDTO, FeatureName } from '@/server/domains/billing/dto/billing.dto'
 import type { SubscriptionStatus } from '@/server/domains/billing/dto/billing.dto'
 

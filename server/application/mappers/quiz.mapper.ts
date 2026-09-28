@@ -31,6 +31,6 @@ export function mapQuizWithQuestionsEntityToDTO(
 ): QuizDTO {
   return {
     ...mapQuizEntityToDTO(quiz, topicId),
-    questions: quiz.questionBanks.flatMap((bank: any) => bank.questions.map(mapQuestionEntityToDTO)),
+    questions: quiz.questionBanks.flatMap((bank) => bank.questions.map(mapQuestionEntityToDTO)),
   }
 }

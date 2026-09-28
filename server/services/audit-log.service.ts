@@ -1,5 +1,5 @@
 import { auditRepository } from '@/server/repositories/audit.repository'
-import type { AuditLogEntryDTO, AuditLogListDTO, AuditLogQueryDTO } from '@/server/application/dto/audit.dto'
+import type { AuditLogListDTO, AuditLogQueryDTO } from '@/server/application/dto/audit.dto'
 
 type RecordAuditEventInput = {
   actorId: string

@@ -1,4 +1,4 @@
-import { BaseAIProvider, createPlaceholderMessage } from "@/services/ai/AIProvider";
+import { BaseAIProvider } from "@/services/ai/AIProvider";
 import type { AIExplanation, AIMessage, AIRequestContext, Question } from "@/types/ai";
 
 function getGeminiConfig() {
@@ -6,6 +6,10 @@ function getGeminiConfig() {
     apiKey: process.env.GOOGLE_GEMINI_API_KEY,
     model: process.env.GOOGLE_GEMINI_MODEL ?? 'gemini-1.5',
   };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 export class GeminiProvider extends BaseAIProvider {
@@ -42,12 +46,17 @@ export class GeminiProvider extends BaseAIProvider {
       throw new Error(`Google Gemini provider error: ${response.status} ${errorText}`);
     }
 
-    const data = await response.json();
-    const content = data?.candidates?.[0]?.content?.map((entry: any) => entry.text).join('') ?? '';
-    const usage = data?.usage ? {
-      promptTokens: data.usage.promptTokens,
-      completionTokens: data.usage.completionTokens,
-      totalTokens: data.usage.totalTokens,
+    const data: unknown = await response.json();
+    const candidates = isRecord(data) && Array.isArray(data.candidates) ? data.candidates : [];
+    const content = candidates.map((candidate) => {
+      if (!isRecord(candidate) || !Array.isArray(candidate.content)) return '';
+      return candidate.content.flatMap((entry) => isRecord(entry) && typeof entry.text === 'string' ? [entry.text] : []).join('');
+    }).join('');
+    const responseUsage = isRecord(data) && isRecord(data.usage) ? data.usage : undefined;
+    const usage = responseUsage ? {
+      ...(typeof responseUsage.promptTokens === 'number' ? { promptTokens: responseUsage.promptTokens } : {}),
+      ...(typeof responseUsage.completionTokens === 'number' ? { completionTokens: responseUsage.completionTokens } : {}),
+      ...(typeof responseUsage.totalTokens === 'number' ? { totalTokens: responseUsage.totalTokens } : {}),
     } : undefined;
 
     return {

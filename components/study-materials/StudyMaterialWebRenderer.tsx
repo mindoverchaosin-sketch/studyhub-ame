@@ -1,5 +1,6 @@
 import type { StudyMaterialDocument } from '@/lib/study-material/document-schema'
 import { sanitizeStudyMaterialDocument } from '@/lib/study-material/document-schema'
+import Image from 'next/image'
 
 interface StudyMaterialWebRendererProps {
   document: StudyMaterialDocument
@@ -41,7 +42,7 @@ export function StudyMaterialWebRenderer({ document: rawDocument, pageNumber = 1
           if (block.type === 'paragraph') return <p key={block.id} className="leading-8">{block.children.map((child) => child.format.includes('bold') ? <strong key={child.text}>{child.text}</strong> : child.text)}</p>
           if (block.type === 'list') return block.listType === 'numbered' ? <ol key={block.id} className="list-decimal space-y-2 pl-6">{block.items.map((item, index) => <li key={`${block.id}-${index}`}>{item}</li>)}</ol> : <ul key={block.id} className="list-disc space-y-2 pl-6">{block.items.map((item, index) => <li key={`${block.id}-${index}`}>{item}</li>)}</ul>
           if (block.type === 'table') return <div key={block.id} className="overflow-x-auto"><table className="w-full border-collapse border border-slate-300"><thead><tr>{block.headers.map((header) => <th key={header} className="border border-slate-300 bg-slate-100 px-3 py-2 text-left">{header}</th>)}</tr></thead><tbody>{block.rows.map((row, rowIndex) => <tr key={`${block.id}-${rowIndex}`}>{row.map((cell, cellIndex) => <td key={`${block.id}-${rowIndex}-${cellIndex}`} className="border border-slate-300 px-3 py-2">{cell}</td>)}</tr>)}</tbody></table></div>
-          if (block.type === 'image') return <figure key={block.id} className={`text-${block.alignment}`}><img src={block.mediaKey ? `${mediaBasePath}${block.mediaKey.replace(/^\//, '')}` : `${mediaBasePath}${block.mediaId}`} alt={block.altText} width={block.width} className="inline-block max-w-full rounded-lg" />{block.caption ? <figcaption className="mt-2 text-sm text-slate-500">{block.caption}</figcaption> : null}</figure>
+          if (block.type === 'image') return <figure key={block.id} className={`text-${block.alignment}`}><Image unoptimized src={block.mediaKey ? `${mediaBasePath}${block.mediaKey.replace(/^\//, '')}` : `${mediaBasePath}${block.mediaId}`} alt={block.altText} width={block.width ?? 1200} height={800} style={{ width: block.width ? `${block.width}px` : 'auto', height: 'auto' }} className="inline-block max-w-full rounded-lg" />{block.caption ? <figcaption className="mt-2 text-sm text-slate-500">{block.caption}</figcaption> : null}</figure>
           if (block.type === 'callout') return <aside key={block.id} className={`rounded-xl border p-4 ${calloutStyles[block.variant]}`}><h3 className="font-bold">{block.title}</h3><p className="mt-1">{block.text}</p></aside>
           if (block.type === 'definition') return <aside key={block.id} className="rounded-xl border border-blue-200 bg-blue-50 p-4"><strong>{block.term}</strong><p className="mt-1">{block.definition}</p></aside>
           if (block.type === 'example') return <aside key={block.id} className="rounded-xl border border-emerald-200 bg-emerald-50 p-4"><h3 className="font-bold">{block.title}</h3><p className="mt-1">{block.content}</p></aside>

@@ -4,7 +4,7 @@ import type { Prisma, InvoiceStatus } from '@prisma/client'
 export class InvoiceRepository {
   async findAll() {
     return prisma.invoice.findMany({
-      include: { subscription: true },
+      include: { subscription: { include: { user: true, subscriptionPlan: true } } },
       orderBy: { createdAt: 'desc' },
     })
   }
@@ -12,7 +12,7 @@ export class InvoiceRepository {
   async findById(id: string) {
     return prisma.invoice.findUnique({
       where: { id },
-      include: { subscription: true },
+      include: { subscription: { include: { user: true, subscriptionPlan: true } } },
     })
   }
 

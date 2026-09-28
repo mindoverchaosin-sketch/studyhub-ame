@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { requirePermission } from '@/auth'
 import { withAuditLogging } from '@/server/actions/audit-helpers'
-import type { StudentDetailDTO, StudentDirectoryDTO, StudentManagementActionResult } from '@/server/application/dto/student-management.dto'
+import type { StudentDetailDTO, StudentDirectoryDTO } from '@/server/application/dto/student-management.dto'
 import { getStudentDetail, getStudentManagementDirectory, reactivateStudentAccount, resetStudentProgress, suspendStudentAccount } from '@/server/services/student-management.service'
 
 function resolveStudentId(studentIdOrFormData: string | FormData): string {

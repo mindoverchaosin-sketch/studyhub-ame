@@ -1,7 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { normalizeRoleName } from '@/server/services/authorization.service'
 import { ApprovalStatus } from '@prisma/client'
-import type { Session } from 'next-auth'
 
 // Mock data
 const mockUser = {
@@ -104,77 +103,66 @@ describe('Authorization Tests', () => {
 
   describe('Role boundary enforcement - Middleware scenarios', () => {
     it('should prevent STUDENT from accessing /admin routes', () => {
-      const route = '/admin/dashboard'
       const userRole = normalizeRoleName('student')
       expect(userRole).toBe('STUDENT')
       expect(userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN').toBe(true)
     })
 
     it('should prevent INSTRUCTOR from accessing /admin routes', () => {
-      const route = '/admin/dashboard'
       const userRole = normalizeRoleName('instructor')
       expect(userRole).toBe('INSTRUCTOR')
       expect(userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN').toBe(true)
     })
 
     it('should prevent CONTENT_EDITOR from accessing /admin routes', () => {
-      const route = '/admin/dashboard'
       const userRole = normalizeRoleName('content_editor')
       expect(userRole).toBe('CONTENT_EDITOR')
       expect(userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN').toBe(true)
     })
 
     it('should allow ADMIN to access /admin routes', () => {
-      const route = '/admin/dashboard'
       const userRole = normalizeRoleName('admin')
       expect(userRole).toBe('ADMIN')
       expect(userRole === 'ADMIN' || userRole === 'SUPER_ADMIN').toBe(true)
     })
 
     it('should allow SUPER_ADMIN to access /admin routes', () => {
-      const route = '/admin/dashboard'
       const userRole = normalizeRoleName('super_admin')
       expect(userRole).toBe('SUPER_ADMIN')
       expect(userRole === 'ADMIN' || userRole === 'SUPER_ADMIN').toBe(true)
     })
 
     it('should prevent ADMIN from accessing /instructor routes', () => {
-      const route = '/instructor/dashboard'
       const userRole = normalizeRoleName('admin')
       expect(userRole).toBe('ADMIN')
       expect(userRole === 'INSTRUCTOR').toBe(false)
     })
 
     it('should allow INSTRUCTOR to access /instructor routes', () => {
-      const route = '/instructor/dashboard'
       const userRole = normalizeRoleName('instructor')
       expect(userRole).toBe('INSTRUCTOR')
       expect(userRole === 'INSTRUCTOR').toBe(true)
     })
 
     it('should prevent ADMIN from accessing /student routes', () => {
-      const route = '/student/dashboard'
       const userRole = normalizeRoleName('admin')
       expect(userRole).toBe('ADMIN')
       expect(userRole === 'STUDENT').toBe(false)
     })
 
     it('should allow STUDENT to access /student routes', () => {
-      const route = '/student/dashboard'
       const userRole = normalizeRoleName('student')
       expect(userRole).toBe('STUDENT')
       expect(userRole === 'STUDENT').toBe(true)
     })
 
     it('should prevent INSTRUCTOR from accessing /content-editor routes', () => {
-      const route = '/content-editor/dashboard'
       const userRole = normalizeRoleName('instructor')
       expect(userRole).toBe('INSTRUCTOR')
       expect(userRole === 'CONTENT_EDITOR').toBe(false)
     })
 
     it('should allow CONTENT_EDITOR to access /content-editor routes', () => {
-      const route = '/content-editor/dashboard'
       const userRole = normalizeRoleName('content_editor')
       expect(userRole).toBe('CONTENT_EDITOR')
       expect(userRole === 'CONTENT_EDITOR').toBe(true)
@@ -189,7 +177,6 @@ describe('Authorization Tests', () => {
     })
 
     it('should allow SUPER_ADMIN to access /super-admin routes', () => {
-      const route = '/super-admin/dashboard'
       const userRole = normalizeRoleName('super_admin')
       expect(userRole).toBe('SUPER_ADMIN')
       expect(userRole === 'SUPER_ADMIN').toBe(true)
@@ -324,7 +311,7 @@ describe('Authorization Tests', () => {
       const targetRole = 'SUPER_ADMIN'
       expect(adminRole).toBe('ADMIN')
       // Admin should not be able to modify SUPER_ADMIN accounts
-      expect(adminRole !== 'SUPER_ADMIN').toBe(true)
+      expect(adminRole !== targetRole).toBe(true)
     })
 
     it('should prevent INSTRUCTOR from elevating to ADMIN', () => {

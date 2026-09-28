@@ -3,11 +3,16 @@ import prisma from '@/lib/prisma'
 
 type Logger = Pick<Console, 'info' | 'warn' | 'error'>
 
+type BootstrapPrismaClient = {
+  user: Pick<typeof prisma.user, 'findFirst' | 'findUnique' | 'create'>
+  role: Pick<typeof prisma.role, 'upsert'>
+}
+
 type BootstrapOptions = {
   email?: string
   password?: string
   logger?: Logger
-  prismaClient?: typeof prisma
+  prismaClient?: BootstrapPrismaClient
 }
 
 export function validateSuperAdminBootstrapInputs(email?: string, password?: string) {

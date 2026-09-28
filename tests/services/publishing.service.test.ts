@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Status } from '@prisma/client'
 
 describe('PublishingService', () => {
   beforeEach(() => {
@@ -6,10 +7,10 @@ describe('PublishingService', () => {
   })
 
   it('persists review, approval, publication, and archival transitions in entity status', async () => {
-    let currentStatus = 'DRAFT'
+    let currentStatus: Status = 'DRAFT'
     const moduleRepository = {
       findById: vi.fn().mockImplementation(() => Promise.resolve({ id: 'm1', status: currentStatus, publishedAt: currentStatus === 'PUBLISHED' ? new Date().toISOString() : null })),
-      update: vi.fn().mockImplementation((_id: string, data: any) => {
+      update: vi.fn().mockImplementation((_id: string, data: { status: Status; publishedAt?: Date | null }) => {
         currentStatus = data.status
         return Promise.resolve({ id: 'm1', status: data.status, publishedAt: data.publishedAt ?? null })
       }),
@@ -39,7 +40,7 @@ describe('PublishingService', () => {
   it('reads persisted IN_REVIEW state from the entity on a new service instance', async () => {
     const moduleRepository = {
       findById: vi.fn().mockResolvedValue({ id: 'm1', status: 'IN_REVIEW', publishedAt: null }),
-      update: vi.fn().mockImplementation((_id: string, data: any) => Promise.resolve({ id: 'm1', status: data.status, publishedAt: data.publishedAt ?? null })),
+      update: vi.fn().mockImplementation((_id: string, data: { status: Status; publishedAt?: Date | null }) => Promise.resolve({ id: 'm1', status: data.status, publishedAt: data.publishedAt ?? null })),
     }
 
     vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository }))
@@ -56,7 +57,7 @@ describe('PublishingService', () => {
   it('rejects invalid workflow transitions', async () => {
     const moduleRepository = {
       findById: vi.fn().mockResolvedValue({ id: 'm1', status: 'DRAFT', publishedAt: null }),
-      update: vi.fn().mockImplementation((_id: string, data: any) => Promise.resolve({ id: 'm1', status: data.status, publishedAt: data.publishedAt ?? null })),
+      update: vi.fn().mockImplementation((_id: string, data: { status: Status; publishedAt?: Date | null }) => Promise.resolve({ id: 'm1', status: data.status, publishedAt: data.publishedAt ?? null })),
     }
 
     vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository }))
@@ -72,7 +73,7 @@ describe('PublishingService', () => {
   it('preserves publish and unpublish transitions', async () => {
     const moduleRepository = {
       findById: vi.fn().mockResolvedValue({ id: 'm1', status: 'DRAFT', publishedAt: null }),
-      update: vi.fn().mockImplementation((_id: string, data: any) => Promise.resolve({ id: 'm1', status: data.status, publishedAt: data.publishedAt ?? null })),
+      update: vi.fn().mockImplementation((_id: string, data: { status: Status; publishedAt?: Date | null }) => Promise.resolve({ id: 'm1', status: data.status, publishedAt: data.publishedAt ?? null })),
     }
 
     vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository }))

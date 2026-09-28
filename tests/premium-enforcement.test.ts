@@ -9,10 +9,10 @@ vi.mock('@/server/domains/billing/subscriptions/subscription.repository', () => 
 }))
 
 class ForbiddenError extends Error {
+  readonly status = 403
   constructor(message = 'Access denied.') {
     super(message)
     this.name = 'ForbiddenError'
-    ;(this as any).status = 403
   }
 }
 

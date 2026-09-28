@@ -23,7 +23,12 @@ describe('audit logging for admin actions', () => {
   it('records an audit event for module creation', async () => {
     const { createModuleAction } = await import('../../server/actions/content-management.actions')
 
-    await createModuleAction({ title: 'New Module' } as any)
+    await createModuleAction({
+      title: 'New Module',
+      slug: 'new-module',
+      moduleNumber: '1',
+      courseId: 'course-1',
+    })
 
     expect(requirePermissionMock).toHaveBeenCalledWith('manageModules')
     expect(recordEventMock).toHaveBeenCalledWith(expect.objectContaining({

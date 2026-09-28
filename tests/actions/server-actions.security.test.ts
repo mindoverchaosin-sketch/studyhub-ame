@@ -17,24 +17,24 @@ vi.mock('@/auth', () => ({
   requireAdmin: requireAdminMock,
   requireOwnership: requireOwnershipMock,
   ValidationError: class ValidationError extends Error {
+    readonly status = 400
     constructor(message = 'Validation failed.') {
       super(message)
       this.name = 'ValidationError'
-      ;(this as any).status = 400
     }
   },
   ForbiddenError: class ForbiddenError extends Error {
+    readonly status = 403
     constructor(message = 'Access denied.') {
       super(message)
       this.name = 'ForbiddenError'
-      ;(this as any).status = 403
     }
   },
   UnauthorizedError: class UnauthorizedError extends Error {
+    readonly status = 401
     constructor(message = 'Authentication required.') {
       super(message)
       this.name = 'UnauthorizedError'
-      ;(this as any).status = 401
     }
   },
 }))

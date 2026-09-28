@@ -13,11 +13,12 @@
  */
 
 import { subscriptionRepository } from '@/server/domains/billing/subscriptions/subscription.repository'
-import { invoiceRepository } from '@/server/domains/billing/invoices/invoice.repository'
 import { planRepository } from '@/server/domains/billing/plans/plan.repository'
 import { paymentService } from '@/server/domains/billing/payments/payment.service'
-import { getPlanBySlug, getPlanById } from '@/server/domains/billing/plans/plan.config'
 import type { SubscriptionDTO } from '@/server/domains/billing/dto/billing.dto'
+import type { Prisma } from '@prisma/client'
+
+type SubscriptionRecord = NonNullable<Awaited<ReturnType<typeof subscriptionRepository.findByUserId>>>
 
 export class SubscriptionService {
   /**
@@ -62,7 +63,7 @@ export class SubscriptionService {
       throw new Error(`Plan not found: ${newPlanId}`)
     }
 
-    const updateData: any = {
+    const updateData: Prisma.SubscriptionUpdateInput = {
       subscriptionPlan: { connect: { id: newPlanId } },
     }
 
@@ -315,7 +316,7 @@ export class SubscriptionService {
   /**
    * Helper: Map Prisma subscription to DTO
    */
-  private mapToDTO(subscription: any): SubscriptionDTO {
+  private mapToDTO(subscription: SubscriptionRecord): SubscriptionDTO {
     return {
       id: subscription.id,
       userId: subscription.userId,

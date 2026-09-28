@@ -1,6 +1,16 @@
 import { invoiceRepository } from '@/server/domains/billing/invoices/invoice.repository'
 import type { InvoiceDTO, InvoiceListDTO } from '@/server/domains/billing/dto/billing.dto'
 import { auditLogService } from '@/server/services/audit-log.service'
+import type { Prisma } from '@prisma/client'
+
+type InvoiceRecord = Awaited<ReturnType<typeof invoiceRepository.findBySubscriptionId>>[number]
+type InvoiceListRecord = Awaited<ReturnType<typeof invoiceRepository.findAll>>[number]
+
+function getInvoiceNotes(metadata: Prisma.JsonValue | null): string {
+  if (typeof metadata !== 'object' || metadata === null || Array.isArray(metadata) || !('notes' in metadata)) return ''
+  const notes = metadata.notes
+  return notes === null ? '' : String(notes)
+}
 
 export interface InvoiceManagementQueryDTO {
   status?: 'DRAFT' | 'SENT' | 'PAID' | 'FAILED' | 'CANCELLED' | 'ALL'
@@ -126,7 +136,7 @@ export class InvoiceManagementService {
     return true
   }
 
-  private mapToListItem(invoice: any): InvoiceListItemDTO {
+  private mapToListItem(invoice: InvoiceListRecord): InvoiceListItemDTO {
     const subscription = invoice.subscription
     const user = subscription?.user
     const planName = subscription?.subscriptionPlan?.name ?? 'Unknown plan'
@@ -140,19 +150,19 @@ export class InvoiceManagementService {
       currency: invoice.currency,
       dueDate: invoice.dueDate,
       paidAt: invoice.paidAt,
-      description: invoice.description,
+      description: invoice.description ?? undefined,
       createdAt: invoice.createdAt,
       updatedAt: invoice.updatedAt,
       studentName: user?.displayName ?? user?.email ?? 'Unknown student',
       studentEmail: user?.email ?? '',
       planName,
       subscriptionStatus: subscription?.status ?? 'UNKNOWN',
-      notes: invoice.metadata?.notes?.toString() ?? '',
+      notes: getInvoiceNotes(invoice.metadata),
       taxAmount: 0,
     }
   }
 
-  private mapToDTO(invoice: any): InvoiceDTO {
+  private mapToDTO(invoice: InvoiceRecord): InvoiceDTO {
     return {
       id: invoice.id,
       invoiceNumber: invoice.invoiceNumber,
@@ -162,7 +172,7 @@ export class InvoiceManagementService {
       currency: invoice.currency,
       dueDate: invoice.dueDate,
       paidAt: invoice.paidAt,
-      description: invoice.description,
+      description: invoice.description ?? undefined,
       createdAt: invoice.createdAt,
       updatedAt: invoice.updatedAt,
     }

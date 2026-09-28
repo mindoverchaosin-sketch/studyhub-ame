@@ -48,11 +48,11 @@ export async function POST(req: Request) {
       email,
       passwordHash,
       displayName: name || email,
-      roleId: studentRole.id,
+      role: { connect: { id: studentRole.id } },
       isActive: true,
-    } as any)
+    })
 
-    await userRepository.createStudentProfile({ userId: user.id, fullName: name || email, targetExam: 'BOTH' } as any)
+    await userRepository.createStudentProfile({ user: { connect: { id: user.id } }, fullName: name || email, targetExam: 'BOTH' })
 
     const response = NextResponse.json({ ok: true, email: user.email })
     const requestId = getRequestId()

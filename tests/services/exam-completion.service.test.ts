@@ -37,8 +37,13 @@ import { progressRepository } from '@/server/repositories/progress.repository'
 import { getAdaptiveLearningData } from '@/server/services/adaptive-learning.service'
 import { calculateExamAnalytics } from '@/server/services/exam-attempt.service'
 import { getStudentProgress, getQuizAttemptCount } from '@/server/services/progress.service'
-import { invalidateServiceCache } from '@/server/services/cache'
 import { processCompletedAttempt } from '../../server/services/exam-completion.service'
+import type { ExamAnalyticsDTO } from '@/server/application/dto/exam-analytics.dto'
+import type { AdaptiveLearningDTO } from '@/server/services/adaptive-learning.service'
+
+type ProgressRepositoryMethods = Pick<typeof progressRepository, 'findLessonProgressByUser' | 'upsertLessonProgress' | 'findProgressRowsByUser' | 'countQuizAttempts'>
+type AttemptWithRelations = Awaited<ReturnType<typeof examAttemptRepository.loadAttemptWithRelations>>
+type StudentProgressResult = Awaited<ReturnType<typeof getStudentProgress>>
 
 const mockedExamAttemptRepository = vi.mocked(examAttemptRepository, true)
 const mockedProgressRepository = vi.mocked(progressRepository, true)
@@ -46,10 +51,8 @@ const mockedGetAdaptiveLearningData = vi.mocked(getAdaptiveLearningData)
 const mockedCalculateExamAnalytics = vi.mocked(calculateExamAnalytics)
 const mockedGetStudentProgress = vi.mocked(getStudentProgress)
 const mockedGetQuizAttemptCount = vi.mocked(getQuizAttemptCount)
-const mockedInvalidateServiceCache = vi.mocked(invalidateServiceCache)
-
-function createProgressRepository(overrides: Partial<Record<string, any>> = {}) {
-  const repo: any = {
+function createProgressRepository(overrides: Partial<ProgressRepositoryMethods> = {}) {
+  const repo: ProgressRepositoryMethods = {
     findLessonProgressByUser: vi.fn().mockResolvedValue([]),
     upsertLessonProgress: vi.fn().mockResolvedValue({ status: 'IN_PROGRESS' }),
     findProgressRowsByUser: vi.fn().mockResolvedValue([]),
@@ -65,22 +68,62 @@ function createProgressRepository(overrides: Partial<Record<string, any>> = {}) 
   return repo
 }
 
-function createAdaptiveService(result: any = null) {
-  mockedGetAdaptiveLearningData.mockResolvedValue(result)
+function createAdaptiveService(result: Pick<AdaptiveLearningDTO, 'performanceSummary'> = {
+  performanceSummary: { recentAccuracy: 0, weakTopics: [], improvedTopics: [] },
+}) {
+  mockedGetAdaptiveLearningData.mockResolvedValue({
+    reviewQueue: [],
+    recommendations: [],
+    spacedRepetition: [],
+    performanceSummary: result.performanceSummary,
+    goals: {
+      daily: { target: 0, completed: 0, remaining: 0 },
+      weekly: { target: 0, completed: 0, remaining: 0 },
+    },
+  })
   return { getAdaptiveLearningData: mockedGetAdaptiveLearningData }
 }
 
-function createAttemptRepository(result: any) {
+function createAttemptRepository(input: { id: string; studentId: string }) {
+  const now = new Date()
+  const result: NonNullable<AttemptWithRelations> = {
+    id: input.id,
+    studentId: input.studentId,
+    templateId: 'template-1',
+    status: 'SUBMITTED',
+    startedAt: now,
+    submittedAt: now,
+    expiresAt: null,
+    score: 0,
+    percentage: 0,
+    passed: false,
+    createdAt: now,
+    updatedAt: now,
+    examAttemptQuestion: [],
+    examAttemptAnswer: [],
+  }
   mockedExamAttemptRepository.loadAttemptWithRelations.mockResolvedValue(result)
   return mockedExamAttemptRepository
 }
 
-function createExamAttemptService(analytics: any) {
-  mockedCalculateExamAnalytics.mockResolvedValue(analytics)
+function createExamAttemptService(analytics: Omit<ExamAnalyticsDTO, 'readiness'>) {
+  const completeAnalytics: ExamAnalyticsDTO = {
+    ...analytics,
+    readiness: {
+      readinessPercentage: 0,
+      confidence: 'Low',
+      nextActions: [],
+      recentExamScore: 0,
+      adaptiveAccuracy: 0,
+      topicMastery: 0,
+      revisionCompletion: 0,
+    },
+  }
+  mockedCalculateExamAnalytics.mockResolvedValue(completeAnalytics)
   return mockedCalculateExamAnalytics
 }
 
-function createProgressService(progressRows: any = [], quizAttempts: number = 0) {
+function createProgressService(progressRows: StudentProgressResult = [], quizAttempts: number = 0) {
   mockedGetStudentProgress.mockResolvedValue(progressRows)
   mockedGetQuizAttemptCount.mockResolvedValue(quizAttempts)
   return { getStudentProgress: mockedGetStudentProgress, getQuizAttemptCount: mockedGetQuizAttemptCount }
@@ -92,7 +135,7 @@ describe('exam-completion.service', () => {
   })
 
   it('calculates analytics for a completed attempt', async () => {
-    const expectedAnalytics = {
+    const expectedAnalytics: Omit<ExamAnalyticsDTO, 'readiness'> = {
       attemptId: 'attempt-1',
       examTitle: 'Math Mock',
       score: 7,
@@ -117,9 +160,9 @@ describe('exam-completion.service', () => {
       },
       timeAnalytics: {
         averageSecondsPerQuestion: 42,
-        fastestQuestions: [{ questionId: 'q1', seconds: 18 }],
-        slowestQuestions: [{ questionId: 'q3', seconds: 60 }],
-        distribution: [{ bucket: '0-30s', count: 2 }],
+        fastestQuestions: [{ id: 'q1', prompt: 'Question 1', seconds: 18 }],
+        slowestQuestions: [{ id: 'q3', prompt: 'Question 3', seconds: 60 }],
+        distribution: [{ label: '0-30s', count: 2, range: '0-30s' }],
       },
       recommendations: ['Review decimals'],
     }
@@ -148,7 +191,7 @@ describe('exam-completion.service', () => {
   })
 
   it('calculates readiness with expected confidence and recommendations', async () => {
-    const expectedAnalytics = {
+    const expectedAnalytics: Omit<ExamAnalyticsDTO, 'readiness'> = {
       attemptId: 'attempt-2',
       examTitle: 'Physics Mock',
       score: 8,
@@ -346,7 +389,7 @@ describe('exam-completion.service', () => {
       timeAnalytics: { averageSecondsPerQuestion: 35, fastestQuestions: [], slowestQuestions: [], distribution: [] },
       recommendations: [],
     })
-    createAdaptiveService(null)
+    createAdaptiveService()
     createProgressService([], 1)
 
     const result = await processCompletedAttempt('attempt-7')

@@ -121,19 +121,6 @@ export function dropDuplicateLeadingHeading(page: StudyMaterialDocument['pages']
   return blocks
 }
 
-function getPageTypeSummary(pageType: string): string {
-  switch (pageType) {
-    case 'LEARNING_OBJECTIVES': return 'Learning Objectives'
-    case 'EXAM_FOCUS': return 'Exam Focus'
-    case 'QUICK_REVISION': return 'Quick Revision'
-    case 'SUMMARY': return 'Summary'
-    case 'DEFINITION': return 'Definition'
-    case 'COMPARISON': return 'Comparison'
-    case 'PROCESS': return 'Process'
-    default: return 'Study Material'
-  }
-}
-
 async function embedBrandLogo(pdfDoc: PDFDocument): Promise<PDFImage> {
   const logoPath = join(process.cwd(), 'public', 'brand', 'aeroprep-logo-master.png')
   const logoBytes = readFileSync(logoPath)

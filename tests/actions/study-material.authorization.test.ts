@@ -8,7 +8,7 @@ describe('study material authorization', () => {
 
     const { createStudyMaterialAction } = await import('../../server/actions/study-material.actions')
 
-    await expect(createStudyMaterialAction({ title: 'Notes' } as any)).rejects.toThrow('no')
+    await expect(createStudyMaterialAction({ title: 'Notes' })).rejects.toThrow('no')
     expect(requirePermission).toHaveBeenCalled()
   })
 })

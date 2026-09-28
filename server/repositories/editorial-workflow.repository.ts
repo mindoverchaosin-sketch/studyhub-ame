@@ -1,11 +1,11 @@
 import prisma from '@/lib/prisma'
-import type { Prisma } from '@prisma/client'
+import type { EditorialStatus, Prisma } from '@prisma/client'
 
 export type EditorialWorkflowRow = {
   id: string
   targetType: string
   entityId: string
-  status: string
+  status: EditorialStatus
   currentVersion: number
   versions: Prisma.JsonArray
   reviewQueue: Prisma.JsonArray
@@ -52,9 +52,9 @@ export class EditorialWorkflowRepository {
     return row as EditorialWorkflowRow | null
   }
 
-  async listByStatus(status: string): Promise<EditorialWorkflowRow[]> {
+  async listByStatus(status: EditorialStatus): Promise<EditorialWorkflowRow[]> {
     const rows = await prisma.editorialWorkflow.findMany({
-      where: { status: status as any },
+      where: { status },
       orderBy: { updatedAt: 'desc' },
       select: {
         id: true,
@@ -75,7 +75,7 @@ export class EditorialWorkflowRepository {
   async create(data: {
     targetType: string
     entityId: string
-    status: string
+    status: EditorialStatus
     currentVersion: number
     versions: Prisma.InputJsonArray
     reviewQueue: Prisma.InputJsonArray
@@ -84,7 +84,7 @@ export class EditorialWorkflowRepository {
       data: {
         targetType: data.targetType,
         entityId: data.entityId,
-        status: data.status as any,
+        status: data.status,
         currentVersion: data.currentVersion,
         versions: data.versions,
         reviewQueue: data.reviewQueue,
@@ -109,7 +109,7 @@ export class EditorialWorkflowRepository {
     targetType: string,
     entityId: string,
     data: {
-      status?: string
+      status?: EditorialStatus
       currentVersion?: number
       versions?: Prisma.InputJsonArray
       reviewQueue?: Prisma.InputJsonArray
@@ -118,7 +118,7 @@ export class EditorialWorkflowRepository {
     const row = await prisma.editorialWorkflow.update({
       where: { targetType_entityId: { targetType, entityId } },
       data: {
-        ...(data.status ? { status: data.status as any } : {}),
+        ...(data.status ? { status: data.status } : {}),
         ...(data.currentVersion ? { currentVersion: data.currentVersion } : {}),
         ...(data.versions ? { versions: data.versions } : {}),
         ...(data.reviewQueue ? { reviewQueue: data.reviewQueue } : {}),
@@ -161,7 +161,7 @@ export class EditorialWorkflowRepository {
   async mutateWithLock<T>(
     targetType: string,
     entityId: string,
-    fn: (tx: any, locked: EditorialWorkflowRow) => Promise<T>,
+    fn: (tx: Prisma.TransactionClient, locked: EditorialWorkflowRow) => Promise<T>,
   ): Promise<T> {
     return prisma.$transaction(async (tx) => {
       await tx.$executeRaw`

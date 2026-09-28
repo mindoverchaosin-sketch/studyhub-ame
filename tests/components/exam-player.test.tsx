@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import ExamPlayer from '@/app/(student)/student/mock-exams/[attemptId]/ExamPlayer.client'
+import type { ExamAttempt } from '@/types/exam'
 
 const originalLocation = window.location
 
@@ -32,15 +33,15 @@ describe('ExamPlayer', () => {
     })
   })
 
-  const makeAttempt = (overrides: any = {}) => ({
+  const makeAttempt = (overrides: Partial<ExamAttempt> = {}): ExamAttempt => ({
     id: 'attempt-1',
     templateId: 'template-1',
+    title: 'Practice exam',
     expiresAt: new Date(Date.now() + 30000).toISOString(),
     questions: [
-      { id: 'q1', questionId: 'question-1', displayOrder: 1, question: 'Question 1', options: ['A', 'B', 'C'] },
-      { id: 'q2', questionId: 'question-2', displayOrder: 2, question: 'Question 2', options: ['A', 'B', 'C'] },
+      { id: 'q1', displayOrder: 1, question: 'Question 1', options: ['A', 'B', 'C'] },
+      { id: 'q2', displayOrder: 2, question: 'Question 2', options: ['A', 'B', 'C'] },
     ],
-    answers: [],
     ...overrides,
   })
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { getPlanBySlug, getPlanById, getActivePlans, planHasFeature, getFeatureDisplayName } from '@/server/domains/billing/plans/plan.config'
 
 describe('Plan Configuration', () => {
@@ -121,7 +121,7 @@ describe('Plan Configuration', () => {
     })
 
     it('should return feature name if display name not found', () => {
-      const name = getFeatureDisplayName('unknownFeature' as any)
+      const name = getFeatureDisplayName('unknownFeature')
       expect(name).toBeDefined()
     })
   })

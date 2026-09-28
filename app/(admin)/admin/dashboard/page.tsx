@@ -1,8 +1,6 @@
-import { FiBookOpen, FiHelpCircle, FiLayers, FiPieChart, FiUsers } from "react-icons/fi"
 import { redirect } from "next/navigation"
 import { requireApprovedRole } from "@/auth"
 import PageHeader from "@/features/admin/components/PageHeader"
-import StatsCard from "@/features/admin/components/StatsCard"
 import Container from "@/components/ui/Container"
 import Section from "@/components/ui/Section"
 import { getDashboardSummaryAction } from "@/server/actions/admin-dashboard.actions"

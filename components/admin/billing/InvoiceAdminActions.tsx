@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useTransition } from 'react'
 import { cancelInvoice, markPaid, voidInvoice } from '@/server/actions/billing.actions'
 
 interface Props {

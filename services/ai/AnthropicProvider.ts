@@ -1,4 +1,4 @@
-import { BaseAIProvider, createPlaceholderMessage } from "@/services/ai/AIProvider";
+import { BaseAIProvider } from "@/services/ai/AIProvider";
 import type { AIExplanation, AIMessage, AIRequestContext, Question } from "@/types/ai";
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/chat/completions';

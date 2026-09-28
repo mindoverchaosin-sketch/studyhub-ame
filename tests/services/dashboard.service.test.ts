@@ -38,7 +38,7 @@ const { progressRepositoryMock, moduleRepositoryMock, examAttemptRepositoryMock,
 }))
 
 vi.mock('@/server/services/cache', () => ({
-  withServiceCache: async (_cacheKey: string, _ttlMs: number, loader: () => Promise<any>) => loader(),
+  withServiceCache: async <T>(_cacheKey: string, _ttlMs: number, loader: () => Promise<T>) => loader(),
   getCacheKey: vi.fn().mockImplementation((prefix: string, studentId: string) => `${prefix}:${studentId}`),
   invalidateServiceCache: vi.fn(),
 }))

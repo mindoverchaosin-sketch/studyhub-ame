@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { getQuestionsByTopic } from "@/server/services/question.service";
 import { getQuizByTopic } from "@/server/services/quiz.service";
 import { getResourcesByTopic } from "@/server/services/resource.service";
-import { getStudentProgress, getTopicProgress } from "@/server/services/progress.service";
-import { getTopicBySlug, getTopicsBySection } from "@/server/services/topic.service";
+import { getTopicProgress } from "@/server/services/progress.service";
+import { getTopicBySlug } from "@/server/services/topic.service";
 import { getModuleById, getModuleWithSections } from '@/server/services/module.service'
 import { getCourseById } from '@/server/services/course.service'
 import { getProgressStatusLabel } from "@/features/topics/utils/topic-learning";

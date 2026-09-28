@@ -85,7 +85,6 @@ export class OpenAIProvider extends BaseAIProvider {
     }
 
     const controller = new AbortController();
-    const signals = [controller.signal];
     if (options?.signal) {
       options.signal.addEventListener('abort', () => controller.abort(), { once: true });
     }
@@ -126,7 +125,6 @@ export class OpenAIProvider extends BaseAIProvider {
 
       const decoder = new TextDecoder();
       let buffer = '';
-      let content = '';
       let finishReason: string | undefined;
       let usage: import('@/types/ai').AIUsage | undefined;
 
@@ -150,7 +148,6 @@ export class OpenAIProvider extends BaseAIProvider {
             const choice = data.choices?.[0];
             const delta = choice?.delta?.content;
             if (delta) {
-              content += delta;
               yield { type: 'delta', content: String(delta) };
             }
             if (choice?.finish_reason) {

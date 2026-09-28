@@ -1,4 +1,4 @@
-import type { AIContextSnapshot, AIRequestContext, AILearnerProfile } from '@/types/ai';
+import type { AIContextSnapshot, AILearnerProfile } from '@/types/ai';
 import type { AIContentChunk, AIRetrievalContext } from '@/types/ai';
 
 export interface PromptBuilderOptions {
@@ -45,7 +45,7 @@ export class PromptBuilder {
 
     if (options.includeHistory) {
       assembled += `\nConversation history:\n`;
-      assembled += this.formatHistory(contextSnapshot);
+      assembled += this.formatHistory();
     }
 
     return assembled.trim();
@@ -81,7 +81,7 @@ export class PromptBuilder {
       .join('\n');
   }
 
-  private formatHistory(contextSnapshot: AIContextSnapshot): string {
+  private formatHistory(): string {
     return `Recent interactions are not yet available in the static snapshot.`;
   }
 }

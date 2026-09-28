@@ -10,7 +10,7 @@ export async function createStudyMaterialDraftAction(input: { title: string; mod
 
 export async function saveStudyMaterialDraftAction(resourceId: string, document: unknown) {
   await requirePermission('manageResources')
-  return studyMaterialDocumentService.saveDraft(resourceId, document as any)
+  return studyMaterialDocumentService.saveDraft(resourceId, document)
 }
 
 export async function submitStudyMaterialForReviewAction(resourceId: string) {

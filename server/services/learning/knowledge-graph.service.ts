@@ -43,7 +43,7 @@ export class KnowledgeGraphService {
 
   // Utility: get neighbors for a node
   async getNeighbors(nodeId: string, relation?: string) {
-    const edges = await this.store.listEdges({ sourceId: nodeId } as any);
+    const edges = await this.store.listEdges({ sourceId: nodeId });
     const filtered = relation ? edges.filter((e) => e.relation === relation) : edges;
     const nodes = [] as GraphNode[];
     for (const e of filtered) {

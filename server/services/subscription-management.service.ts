@@ -3,6 +3,10 @@ import { SubscriptionService } from '@/server/domains/billing/subscriptions/subs
 import type { SubscriptionDTO, SubscriptionListDTO } from '@/server/domains/billing/dto/billing.dto'
 import { auditLogService } from '@/server/services/audit-log.service'
 
+type SubscriptionRecord = Awaited<ReturnType<typeof subscriptionRepository.findMany>>[number] & {
+  user?: { displayName: string | null; email: string } | null
+}
+
 export interface SubscriptionManagementQueryDTO {
   status?: 'ACTIVE' | 'PAUSED' | 'EXPIRED' | 'CANCELLED' | 'ALL'
   plan?: string
@@ -198,7 +202,7 @@ export class SubscriptionManagementService {
     }
   }
 
-  private mapToListItem(subscription: any): SubscriptionListItemDTO {
+  private mapToListItem(subscription: SubscriptionRecord): SubscriptionListItemDTO {
     return {
       id: subscription.id,
       userId: subscription.userId,

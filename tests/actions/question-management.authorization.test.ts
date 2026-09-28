@@ -8,7 +8,12 @@ describe('question management authorization', () => {
 
     const { createQuestionAction } = await import('../../server/actions/question-management.actions')
 
-    await expect(createQuestionAction({ prompt: 'Question' } as any)).rejects.toThrow('no')
+    await expect(createQuestionAction({
+      prompt: 'Question',
+      options: ['A', 'B'],
+      correctOptionIndex: 0,
+      questionBankId: 'bank-1',
+    })).rejects.toThrow('no')
     expect(requirePermission).toHaveBeenCalled()
   })
 })

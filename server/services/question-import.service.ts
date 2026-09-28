@@ -73,7 +73,7 @@ export class QuestionImportService {
     }
 
     const existingQuestions = await questionRepository.findByBank(input.questionBankId)
-    const seenPrompts = new Set(existingQuestions.map((question: any) => question.prompt?.toLowerCase?.() ?? ''))
+    const seenPrompts = new Set(existingQuestions.map((question) => question.prompt?.toLowerCase?.() ?? ''))
     const validRows: Array<{ prompt: string; options: string[]; correctAnswer: string | null; difficulty: string; status: string }> = []
     const resultRows: QuestionImportResult['rows'] = []
     const errors: string[] = []

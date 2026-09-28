@@ -1,7 +1,6 @@
 import { lessonRepository } from '@/server/repositories/lesson.repository';
 import { questionRepository } from '@/server/repositories/question.repository';
 import { quizRepository } from '@/server/repositories/quiz.repository';
-import type { MediaAsset } from '@/types/media';
 
 export type CmsImportTarget = 'lessons' | 'questions' | 'mock-tests';
 
@@ -11,6 +10,7 @@ export type CmsImportRow = {
   title: string;
   content?: string;
   moduleId?: string;
+  questionBankId?: string;
   status?: string;
   errors: string[];
 };
@@ -93,8 +93,19 @@ export class CmsImportService {
         errors.push('Lesson content is required');
       }
 
+      const moduleId = entry.values.module_id || entry.values.module;
+      const questionBankId = entry.values.question_bank_id || entry.values.questionBankId || entry.values.bank_id || entry.values.bankId;
+
+      if ((recordType === 'lessons' || recordType === 'mock-tests') && !moduleId) {
+        errors.push('Module is required');
+      }
+
       if (recordType === 'questions' && (!entry.values.prompt || !entry.values.answer)) {
         errors.push('Question requires prompt and answer');
+      }
+
+      if (recordType === 'questions' && !questionBankId) {
+        errors.push('Question bank is required');
       }
 
       const normalizedTitle = title.trim().toLowerCase();
@@ -105,7 +116,7 @@ export class CmsImportService {
         seen.add(normalizedTitle);
       }
 
-      rows.push({ row: entry.row, type: recordType as CmsImportTarget, title, content: entry.values.content || entry.values.prompt, moduleId: entry.values.module_id || entry.values.module, status: entry.values.status, errors });
+      rows.push({ row: entry.row, type: recordType as CmsImportTarget, title, content: entry.values.content || entry.values.prompt, moduleId, questionBankId, status: entry.values.status, errors });
     }
 
     return {
@@ -127,28 +138,33 @@ export class CmsImportService {
       if (row.errors.length > 0) continue;
       try {
         if (row.type === 'lessons') {
+          if (!row.moduleId) throw new Error('Module is required');
           await lessonRepository.create({
             title: row.title,
             description: row.content ?? '',
             slug: row.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-            module: row.moduleId ? { connect: { id: row.moduleId } } : undefined,
+            module: { connect: { id: row.moduleId } },
             status: row.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT',
             metadata: { objectives: [], attachments: [] },
-          } as any);
+          });
         } else if (row.type === 'questions') {
+          if (!row.questionBankId) throw new Error('Question bank is required');
           await questionRepository.create({
+            questionBankId: row.questionBankId,
             prompt: row.title,
             explanation: row.content ?? '',
             difficulty: 'BEGINNER',
             status: row.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT',
             metadata: { tags: [] },
-          } as any);
+          });
         } else {
+          if (!row.moduleId) throw new Error('Module is required');
           await quizRepository.create({
+            module: { connect: { id: row.moduleId } },
             title: row.title,
             description: row.content ?? '',
             status: row.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT',
-          } as any);
+          });
         }
 
         successCount += 1;

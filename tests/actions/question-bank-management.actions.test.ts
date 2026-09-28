@@ -12,7 +12,7 @@ const {
     publishQuestionBank: vi.fn(),
     getQuestionBank: vi.fn(),
   },
-  withAuditLoggingMock: vi.fn(async (config: any) => config.run()),
+  withAuditLoggingMock: vi.fn(async (config: { run: () => Promise<unknown> }) => config.run()),
   revalidatePathMock: vi.fn(),
 }))
 
@@ -48,7 +48,7 @@ describe('Question Bank Management Actions', () => {
 
       try {
         await createQuestionBankAction({ title: 'Test' })
-      } catch (error) {
+      } catch {
         // Expected to throw
       }
 
@@ -100,7 +100,7 @@ describe('Question Bank Management Actions', () => {
 
       try {
         await updateQuestionBankAction('qb-1', { title: 'Updated' })
-      } catch (error) {
+      } catch {
         // Expected to throw
       }
 
@@ -132,7 +132,7 @@ describe('Question Bank Management Actions', () => {
 
       try {
         await archiveQuestionBankAction('qb-1')
-      } catch (error) {
+      } catch {
         // Expected to throw
       }
 
@@ -163,7 +163,7 @@ describe('Question Bank Management Actions', () => {
 
       try {
         await publishQuestionBankAction('qb-1')
-      } catch (error) {
+      } catch {
         // Expected to throw
       }
 
@@ -194,7 +194,7 @@ describe('Question Bank Management Actions', () => {
 
       try {
         await getQuestionBankAction('qb-1')
-      } catch (error) {
+      } catch {
         // Expected to throw
       }
 

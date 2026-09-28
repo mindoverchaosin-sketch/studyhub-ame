@@ -8,6 +8,7 @@ export type CmsSearchItem = {
 
 export class CmsSearchService {
   search(items: CmsSearchItem[], query: string, type?: string, status?: string, sortBy?: 'title' | 'updatedAt') {
+    void sortBy
     const normalizedQuery = query.trim().toLowerCase();
     const filtered = items.filter((item) => {
       const matchesQuery = !normalizedQuery || `${item.title} ${item.subtitle ?? ''}`.toLowerCase().includes(normalizedQuery);

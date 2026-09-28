@@ -67,6 +67,7 @@ export class SubscriptionRepository {
   }
 
   async cancel(id: string, reason?: string) {
+    void reason
     return prisma.subscription.update({
       where: { id },
       data: {

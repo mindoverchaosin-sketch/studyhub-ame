@@ -1,24 +1,6 @@
 import { searchRepository } from '@/server/repositories/search.repository'
 import type { SearchCategory, SearchResponse, SearchResultItem } from "@/features/search/types";
 
-function createResult(
-  category: SearchCategory,
-  id: string,
-  title: string,
-  description: string | null | undefined,
-  href: string,
-  meta: string,
-): SearchResultItem {
-  return {
-    id,
-    category,
-    title,
-    description: description ?? undefined,
-    href,
-    meta,
-  };
-}
-
 export async function searchContent(query: string): Promise<SearchResponse> {
   const normalized = query.trim().toLowerCase();
   const suggestions = ["Aircraft", "Electrical", "PDF", "Quiz", "Systems", "Maintenance"];

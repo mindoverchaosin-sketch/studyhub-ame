@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Prisma } from '@prisma/client'
 
 describe('question bulk services', () => {
   beforeEach(() => {
@@ -11,7 +12,7 @@ describe('question bulk services', () => {
         { id: 'q1', prompt: 'Question 1', status: 'DRAFT' },
         { id: 'q2', prompt: 'Question 2', status: 'DRAFT' },
       ]),
-      update: vi.fn().mockImplementation(async (_id: string, data: any) => ({ id: _id, ...data })),
+      update: vi.fn().mockImplementation(async (_id: string, data: Prisma.QuestionUncheckedUpdateInput) => ({ id: _id, ...data })),
       archive: vi.fn().mockResolvedValue({ id: 'q1', status: 'ARCHIVED' }),
       restore: vi.fn().mockResolvedValue({ id: 'q2', status: 'DRAFT' }),
       createManyInTransaction: vi.fn(),

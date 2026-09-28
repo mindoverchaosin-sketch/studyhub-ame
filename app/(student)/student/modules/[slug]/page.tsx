@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { requireStudent } from "@/auth";
-import { FiBookOpen, FiChevronRight, FiFileText, FiLock } from "react-icons/fi";
+import { FiBookOpen, FiChevronRight, FiFileText } from "react-icons/fi";
 import Card from "@/components/ui/Card";
 import ModuleHeader from "@/components/modules/ModuleHeader";
 import EmptyState from "@/components/dashboard/EmptyState";

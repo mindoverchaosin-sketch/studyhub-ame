@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 class ForbiddenError extends Error {
+  readonly status = 403
   constructor(message = 'Access denied.') {
     super(message)
     this.name = 'ForbiddenError'
-    ;(this as any).status = 403
   }
 }
 
@@ -17,7 +17,7 @@ vi.mock('@/auth', () => ({
   ForbiddenError,
 }))
 
-const mockWithAuditLogging = vi.fn(async (config) => config.run())
+const mockWithAuditLogging = vi.fn(async (config: { run: () => Promise<unknown> }) => config.run())
 
 vi.mock('@/server/actions/audit-helpers', () => ({
   withAuditLogging: mockWithAuditLogging,

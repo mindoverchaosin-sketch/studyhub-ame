@@ -60,7 +60,6 @@ describe('/api/student/resources/[id]', () => {
     const { GET } = await import('@/app/api/student/resources/[id]/route')
     const response = await GET(request, { params: Promise.resolve({ id: 'resource-1' }) })
     const json = await response.json()
-
     expect(response.status).toBe(404)
     expect(json.error).toContain('required')
   })
@@ -258,7 +257,6 @@ describe('/api/student/resources/[id]', () => {
 
     const { GET } = await import('@/app/api/student/resources/[id]/route')
     const response = await GET(request, { params: Promise.resolve({ id: 'resource-1' }) })
-    const json = await response.json()
 
     expect(response.status).toBe(404)
     expect(mediaProvider.getObject).not.toHaveBeenCalled()

@@ -306,7 +306,7 @@ describe('ContentAccessService', () => {
     it('should default to premiumModules when context not specified', async () => {
       vi.mocked(entitlementService.canAccessPremiumModules).mockResolvedValue(false)
 
-      const result = await contentAccessService.canAccessExamTemplate(TEST_USER_ID, true)
+      await contentAccessService.canAccessExamTemplate(TEST_USER_ID, true)
       expect(entitlementService.canAccessPremiumModules).toHaveBeenCalled()
     })
 

@@ -1,7 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { SubscriptionService } from '@/server/domains/billing/subscriptions/subscription.service'
-import * as subscriptionRepo from '@/server/domains/billing/subscriptions/subscription.repository'
-import * as planRepo from '@/server/domains/billing/plans/plan.repository'
 
 const mocks = vi.hoisted(() => ({
   findByUserId: vi.fn(),

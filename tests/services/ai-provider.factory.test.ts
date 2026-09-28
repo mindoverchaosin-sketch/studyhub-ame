@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import * as factory from '@/services/ai/AIProviderFactory';
 import { createAIProvider } from '@/services/ai/AIProviderFactory';
 import { MockAIProvider } from '@/services/ai/MockAIProvider';
 import { OpenAIProvider } from '@/services/ai/OpenAIProvider';

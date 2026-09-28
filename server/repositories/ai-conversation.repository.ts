@@ -2,6 +2,28 @@ import prisma from '@/lib/prisma';
 import type { AIConversation, AIMessage } from '@/types/ai';
 import type { Prisma } from '@prisma/client';
 
+type ConversationRow = Prisma.AIConversationGetPayload<null>;
+type ConversationWithMessagesRow = Prisma.AIConversationGetPayload<{ include: { messages: true } }>;
+type MessageRow = Prisma.AIMessageGetPayload<null>;
+
+function toJsonRecord(value: Prisma.JsonValue | null): Record<string, unknown> | undefined {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) ? value : undefined;
+}
+
+function toAIUsage(value: Prisma.JsonValue | null): AIMessage['usage'] {
+  const usage = toJsonRecord(value);
+  if (!usage) return undefined;
+  return {
+    ...(typeof usage.promptTokens === 'number' ? { promptTokens: usage.promptTokens } : {}),
+    ...(typeof usage.completionTokens === 'number' ? { completionTokens: usage.completionTokens } : {}),
+    ...(typeof usage.totalTokens === 'number' ? { totalTokens: usage.totalTokens } : {}),
+  };
+}
+
+function toAIMessageRole(role: string): AIMessage['role'] {
+  return role === 'assistant' || role === 'system' ? role : 'user';
+}
+
 export interface ConversationQueryParams {
   userId?: string;
   search?: string;
@@ -52,7 +74,7 @@ export class AIConversationRepository {
   }
 
   async listConversations(params: ConversationQueryParams = {}): Promise<AIConversation[]> {
-    const where: any = {};
+    const where: Prisma.AIConversationWhereInput = {};
     if (params.userId) {
       where.userId = params.userId;
     }
@@ -115,7 +137,7 @@ export class AIConversationRepository {
     return true;
   }
 
-  private mapConversation(conversation: any, messages: any[]): AIConversation {
+  private mapConversation(conversation: ConversationRow | ConversationWithMessagesRow, messages: MessageRow[]): AIConversation {
     return {
       id: conversation.id,
       title: conversation.title,
@@ -124,13 +146,13 @@ export class AIConversationRepository {
       lastUpdated: conversation.updatedAt.toISOString(),
       messages: messages.map((message) => ({
         id: message.id,
-        role: message.role,
+        role: toAIMessageRole(message.role),
         content: message.content,
         createdAt: message.createdAt.toISOString(),
         finishReason: message.finishReason ?? undefined,
-        usage: message.usage ?? undefined,
+        usage: toAIUsage(message.usage),
         model: message.model ?? undefined,
-        metadata: message.metadata ?? undefined,
+        metadata: toJsonRecord(message.metadata),
       })),
     };
   }

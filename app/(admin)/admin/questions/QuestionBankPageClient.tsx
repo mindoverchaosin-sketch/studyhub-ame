@@ -4,10 +4,11 @@ import { useState } from 'react'
 import QuestionBankDirectoryPanel from '@/components/admin/questions/QuestionBankDirectoryPanel'
 import QuestionBankPanel from '@/components/admin/questions/QuestionBankPanel'
 import type { QuestionManagementStatus } from '@/server/services/question.service'
+import type { QuestionDTO } from '@/server/application/dto/question.dto'
 import type { QuestionBankManagementDTO } from '@/server/application/dto/question-bank.dto'
 
 type Props = {
-  initialQuestions: Array<any & { status: QuestionManagementStatus; metadata: { tags: string[]; timeEstimateMinutes: number }; createdAt: string }>
+  initialQuestions: Array<QuestionDTO & { status: QuestionManagementStatus; metadata: { tags: string[]; timeEstimateMinutes: number }; createdAt: string }>
   initialQuestionsTotal: number
   questionBanksForSelect: Array<{ id: string; title: string }>
   initialQuestionBanks: QuestionBankManagementDTO[]

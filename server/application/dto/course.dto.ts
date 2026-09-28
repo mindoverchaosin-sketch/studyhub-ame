@@ -5,7 +5,7 @@ export type CourseDTO = {
   description: string | null
   isPremium: boolean
   categoryId: string | null
-  status: "DRAFT" | "PUBLISHED" | "ARCHIVED" | "SCHEDULED"
+  status: "DRAFT" | "IN_REVIEW" | "PUBLISHED" | "ARCHIVED" | "SCHEDULED"
   publishedAt: Date | null
   createdAt: Date
   updatedAt: Date

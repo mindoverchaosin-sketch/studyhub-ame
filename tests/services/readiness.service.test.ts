@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { KnowledgeGraphService } from '@/server/services/learning/knowledge-graph.service';
 import { MasteryService } from '@/server/services/learning/mastery.service';
 import { StudyPlannerService } from '@/server/services/learning/study-planner.service';

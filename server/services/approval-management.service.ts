@@ -4,7 +4,6 @@ import { ApprovalStatus } from '@prisma/client'
 
 type ApprovalStatusFilter = ApprovalStatus | 'ALL'
 
-const ADMIN_APPROVER_ROLES = new Set(['SUPER_ADMIN'])
 const INSTRUCTOR_APPROVER_ROLES = new Set(['ADMIN', 'SUPER_ADMIN'])
 
 function normalizeStatus(status?: ApprovalStatusFilter): ApprovalStatus | undefined {

@@ -3,6 +3,8 @@ import { planRepository } from '@/server/domains/billing/plans/plan.repository'
 import type { PlanDTO, PlanListDTO } from '@/server/domains/billing/dto/billing.dto'
 import { auditLogService } from '@/server/services/audit-log.service'
 
+type PlanRecord = NonNullable<Awaited<ReturnType<typeof planRepository.findById>>>
+
 export interface PlanManagementQueryDTO {
   status?: 'ACTIVE' | 'INACTIVE' | 'ALL'
   search?: string
@@ -61,7 +63,7 @@ export class PlanManagementService {
       throw new Error('Plan not found')
     }
 
-    const updateData: Record<string, unknown> = {}
+    const updateData: { name?: string; interval?: PlanDTO['interval']; isActive?: boolean } = {}
 
     if (input.name !== undefined) {
       updateData.name = input.name
@@ -87,7 +89,7 @@ export class PlanManagementService {
 
     this.metadataByPlanId.set(id, metadata)
 
-    const updatedPlan = Object.keys(updateData).length > 0 ? await planRepository.update(id, updateData as any) : existingPlan
+    const updatedPlan = Object.keys(updateData).length > 0 ? await planRepository.update(id, updateData) : existingPlan
 
     const dto = this.mapPlanToDTO(updatedPlan)
 
@@ -151,7 +153,7 @@ export class PlanManagementService {
     return [plan.name, plan.slug, plan.description ?? '', plan.interval].some((value) => value.toLowerCase().includes(search))
   }
 
-  private mapPlanToDTO(plan: any): PlanDTO {
+  private mapPlanToDTO(plan: PlanRecord): PlanDTO {
     const metadata = this.metadataByPlanId.get(plan.id) ?? {}
     const configPlan = getPlanBySlug(plan.slug)
     const resolvedPrice = this.resolvePrice(plan.productPrice?.amount, metadata.price ?? configPlan?.price)

@@ -15,7 +15,7 @@ describe('Retrieval metrics', () => {
     const { retrievalV2Service } = await import('@/server/services/ai/retrieval-v2.service');
     const { retrievalMetricsCollector } = await import('@/services/ai/RetrievalMetrics');
 
-    const ctx = await retrievalV2Service.buildRetrievalContext({ query: 'nothing will match' });
+    await retrievalV2Service.buildRetrievalContext({ query: 'nothing will match' });
 
     const metrics = retrievalMetricsCollector.finish();
     expect(metrics.chunksSearched).toBeGreaterThanOrEqual(0);

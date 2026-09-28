@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireStudent } from '@/auth'
 import Sidebar from '@/components/dashboard/Sidebar'
-import { cancelStudentSubscription, createCheckoutSession, getStudentBillingOverviewAction } from '@/server/actions/billing.actions'
+import { createCheckoutSession, getStudentBillingOverviewAction } from '@/server/actions/billing.actions'
 import type { InvoiceDTO, PlanDTO } from '@/server/domains/billing/dto/billing.dto'
 
 function formatCurrency(amount: number, currency: string) {

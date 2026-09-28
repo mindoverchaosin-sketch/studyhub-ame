@@ -146,16 +146,6 @@ export async function getModuleDetailPageData(courseSlug: string, moduleSlug: st
     })
   );
 
-  const topics = sections.flatMap((section) => {
-    return [];
-  });
-
-  const topicDetails = await Promise.all(
-    (moduleWithSections?.sections ?? []).flatMap((section) => {
-      return [section.id];
-    })
-  );
-
   const resolvedTopics: CourseBrowserModuleDetail["topics"] = [];
 
   for (const section of moduleWithSections?.sections ?? []) {

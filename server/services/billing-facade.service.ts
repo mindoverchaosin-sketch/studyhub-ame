@@ -2,11 +2,14 @@ import { entitlementService } from '@/server/domains/billing/entitlements/entitl
 import { planManagementService } from '@/server/services/plan-management.service'
 import { invoiceRepository } from '@/server/domains/billing/invoices/invoice.repository'
 import { subscriptionRepository } from '@/server/domains/billing/subscriptions/subscription.repository'
-import type { InvoiceDTO, PlanDTO, StudentBillingOverviewDTO, StudentSubscriptionOverviewDTO } from '@/server/domains/billing/dto/billing.dto'
+import type { InvoiceDTO, StudentBillingOverviewDTO, StudentSubscriptionOverviewDTO } from '@/server/domains/billing/dto/billing.dto'
 
-function getSubscriptionPrice(subscription: any): number {
+type SubscriptionRecord = NonNullable<Awaited<ReturnType<typeof subscriptionRepository.findByUserId>>>
+type InvoiceRecord = Awaited<ReturnType<typeof invoiceRepository.findBySubscriptionId>>[number]
+
+function getSubscriptionPrice(subscription: SubscriptionRecord): number {
   const plan = subscription.subscriptionPlan
-  const directPrice = plan?.price
+  const directPrice = (plan as typeof plan & { price?: number | string | null } | null)?.price
 
   if (typeof directPrice === 'number') {
     return directPrice
@@ -48,7 +51,7 @@ export class BillingFacadeService {
     }
   }
 
-  private mapSubscription(subscription: any): StudentSubscriptionOverviewDTO {
+  private mapSubscription(subscription: SubscriptionRecord): StudentSubscriptionOverviewDTO {
     const plan = subscription.subscriptionPlan
     const price = getSubscriptionPrice(subscription)
     const currency = plan?.productPrice?.currency ?? 'INR'
@@ -68,7 +71,7 @@ export class BillingFacadeService {
     }
   }
 
-  private mapInvoice(invoice: any): InvoiceDTO {
+  private mapInvoice(invoice: InvoiceRecord): InvoiceDTO {
     return {
       id: invoice.id,
       invoiceNumber: invoice.invoiceNumber,
@@ -78,7 +81,7 @@ export class BillingFacadeService {
       currency: invoice.currency,
       dueDate: invoice.dueDate,
       paidAt: invoice.paidAt,
-      description: invoice.description,
+      description: invoice.description ?? undefined,
       createdAt: invoice.createdAt,
       updatedAt: invoice.updatedAt,
     }

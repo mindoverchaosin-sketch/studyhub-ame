@@ -1,11 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { AnalyticsService } from '@/server/services/analytics.service'
-import * as userRepo from '@/server/repositories/user.repository'
-import * as moduleRepo from '@/server/repositories/module.repository'
-import * as questionRepo from '@/server/repositories/question.repository'
-import * as progressRepo from '@/server/repositories/progress.repository'
-import * as examAttemptRepo from '@/server/repositories/exam-attempt.repository'
-import * as resourceRepo from '@/server/repositories/resource.repository'
 
 const mocks = vi.hoisted(() => ({
   countStudents: vi.fn(),

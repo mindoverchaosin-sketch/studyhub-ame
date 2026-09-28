@@ -10,6 +10,7 @@ import { questionRepository } from '@/server/repositories/question.repository'
  * Called before rendering or accessing questions from a premium QB
  */
 export async function canAccessQuestionBankAction(questionBankId: string, _qbIsPremium?: boolean) {
+  void _qbIsPremium
   const session = await requireStudent()
   const questionBank = await questionBankRepository.findById(questionBankId)
 
@@ -25,6 +26,7 @@ export async function canAccessQuestionBankAction(questionBankId: string, _qbIsP
  * Inherits access from parent question bank
  */
 export async function canAccessQuestionAction(questionBankId: string, questionId: string, _qbIsPremium?: boolean) {
+  void _qbIsPremium
   const session = await requireStudent()
   const question = await questionRepository.findById(questionId)
 

@@ -87,7 +87,12 @@ describe('content management services', () => {
 
     const { createModuleAction } = await import('../../server/actions/content-management.actions')
 
-    await expect(createModuleAction({ title: 'New Module' } as any)).rejects.toThrow('no')
+    await expect(createModuleAction({
+      title: 'New Module',
+      slug: 'new-module',
+      moduleNumber: '1',
+      courseId: 'course-1',
+    })).rejects.toThrow('no')
     expect(requirePermission).toHaveBeenCalled()
   })
 })

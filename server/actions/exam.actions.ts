@@ -1,6 +1,6 @@
 import * as templateService from '@/server/services/exam-template.service'
 import * as attemptService from '@/server/services/exam-attempt.service'
-import { requireStudent, requirePermission, requireOwnership, requireAuth } from '@/auth'
+import { requireStudent, requirePermission, requireOwnership } from '@/auth'
 import { contentAccessService } from '@/server/services/content-access.service'
 import type { ExamTemplateDTO } from '@/server/application/dto/exam-template.dto'
 
@@ -11,24 +11,33 @@ function toStudentExamTemplate(template: ExamTemplateDTO): StudentExamTemplateDT
   return { id, name, description, moduleId, courseId, durationMinutes, questionCount, passingPercentage, shuffleQuestions, shuffleAnswers, negativeMarkingEnabled, active, isPremium }
 }
 
-function normalizeExamTemplateInput(input: any) {
+function normalizeExamTemplateInput(input: unknown): Partial<ExamTemplateDTO> {
+  const values: Record<string, FormDataEntryValue | unknown> = input instanceof FormData
+    ? Object.fromEntries(input.entries())
+    : input && typeof input === 'object' ? input as Record<string, unknown> : {}
+  const booleanValue = (value: unknown) => typeof value === 'string'
+    ? ['true', 'on', '1', 'yes'].includes(value)
+    : typeof value === 'number' ? value === 1 : Boolean(value)
+  const numberValue = (value: unknown) => typeof value === 'number' ? value : typeof value === 'string' && value.trim() ? Number(value) : undefined
+
   if (input instanceof FormData) {
-    const formValues = Object.fromEntries(input.entries())
-    const rawPremium = formValues.isPremium
     return {
-      ...formValues,
-      isPremium: rawPremium === 'on' || rawPremium === 'true' || rawPremium === '1' || rawPremium === 'yes',
+      name: typeof values.name === 'string' ? values.name : undefined,
+      description: typeof values.description === 'string' ? values.description : undefined,
+      durationMinutes: numberValue(values.durationMinutes),
+      questionCount: numberValue(values.questionCount),
+      passingPercentage: numberValue(values.passingPercentage),
+      isPremium: booleanValue(values.isPremium),
+      shuffleQuestions: booleanValue(values.shuffleQuestions),
+      shuffleAnswers: booleanValue(values.shuffleAnswers),
+      negativeMarkingEnabled: booleanValue(values.negativeMarkingEnabled),
+      active: booleanValue(values.active),
     }
   }
 
-  const rawPremium = input?.isPremium
   return {
-    ...input,
-    isPremium: typeof rawPremium === 'string'
-      ? rawPremium === 'true' || rawPremium === 'on' || rawPremium === '1' || rawPremium === 'yes'
-      : typeof rawPremium === 'number'
-        ? rawPremium === 1
-        : !!rawPremium,
+    ...values,
+    isPremium: booleanValue(values.isPremium),
   }
 }
 
@@ -54,7 +63,7 @@ export async function getStudentExamTemplate(id: string): Promise<StudentExamTem
   return template?.active ? toStudentExamTemplate(template) : null
 }
 
-export async function createExamTemplate(input: any) {
+export async function createExamTemplate(input: unknown) {
   await requirePermission('manageModules')
   return templateService.createTemplate(normalizeExamTemplateInput(input))
 }

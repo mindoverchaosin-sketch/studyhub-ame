@@ -19,11 +19,20 @@ export class WebhookSinkMonitoringAdapter implements MonitoringAdapter {
     this.timeoutMs = timeoutMs
   }
 
-  recordCounter(_name: string, _value?: number): void {}
+  recordCounter(_name: string, _value?: number): void {
+    void _name
+    void _value
+  }
 
-  recordGauge(_name: string, _value: number): void {}
+  recordGauge(_name: string, _value: number): void {
+    void _name
+    void _value
+  }
 
-  recordTiming(_name: string, _durationMs: number): void {}
+  recordTiming(_name: string, _durationMs: number): void {
+    void _name
+    void _durationMs
+  }
 
   captureError(error: unknown, details: ErrorReportDetails = {}): void {
     void this.deliver(error, details)

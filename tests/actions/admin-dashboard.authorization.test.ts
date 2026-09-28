@@ -7,10 +7,10 @@ vi.mock('@/auth', () => ({
   requireApprovedRole: requireApprovedRoleMock,
   requirePermission: requirePermissionMock,
   UnauthorizedError: class UnauthorizedError extends Error {
+    readonly status = 401
     constructor(message = 'Authentication required.') {
       super(message)
       this.name = 'UnauthorizedError'
-      ;(this as any).status = 401
     }
   },
 }))

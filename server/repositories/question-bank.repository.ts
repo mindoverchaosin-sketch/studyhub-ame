@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma'
-import type { Prisma, $Enums } from '@prisma/client'
+import type { Prisma } from '@prisma/client'
 
 export class QuestionBankRepository {
   async findAll() {
@@ -89,7 +89,7 @@ export class QuestionBankRepository {
         description: input.description ?? null,
         isPremium: input.isPremium ?? false,
         status: 'DRAFT',
-      } as any,
+      },
     })
   }
 

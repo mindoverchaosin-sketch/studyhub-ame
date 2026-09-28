@@ -3,10 +3,10 @@ import { submitAttemptAction } from '@/server/actions/exam-attempt.actions'
 import { withRequestLogging } from '@/lib/request-logger'
 import { getRequestId } from '@/lib/request-context'
 
-export async function POST(req: Request, context: any) {
-  const params = context?.params ?? {}
+export async function POST(req: Request, context: { params: Promise<{ attemptId: string }> }) {
+  const { attemptId } = await context.params
   const result = await withRequestLogging(req, 'submitAttemptAction', async () => {
-    return submitAttemptAction(params.attemptId)
+    return submitAttemptAction(attemptId)
   })
   const response = NextResponse.json(result)
   const requestId = getRequestId()

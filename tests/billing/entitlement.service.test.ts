@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { EntitlementService } from '@/server/domains/billing/entitlements/entitlement.service'
-import * as subscriptionRepo from '@/server/domains/billing/subscriptions/subscription.repository'
 
 const mocks = vi.hoisted(() => ({
   findByUserId: vi.fn(),
@@ -14,7 +13,7 @@ vi.mock('@/server/domains/billing/subscriptions/subscription.repository', () => 
 
 vi.mock('@/server/domains/billing/plans/plan.config', () => ({
   getPlanBySlug: (slug: string) => {
-    const plans: any = {
+    const plans: Record<string, { name: string; slug: string; features: string[] }> = {
       free: { name: 'Free', slug: 'free', features: [] },
       monthly: {
         name: 'Monthly',

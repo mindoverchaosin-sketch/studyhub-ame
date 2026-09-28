@@ -26,6 +26,9 @@ vi.mock('@/lib/prisma', () => ({
 
 import { bootstrapSuperAdmin, validateSuperAdminBootstrapInputs } from '@/scripts/bootstrap-super-admin'
 
+type BootstrapPrismaClient = NonNullable<Parameters<typeof bootstrapSuperAdmin>[0]>['prismaClient']
+const bootstrapPrismaClient = prismaMock satisfies BootstrapPrismaClient
+
 describe('super admin bootstrap', () => {
   const logger = {
     info: vi.fn(),
@@ -46,7 +49,7 @@ describe('super admin bootstrap', () => {
         email: '',
         password: 'StrongPass123',
         logger,
-        prismaClient: prismaMock as any,
+        prismaClient: bootstrapPrismaClient,
       }),
     ).rejects.toThrow('SUPER_ADMIN_EMAIL is required.')
   })
@@ -57,7 +60,7 @@ describe('super admin bootstrap', () => {
         email: 'admin@example.com',
         password: '',
         logger,
-        prismaClient: prismaMock as any,
+        prismaClient: bootstrapPrismaClient,
       }),
     ).rejects.toThrow('SUPER_ADMIN_PASSWORD is required.')
   })
@@ -73,7 +76,7 @@ describe('super admin bootstrap', () => {
       email: 'target@example.com',
       password: 'StrongPass123',
       logger,
-      prismaClient: prismaMock as any,
+      prismaClient: bootstrapPrismaClient,
     })
 
     expect(result.created).toBe(false)
@@ -93,7 +96,7 @@ describe('super admin bootstrap', () => {
         email: 'target@example.com',
         password: 'StrongPass123',
         logger,
-        prismaClient: prismaMock as any,
+        prismaClient: bootstrapPrismaClient,
       }),
     ).rejects.toThrow('Designated super admin email already belongs to a different user account.')
 
@@ -115,7 +118,7 @@ describe('super admin bootstrap', () => {
       email: 'super@example.com',
       password: 'StrongPass123',
       logger,
-      prismaClient: prismaMock as any,
+      prismaClient: bootstrapPrismaClient,
     })
 
     expect(result.created).toBe(true)
@@ -146,7 +149,7 @@ describe('super admin bootstrap', () => {
       email: 'super@example.com',
       password: 'StrongPass123',
       logger,
-      prismaClient: prismaMock as any,
+      prismaClient: bootstrapPrismaClient,
     })
 
     expect(bcryptHashMock).toHaveBeenCalledWith('StrongPass123', 10)
@@ -162,7 +165,7 @@ describe('super admin bootstrap', () => {
       email: 'super@example.com',
       password: 'StrongPass123',
       logger,
-      prismaClient: prismaMock as any,
+      prismaClient: bootstrapPrismaClient,
     })
 
     const combinedLogs = logger.info.mock.calls.flat().join(' ')

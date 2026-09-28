@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { NextResponse } from 'next/server'
 import type { Session } from 'next-auth'
 import { auth } from '@/auth'
 import { mediaProvider } from '@/services/media/provider'
