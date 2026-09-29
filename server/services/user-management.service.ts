@@ -36,6 +36,19 @@ export type UserManagementListResponse = {
   totalPages: number;
 };
 
+export type UserManagementDetail = {
+  id: string;
+  email: string;
+  displayName: string | null;
+  role: string;
+  status: UserManagementStatus;
+  createdAt: string;
+  updatedAt: string;
+  adminApprovalStatus: string | null;
+  instructorApprovalStatus: string | null;
+  studentName: string | null;
+};
+
 export function normalizeUserManagementFilters(filters: UserManagementFilters = {}): NormalizedUserManagementFilters {
   const page = Math.max(1, filters.page ?? 1);
   const pageSize = Math.min(50, Math.max(1, filters.pageSize ?? 20));
@@ -91,5 +104,23 @@ export async function listUsers(filters: UserManagementFilters = {}): Promise<Us
     page: normalized.page,
     pageSize: normalized.pageSize,
     totalPages: Math.max(1, Math.ceil(totalItems / normalized.pageSize)),
+  };
+}
+
+export async function getUserManagementDetail(id: string): Promise<UserManagementDetail | null> {
+  const user = await userRepository.findById(id);
+  if (!user) return null;
+
+  return {
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    role: normalizeRoleName(user.role?.name).toString(),
+    status: toUserManagementStatus(user.isActive),
+    createdAt: user.createdAt.toISOString(),
+    updatedAt: user.updatedAt.toISOString(),
+    adminApprovalStatus: user.adminProfile?.status ?? null,
+    instructorApprovalStatus: user.instructorProfile?.status ?? null,
+    studentName: user.studentProfile?.fullName ?? null,
   };
 }
