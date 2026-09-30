@@ -1,8 +1,53 @@
+import bcrypt from 'bcrypt';
+import { z } from 'zod';
 import { userRepository } from '@/server/repositories/user.repository';
+import { roleRepository } from '@/server/repositories/role.repository';
 import { getRoleDisplayName, normalizeRoleName } from '@/server/services/authorization.service';
 
 export type UserManagementStatus = 'ACTIVE' | 'SUSPENDED';
 export type UserManagementRoleFilter = 'ALL' | 'SUPER_ADMIN' | 'ADMIN' | 'INSTRUCTOR' | 'CONTENT_EDITOR' | 'STUDENT';
+export type PrivilegedUserRole = 'ADMIN' | 'CONTENT_EDITOR' | 'INSTRUCTOR';
+
+const privilegedUserBaseSchema = {
+  fullName: z.string().trim().min(2, 'Enter a full name.').max(120, 'Full name is too long.'),
+  email: z.string().trim().email('Enter a valid email address.').max(254).transform((email) => email.toLowerCase()),
+  temporaryPassword: z.string().min(8, 'Use at least 8 characters for the temporary password.').max(72, 'Temporary password is too long.'),
+  isActive: z.boolean(),
+};
+
+export const privilegedUserCreationSchema = z.discriminatedUnion('role', [
+  z.object({ ...privilegedUserBaseSchema, role: z.literal('ADMIN'), department: z.string().trim().max(120).optional() }),
+  z.object({ ...privilegedUserBaseSchema, role: z.literal('CONTENT_EDITOR') }),
+  z.object({ ...privilegedUserBaseSchema, role: z.literal('INSTRUCTOR'), bio: z.string().trim().max(2000).optional() }),
+]);
+
+export type PrivilegedUserCreationInput = z.input<typeof privilegedUserCreationSchema>;
+
+export class DuplicateUserEmailError extends Error {
+  constructor() {
+    super('An account with that email already exists.');
+    this.name = 'DuplicateUserEmailError';
+  }
+}
+
+const roleDescriptions: Record<PrivilegedUserRole, string> = {
+  ADMIN: 'Administrator role',
+  CONTENT_EDITOR: 'Content editor role',
+  INSTRUCTOR: 'Instructor role',
+};
+
+async function findOrCreateRole(role: PrivilegedUserRole) {
+  const existingRole = await roleRepository.findByName(role);
+  if (existingRole) return existingRole;
+
+  try {
+    return await roleRepository.create({ name: role, description: roleDescriptions[role] });
+  } catch (error) {
+    const concurrentRole = await roleRepository.findByName(role);
+    if (concurrentRole) return concurrentRole;
+    throw error;
+  }
+}
 
 export type UserManagementFilters = {
   search?: string;
@@ -123,4 +168,49 @@ export async function getUserManagementDetail(id: string): Promise<UserManagemen
     instructorApprovalStatus: user.instructorProfile?.status ?? null,
     studentName: user.studentProfile?.fullName ?? null,
   };
+}
+
+export async function createPrivilegedUser(input: PrivilegedUserCreationInput) {
+  const parsed = privilegedUserCreationSchema.parse(input);
+  const existingUser = await userRepository.findByEmail(parsed.email);
+  if (existingUser) throw new DuplicateUserEmailError();
+
+  const [role, passwordHash] = await Promise.all([
+    findOrCreateRole(parsed.role),
+    bcrypt.hash(parsed.temporaryPassword, 10),
+  ]);
+
+  const profile = parsed.role === 'ADMIN'
+    ? { adminProfile: { create: { fullName: parsed.fullName, department: parsed.department || undefined, status: 'PENDING' as const } } }
+    : parsed.role === 'INSTRUCTOR'
+      ? { instructorProfile: { create: { fullName: parsed.fullName, bio: parsed.bio || undefined, status: 'PENDING' as const } } }
+      : {};
+
+  let user;
+  try {
+    user = await userRepository.createUser({
+      email: parsed.email,
+      displayName: parsed.fullName,
+      passwordHash,
+      role: { connect: { id: role.id } },
+      isActive: parsed.isActive,
+      ...profile,
+    });
+  } catch (error) {
+    if (isUniqueConstraintError(error)) throw new DuplicateUserEmailError();
+    throw error;
+  }
+
+  return {
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    role: parsed.role,
+    status: toUserManagementStatus(user.isActive),
+    createdAt: user.createdAt.toISOString(),
+  };
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002';
 }

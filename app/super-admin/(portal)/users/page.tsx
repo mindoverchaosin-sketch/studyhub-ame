@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { requireApprovedRole } from "@/auth"
+import AddUserDialog from "@/components/super-admin/AddUserDialog"
 import SuperAdminPageHeader from "@/components/super-admin/SuperAdminPageHeader"
 import { listUsers, type UserManagementRoleFilter, type UserManagementStatus } from "@/server/services/user-management.service"
 
@@ -24,7 +25,10 @@ export default async function SuperAdminUsersPage({ searchParams }: { searchPara
 
   return (
     <div>
-      <SuperAdminPageHeader title="Users" description="Search and review platform accounts across roles. Account and role mutations are shown only where existing operational workflows support them." />
+      <SuperAdminPageHeader title="Users" description="Search and review platform accounts. Admin and Instructor accounts enter their existing approval workflows when created." />
+      <div className="mb-5 flex justify-end">
+        <AddUserDialog />
+      </div>
 
       <form method="GET" className="mb-5 flex flex-wrap items-end gap-3 rounded-md border border-slate-200 bg-white p-4">
         <label className="grid min-w-52 flex-1 gap-1 text-xs font-semibold text-slate-700">
