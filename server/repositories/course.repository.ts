@@ -39,6 +39,20 @@ export class CourseRepository {
     return prisma.course.findUnique({ where: { id } })
   }
 
+  async findAdminById(id: string) {
+    return prisma.course.findUnique({
+      where: { id },
+      include: {
+        category: { select: { title: true } },
+        modules: {
+          where: { deletedAt: null },
+          select: { id: true, title: true, slug: true, moduleNumber: true, status: true, displayOrder: true },
+          orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
+        },
+      },
+    })
+  }
+
   async create(input: Prisma.CourseCreateInput) {
     return prisma.course.create({ data: input })
   }

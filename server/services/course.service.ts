@@ -25,6 +25,30 @@ export async function getCourseById(id: string): Promise<CourseDTO | null> {
   return course ? mapCourseEntityToDTO(course) : null
 }
 
+export async function getAdminCourseById(id: string) {
+  const course = await courseRepository.findAdminById(id)
+  if (!course || course.deletedAt) return null
+
+  return {
+    ...mapCourseEntityToDTO(course),
+    categoryTitle: course.category?.title ?? null,
+    modules: course.modules,
+  }
+}
+
+export async function updateAdminCourseById(id: string, input: Pick<CourseDTO, 'title' | 'slug' | 'description'>): Promise<CourseDTO | null> {
+  const existing = await courseRepository.findById(id)
+  if (!existing || existing.deletedAt) return null
+
+  const updated = await courseRepository.update(id, {
+    title: input.title,
+    slug: input.slug,
+    description: input.description,
+  })
+
+  return mapCourseEntityToDTO(updated)
+}
+
 export async function getCoursesByExamType(_examType: string): Promise<CourseDTO[]> {
   void _examType
   return (await courseRepository.findAllPublished()).map(mapCourseEntityToDTO)
