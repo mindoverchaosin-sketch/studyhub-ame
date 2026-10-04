@@ -1,10 +1,12 @@
 import bcrypt from 'bcrypt';
 import { z } from 'zod';
+import type { ApprovalStatus } from '@prisma/client';
 import { userRepository } from '@/server/repositories/user.repository';
 import { roleRepository } from '@/server/repositories/role.repository';
 import { getRoleDisplayName, normalizeRoleName } from '@/server/services/authorization.service';
+import { getAccountStatus } from '@/server/services/account-status.service';
 
-export type UserManagementStatus = 'ACTIVE' | 'SUSPENDED';
+export type UserManagementStatus = 'ACTIVE' | 'SUSPENDED' | 'TERMINATED';
 export type UserManagementRoleFilter = 'ALL' | 'SUPER_ADMIN' | 'ADMIN' | 'INSTRUCTOR' | 'CONTENT_EDITOR' | 'STUDENT';
 export type PrivilegedUserRole = 'ADMIN' | 'CONTENT_EDITOR' | 'INSTRUCTOR';
 
@@ -53,12 +55,14 @@ export type UserManagementFilters = {
   search?: string;
   role?: UserManagementRoleFilter;
   status?: 'ALL' | UserManagementStatus;
+  approvalStatus?: 'ALL' | ApprovalStatus;
   page?: number;
   pageSize?: number;
 };
 
-type NormalizedUserManagementFilters = Omit<UserManagementFilters, 'status'> & {
+type NormalizedUserManagementFilters = Omit<UserManagementFilters, 'status' | 'approvalStatus'> & {
   status?: UserManagementStatus;
+  approvalStatus?: ApprovalStatus;
   page: number;
   pageSize: number;
 };
@@ -69,6 +73,8 @@ export type UserManagementListItem = {
   displayName?: string | null;
   role: string;
   status: UserManagementStatus;
+  accountStatus: UserManagementStatus;
+  approvalStatus: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -87,11 +93,18 @@ export type UserManagementDetail = {
   displayName: string | null;
   role: string;
   status: UserManagementStatus;
+  accountStatus: UserManagementStatus;
+  approvalStatus: string | null;
   createdAt: string;
   updatedAt: string;
   adminApprovalStatus: string | null;
   instructorApprovalStatus: string | null;
   studentName: string | null;
+  suspensionType: string | null;
+  suspensionEndsAt: string | null;
+  suspensionReason: string | null;
+  terminationReason: string | null;
+  lastAccountStatusUpdatedAt: string | null;
 };
 
 export function normalizeUserManagementFilters(filters: UserManagementFilters = {}): NormalizedUserManagementFilters {
@@ -105,11 +118,18 @@ export function normalizeUserManagementFilters(filters: UserManagementFilters = 
     search: filters.search?.trim() || undefined,
     role: filters.role && filters.role !== 'ALL' ? filters.role : undefined,
     status: filters.status && filters.status !== 'ALL' ? filters.status : undefined,
+    approvalStatus: filters.approvalStatus && filters.approvalStatus !== 'ALL' ? filters.approvalStatus : undefined,
   };
 }
 
-export function toUserManagementStatus(isActive: boolean | null | undefined): UserManagementStatus {
-  return isActive === false ? 'SUSPENDED' : 'ACTIVE';
+export function toUserManagementStatus(
+  user: { isActive?: boolean | null; accountStatus?: string | null; suspensionType?: string | null; suspensionEndsAt?: Date | string | null } | boolean | null | undefined,
+): UserManagementStatus {
+  if (typeof user === 'boolean') {
+    return getAccountStatus({ isActive: user, accountStatus: user ? 'ACTIVE' : 'SUSPENDED' }) as UserManagementStatus;
+  }
+
+  return getAccountStatus(user ?? { isActive: true, accountStatus: 'ACTIVE' }) as UserManagementStatus;
 }
 
 export function getUserRoleLabel(role: string | null | undefined): string {
@@ -125,6 +145,7 @@ export async function listUsers(filters: UserManagementFilters = {}): Promise<Us
       search: normalized.search,
       role: normalized.role,
       status: normalized.status,
+      approvalStatus: normalized.approvalStatus,
       skip,
       take: normalized.pageSize,
     }),
@@ -132,19 +153,25 @@ export async function listUsers(filters: UserManagementFilters = {}): Promise<Us
       search: normalized.search,
       role: normalized.role,
       status: normalized.status,
+      approvalStatus: normalized.approvalStatus,
     }),
   ]);
 
   return {
-    items: users.map((user) => ({
-      id: user.id,
-      email: user.email,
-      displayName: user.displayName,
-      role: normalizeRoleName(user.role?.name).toString(),
-      status: toUserManagementStatus(user.isActive),
-      createdAt: user.createdAt.toISOString(),
-      updatedAt: user.updatedAt.toISOString(),
-    })),
+    items: users.map((user) => {
+      const status = toUserManagementStatus(user)
+      return {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        role: normalizeRoleName(user.role?.name).toString(),
+        status,
+        accountStatus: status,
+        approvalStatus: user.adminProfile?.status ?? user.instructorProfile?.status ?? null,
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
+      }
+    }),
     totalItems,
     page: normalized.page,
     pageSize: normalized.pageSize,
@@ -156,17 +183,25 @@ export async function getUserManagementDetail(id: string): Promise<UserManagemen
   const user = await userRepository.findById(id);
   if (!user) return null;
 
+  const status = toUserManagementStatus(user)
   return {
     id: user.id,
     email: user.email,
     displayName: user.displayName,
     role: normalizeRoleName(user.role?.name).toString(),
-    status: toUserManagementStatus(user.isActive),
+    status,
+    accountStatus: status,
+    approvalStatus: user.adminProfile?.status ?? user.instructorProfile?.status ?? null,
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
     adminApprovalStatus: user.adminProfile?.status ?? null,
     instructorApprovalStatus: user.instructorProfile?.status ?? null,
     studentName: user.studentProfile?.fullName ?? null,
+    suspensionType: user.suspensionType ?? null,
+    suspensionEndsAt: user.suspensionEndsAt ? user.suspensionEndsAt.toISOString() : null,
+    suspensionReason: user.suspensionReason ?? null,
+    terminationReason: user.terminationReason ?? null,
+    lastAccountStatusUpdatedAt: user.lastAccountStatusUpdatedAt ? user.lastAccountStatusUpdatedAt.toISOString() : null,
   };
 }
 

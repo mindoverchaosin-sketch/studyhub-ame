@@ -1,12 +1,14 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
+import type { ApprovalStatus } from "@prisma/client"
 import { requireApprovedRole } from "@/auth"
 import AddUserDialog from "@/components/super-admin/AddUserDialog"
 import SuperAdminPageHeader from "@/components/super-admin/SuperAdminPageHeader"
 import { listUsers, type UserManagementRoleFilter, type UserManagementStatus } from "@/server/services/user-management.service"
 
 const roles: UserManagementRoleFilter[] = ["ALL", "SUPER_ADMIN", "ADMIN", "INSTRUCTOR", "CONTENT_EDITOR", "STUDENT"]
-const statuses: Array<"ALL" | UserManagementStatus> = ["ALL", "ACTIVE", "SUSPENDED"]
+const statuses: Array<"ALL" | UserManagementStatus> = ["ALL", "ACTIVE", "SUSPENDED", "TERMINATED"]
+const approvalStatuses: Array<"ALL" | ApprovalStatus> = ["ALL", "PENDING", "APPROVED", "REJECTED", "SUSPENDED"]
 
 export default async function SuperAdminUsersPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   try {
@@ -19,9 +21,10 @@ export default async function SuperAdminUsersPage({ searchParams }: { searchPara
   const query = typeof params.query === "string" ? params.query : ""
   const role = roles.find((value) => value === params.role) ?? "ALL"
   const status = statuses.find((value) => value === params.status) ?? "ALL"
+  const approvalStatus = approvalStatuses.find((value) => value === params.approvalStatus) ?? "ALL"
   const requestedPage = Number(typeof params.page === "string" ? params.page : "1")
   const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1
-  const users = await listUsers({ search: query, role, status, page, pageSize: 20 })
+  const users = await listUsers({ search: query, role, status, approvalStatus, page, pageSize: 20 })
 
   return (
     <div>
@@ -44,7 +47,13 @@ export default async function SuperAdminUsersPage({ searchParams }: { searchPara
         <label className="grid gap-1 text-xs font-semibold text-slate-700">
           Account status
           <select name="status" defaultValue={status} className="min-h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
-            <option value="ALL">All statuses</option><option value="ACTIVE">Active</option><option value="SUSPENDED">Suspended</option>
+            <option value="ALL">All statuses</option><option value="ACTIVE">Active</option><option value="SUSPENDED">Suspended</option><option value="TERMINATED">Terminated</option>
+          </select>
+        </label>
+        <label className="grid gap-1 text-xs font-semibold text-slate-700">
+          Approval status
+          <select name="approvalStatus" defaultValue={approvalStatus} className="min-h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+            <option value="ALL">All approval statuses</option><option value="PENDING">Pending</option><option value="APPROVED">Approved</option><option value="REJECTED">Rejected</option><option value="SUSPENDED">Suspended</option>
           </select>
         </label>
         <button type="submit" className="min-h-10 rounded-md bg-slate-950 px-4 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2">Search</button>
@@ -56,14 +65,15 @@ export default async function SuperAdminUsersPage({ searchParams }: { searchPara
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-100 text-left text-sm">
               <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <tr><th scope="col" className="px-5 py-3">Account</th><th scope="col" className="px-5 py-3">Role</th><th scope="col" className="px-5 py-3">Status</th><th scope="col" className="px-5 py-3">Registered</th><th scope="col" className="px-5 py-3"><span className="sr-only">Details</span></th></tr>
+                <tr><th scope="col" className="px-5 py-3">Account</th><th scope="col" className="px-5 py-3">Role</th><th scope="col" className="px-5 py-3">Status</th><th scope="col" className="px-5 py-3">Approval</th><th scope="col" className="px-5 py-3">Registered</th><th scope="col" className="px-5 py-3"><span className="sr-only">Details</span></th></tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {users.items.map((user) => (
                   <tr key={user.id} className="hover:bg-slate-50">
                     <td className="px-5 py-3"><Link href={`/super-admin/users/${user.id}`} className="font-semibold text-slate-900 hover:text-blue-800">{user.displayName ?? user.email}</Link><p className="text-xs text-slate-500">{user.email}</p></td>
                     <td className="px-5 py-3 text-slate-700">{user.role.replaceAll("_", " ")}</td>
-                    <td className="px-5 py-3"><span className={`rounded-sm px-2 py-1 text-xs font-semibold ${user.status === "ACTIVE" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>{user.status}</span></td>
+                    <td className="px-5 py-3"><span className={`rounded-sm px-2 py-1 text-xs font-semibold ${user.status === "ACTIVE" ? "bg-emerald-50 text-emerald-800" : user.status === "TERMINATED" ? "bg-rose-50 text-rose-800" : "bg-amber-50 text-amber-800"}`}>{user.status}</span></td>
+                    <td className="px-5 py-3 text-slate-600">{user.approvalStatus ?? "N/A"}</td>
                     <td className="whitespace-nowrap px-5 py-3 text-slate-600">{new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(user.createdAt))}</td>
                     <td className="whitespace-nowrap px-5 py-3"><Link href={`/super-admin/users/${user.id}`} className="font-semibold text-blue-800 hover:text-blue-950">View details</Link></td>
                   </tr>
@@ -79,15 +89,15 @@ export default async function SuperAdminUsersPage({ searchParams }: { searchPara
       <div className="mt-4 flex items-center justify-between gap-3 text-sm text-slate-600">
         <span>Page {users.page} of {users.totalPages}</span>
         <div className="flex gap-2">
-          {users.page > 1 ? <Link href={usersUrl(query, role, status, users.page - 1)} className="rounded-md border border-slate-300 px-3 py-2 font-semibold hover:bg-white">Previous</Link> : null}
-          {users.page < users.totalPages ? <Link href={usersUrl(query, role, status, users.page + 1)} className="rounded-md border border-slate-300 px-3 py-2 font-semibold hover:bg-white">Next</Link> : null}
+          {users.page > 1 ? <Link href={usersUrl(query, role, status, approvalStatus, users.page - 1)} className="rounded-md border border-slate-300 px-3 py-2 font-semibold hover:bg-white">Previous</Link> : null}
+          {users.page < users.totalPages ? <Link href={usersUrl(query, role, status, approvalStatus, users.page + 1)} className="rounded-md border border-slate-300 px-3 py-2 font-semibold hover:bg-white">Next</Link> : null}
         </div>
       </div>
     </div>
   )
 }
 
-function usersUrl(query: string, role: UserManagementRoleFilter, status: "ALL" | UserManagementStatus, page: number) {
-  const params = new URLSearchParams({ query, role, status, page: String(page) })
+function usersUrl(query: string, role: UserManagementRoleFilter, status: "ALL" | UserManagementStatus, approvalStatus: "ALL" | ApprovalStatus, page: number) {
+  const params = new URLSearchParams({ query, role, status, approvalStatus, page: String(page) })
   return `/super-admin/users?${params.toString()}`
 }

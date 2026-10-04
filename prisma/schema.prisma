@@ -21,6 +21,17 @@ enum ApprovalStatus {
   SUSPENDED
 }
 
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  TERMINATED
+}
+
+enum SuspensionType {
+  TEMPORARY
+  INDEFINITE
+}
+
 enum Difficulty {
   BEGINNER
   INTERMEDIATE
@@ -120,6 +131,13 @@ model User {
   passwordHash String
   displayName  String?
   isActive     Boolean   @default(true)
+  accountStatus             AccountStatus  @default(ACTIVE)
+  suspensionType            SuspensionType?
+  suspensionEndsAt          DateTime?
+  suspensionReason          String?
+  terminationReason         String?
+  lastAccountStatusUpdatedAt DateTime?
+  sessionVersion            Int            @default(0)
   roleId       String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
