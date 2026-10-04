@@ -136,6 +136,20 @@ describe('PermissionService', () => {
     await expect(requireApprovedRole('ADMIN')).resolves.toMatchObject({ user: { role: 'SUPER_ADMIN' } })
   })
 
+  it('allows an expired temporary suspension through the approved-role guard', async () => {
+    getServerSessionMock.mockResolvedValue({ user: { id: 'super-user', role: 'SUPER_ADMIN' } })
+    findByIdMock.mockResolvedValue({
+      id: 'super-user',
+      isActive: false,
+      accountStatus: 'SUSPENDED',
+      suspensionType: 'TEMPORARY',
+      suspensionEndsAt: new Date(Date.now() - 60_000),
+      role: { name: 'SUPER_ADMIN' },
+    })
+
+    await expect(requireApprovedRole('SUPER_ADMIN')).resolves.toMatchObject({ user: { role: 'SUPER_ADMIN' } })
+  })
+
   it('rejects STUDENT from the privileged admin approval path', async () => {
     getServerSessionMock.mockResolvedValue({ user: { id: 'student-user', role: 'STUDENT' } })
     findByIdMock.mockResolvedValue({ id: 'student-user', isActive: true, role: { name: 'STUDENT' } })

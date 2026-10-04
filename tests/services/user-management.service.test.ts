@@ -11,6 +11,11 @@ describe('user management service', () => {
     expect(normalized.status).toBeUndefined();
   });
 
+  it('normalizes approval status filters', () => {
+    expect(normalizeUserManagementFilters({ approvalStatus: 'PENDING' }).approvalStatus).toBe('PENDING');
+    expect(normalizeUserManagementFilters({ approvalStatus: 'ALL' }).approvalStatus).toBeUndefined();
+  });
+
   it('maps booleans to the expected admin UI status labels', () => {
     expect(toUserManagementStatus(true)).toBe('ACTIVE');
     expect(toUserManagementStatus(false)).toBe('SUSPENDED');

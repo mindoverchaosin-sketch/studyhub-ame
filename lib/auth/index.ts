@@ -7,6 +7,7 @@ import { userRepository } from '@/server/repositories/user.repository'
 import { roleRepository } from '@/server/repositories/role.repository'
 import { auditLogService } from '@/server/services/audit-log.service'
 import { getPermissionMatrix, normalizeRoleName, type PermissionName } from '@/server/services/authorization.service'
+import { getAccountStatus } from '@/server/services/account-status.service'
 import type { Session, User } from 'next-auth'
 import type { JWT } from 'next-auth/jwt'
 
@@ -20,7 +21,7 @@ export type AuthSession = Session & {
 }
 
 type AuthUser = User & { role?: UserRole | string }
-type AuthSessionUser = Session['user'] & { id?: string; role?: UserRole }
+type AuthSessionUser = Session['user'] & { id?: string; role?: UserRole; sessionVersion?: number }
 
 const VALID_ROLES = new Set<UserRole>(['STUDENT', 'ADMIN', 'INSTRUCTOR', 'CONTENT_EDITOR', 'SUPER_ADMIN'])
 
@@ -78,8 +79,8 @@ export class UnexpectedError extends AppError {
   }
 }
 
-async function getApprovedStatusForRole(user: { isActive?: boolean | null; role?: { name?: string | null } | null; adminProfile?: { status?: string | null } | null; instructorProfile?: { status?: string | null } | null }, role: UserRole): Promise<boolean> {
-  if (!user.isActive) {
+async function getApprovedStatusForRole(user: { isActive?: boolean | null; accountStatus?: string | null; suspensionType?: string | null; suspensionEndsAt?: Date | string | null; role?: { name?: string | null } | null; adminProfile?: { status?: string | null } | null; instructorProfile?: { status?: string | null } | null }, role: UserRole): Promise<boolean> {
+  if (getAccountStatus(user) !== 'ACTIVE') {
     return false
   }
 
@@ -113,7 +114,16 @@ async function getValidatedSession(): Promise<AuthSession | null> {
 
   const dbUser = await userRepository.findById(session.user.id)
 
-  if (!dbUser || !dbUser.isActive) {
+  if (!dbUser) {
+    return null
+  }
+
+  if (getAccountStatus(dbUser) !== 'ACTIVE') {
+    return null
+  }
+
+  const sessionVersion = Number((session.user as AuthSessionUser).sessionVersion ?? 0)
+  if (Number(dbUser.sessionVersion ?? 0) !== sessionVersion) {
     return null
   }
 
@@ -198,7 +208,7 @@ export async function requireApprovedRole(role: UserRole): Promise<AuthSession> 
 
   const dbUser = await userRepository.findById(session.user.id as string)
 
-  if (!dbUser || !dbUser.isActive) {
+  if (!dbUser || getAccountStatus(dbUser) !== 'ACTIVE') {
     throw new ForbiddenError(`${role} account is inactive.`)
   }
 
@@ -208,14 +218,6 @@ export async function requireApprovedRole(role: UserRole): Promise<AuthSession> 
 
   if (session.user.role === 'INSTRUCTOR' && dbUser.instructorProfile?.status !== 'APPROVED') {
     throw new ForbiddenError('Instructor access is pending approval or suspended.')
-  }
-
-  if (role === 'CONTENT_EDITOR' && !dbUser.isActive) {
-    throw new ForbiddenError('Content editor account is inactive.')
-  }
-
-  if (role === 'SUPER_ADMIN' && !dbUser.isActive) {
-    throw new ForbiddenError('Super admin account is inactive.')
   }
 
   return session
@@ -292,7 +294,11 @@ export const authOptions: NextAuthOptions = {
 
         const user = await getUserByEmail(email)
 
-        if (!user || !user.isActive || !user.passwordHash) {
+        if (!user || !user.passwordHash) {
+          return null
+        }
+
+        if (getAccountStatus(user) !== 'ACTIVE') {
           return null
         }
 
@@ -317,6 +323,8 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id
         token.role = (user.role as UserRole) ?? 'STUDENT'
+        const dbUser = await userRepository.findById(user.id as string)
+        token.sessionVersion = Number(dbUser?.sessionVersion ?? 0)
       }
 
       return token
@@ -328,6 +336,7 @@ export const authOptions: NextAuthOptions = {
 
         sessionUser.id = token.id as string
         sessionUser.role = token.role as UserRole
+        sessionUser.sessionVersion = Number(token.sessionVersion ?? 0)
       }
 
       return session

@@ -1,10 +1,11 @@
 import prisma from '@/lib/prisma'
-import type { Prisma, RoleName } from '@prisma/client'
+import type { ApprovalStatus, Prisma, RoleName } from '@prisma/client'
 
 type AdminUserQueryParams = {
   search?: string
   role?: RoleName | 'ALL'
-  status?: 'ACTIVE' | 'SUSPENDED'
+  status?: 'ACTIVE' | 'SUSPENDED' | 'TERMINATED'
+  approvalStatus?: ApprovalStatus
   skip?: number
   take?: number
 }
@@ -16,6 +17,46 @@ type StudentAdminQueryParams = {
   skip?: number
   take?: number
   sortBy?: 'newest' | 'lastActive' | 'name'
+}
+
+export function effectiveAccountStatusWhere(status?: AdminUserQueryParams['status']): Prisma.UserWhereInput | undefined {
+  if (!status) return undefined
+  if (status === 'TERMINATED') return { accountStatus: 'TERMINATED' }
+
+  const notTerminated: Prisma.UserWhereInput = { accountStatus: { not: 'TERMINATED' } }
+  const expiredTemporarySuspension: Prisma.UserWhereInput = {
+    suspensionType: 'TEMPORARY',
+    suspensionEndsAt: { lte: new Date() },
+  }
+
+  if (status === 'ACTIVE') {
+    return {
+      AND: [
+        notTerminated,
+        {
+          OR: [
+            { AND: [{ isActive: true }, { accountStatus: { not: 'SUSPENDED' } }] },
+            expiredTemporarySuspension,
+          ],
+        },
+      ],
+    }
+  }
+
+  return {
+    AND: [
+      notTerminated,
+      { OR: [{ isActive: false }, { accountStatus: 'SUSPENDED' }] },
+      {
+        OR: [
+          { suspensionType: null },
+          { suspensionType: { not: 'TEMPORARY' } },
+          { suspensionEndsAt: null },
+          { suspensionEndsAt: { gt: new Date() } },
+        ],
+      },
+    ],
+  }
 }
 
 export class UserRepository {
@@ -47,6 +88,15 @@ export class UserRepository {
       },
       include: { studentProfile: true, adminProfile: true },
       orderBy: { createdAt: 'desc' },
+    })
+  }
+
+  async revokeAllSessionsForUser(userId: string) {
+    return prisma.$transaction(async (tx) => {
+      const deleted = await tx.session.deleteMany({ where: { userId } })
+      const updated = await tx.user.update({ where: { id: userId }, data: { sessionVersion: { increment: 1 } } })
+
+      return { deletedCount: deleted.count, sessionVersion: updated.sessionVersion }
     })
   }
 
@@ -146,6 +196,18 @@ export class UserRepository {
   }
 
   async findManyForAdmin(params: AdminUserQueryParams = {}) {
+    const andFilters: Prisma.UserWhereInput[] = []
+    const effectiveStatus = effectiveAccountStatusWhere(params.status)
+    if (effectiveStatus) andFilters.push(effectiveStatus)
+    if (params.approvalStatus) {
+      andFilters.push({
+        OR: [
+          { adminProfile: { is: { status: params.approvalStatus } } },
+          { instructorProfile: { is: { status: params.approvalStatus } } },
+        ],
+      })
+    }
+
     const where: Prisma.UserWhereInput = {
       ...(params.search ? {
         OR: [
@@ -154,12 +216,12 @@ export class UserRepository {
         ],
       } : {}),
       ...(params.role && params.role !== 'ALL' ? { role: { is: { name: params.role } } } : {}),
-      ...(params.status ? { isActive: params.status === 'ACTIVE' } : {}),
+      ...(andFilters.length ? { AND: andFilters } : {}),
     }
 
     return prisma.user.findMany({
       where,
-      include: { role: true },
+      include: { role: true, adminProfile: true, instructorProfile: true },
       skip: params.skip ?? 0,
       take: params.take ?? 20,
       orderBy: { createdAt: 'desc' },
@@ -167,6 +229,18 @@ export class UserRepository {
   }
 
   async countManyForAdmin(params: AdminUserQueryParams = {}) {
+    const andFilters: Prisma.UserWhereInput[] = []
+    const effectiveStatus = effectiveAccountStatusWhere(params.status)
+    if (effectiveStatus) andFilters.push(effectiveStatus)
+    if (params.approvalStatus) {
+      andFilters.push({
+        OR: [
+          { adminProfile: { is: { status: params.approvalStatus } } },
+          { instructorProfile: { is: { status: params.approvalStatus } } },
+        ],
+      })
+    }
+
     const where: Prisma.UserWhereInput = {
       ...(params.search ? {
         OR: [
@@ -175,7 +249,7 @@ export class UserRepository {
         ],
       } : {}),
       ...(params.role && params.role !== 'ALL' ? { role: { is: { name: params.role } } } : {}),
-      ...(params.status ? { isActive: params.status === 'ACTIVE' } : {}),
+      ...(andFilters.length ? { AND: andFilters } : {}),
     }
 
     return prisma.user.count({ where })
