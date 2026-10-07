@@ -69,25 +69,25 @@ export class ModuleManagementService {
   }
 
   async getModuleDetail(moduleId: string): Promise<ModuleDetailDTO> {
-    const module = await moduleRepository.getModuleDetail(moduleId)
-    if (!module) throw new Error('Module not found')
+    const moduleDetail = await moduleRepository.getModuleDetail(moduleId)
+    if (!moduleDetail) throw new NotFoundError('Module not found')
 
     return {
-      id: module.id,
-      title: module.title,
-      slug: module.slug,
-      moduleNumber: module.moduleNumber,
-      description: module.description ?? '',
-      examType: toExamType(module.course?.title),
-      status: module.status,
-      difficulty: module.difficulty,
-      estimatedHours: module.estimatedHours,
-      displayOrder: module.displayOrder,
-      updatedAt: module.updatedAt.toISOString(),
-      createdAt: module.createdAt.toISOString(),
-      publishedAt: module.publishedAt?.toISOString() ?? null,
-      lessons: (module.lessons ?? []).map((lesson: { id: string; title: string; displayOrder: number; status: string }) => ({ id: lesson.id, title: lesson.title, displayOrder: lesson.displayOrder, status: lesson.status })),
-      resources: (module.studyMaterials ?? []).map((resource: { id: string; title: string; materialType: string; status: string; displayOrder?: number | null }) => ({ id: resource.id, title: resource.title, type: resource.materialType, status: resource.status, displayOrder: resource.displayOrder ?? 0 })),
+      id: moduleDetail.id,
+      title: moduleDetail.title,
+      slug: moduleDetail.slug,
+      moduleNumber: moduleDetail.moduleNumber,
+      description: moduleDetail.description ?? '',
+      examType: toExamType(moduleDetail.course?.title),
+      status: moduleDetail.status,
+      difficulty: moduleDetail.difficulty,
+      estimatedHours: moduleDetail.estimatedHours,
+      displayOrder: moduleDetail.displayOrder,
+      updatedAt: moduleDetail.updatedAt.toISOString(),
+      createdAt: moduleDetail.createdAt.toISOString(),
+      publishedAt: moduleDetail.publishedAt?.toISOString() ?? null,
+      lessons: (moduleDetail.lessons ?? []).map((lesson: { id: string; title: string; displayOrder: number; status: string }) => ({ id: lesson.id, title: lesson.title, displayOrder: lesson.displayOrder, status: lesson.status })),
+      resources: (moduleDetail.studyMaterials ?? []).map((resource: { id: string; title: string; materialType: string; status: string; displayOrder?: number | null }) => ({ id: resource.id, title: resource.title, type: resource.materialType, status: resource.status, displayOrder: resource.displayOrder ?? 0 })),
     }
   }
 
@@ -103,14 +103,14 @@ export class ModuleManagementService {
       estimatedHours: input.estimatedHours ?? 0,
       displayOrder: input.displayOrder ?? 0,
       isPremium: input.isPremium ?? false,
-    } as any)
+    })
 
     return { id: created.id, status: created.status }
   }
 
   async updateModule(moduleId: string, input: { title?: string; slug?: string; moduleNumber?: string; description?: string; status?: string; difficulty?: string; estimatedHours?: number; displayOrder?: number; isPremium?: boolean }) {
-    const module = await moduleRepository.findById(moduleId)
-    if (!module) throw new NotFoundError('Module not found')
+    const existingModule = await moduleRepository.findById(moduleId)
+    if (!existingModule) throw new NotFoundError('Module not found')
 
     const updated = await moduleRepository.update(moduleId, {
       ...(input.title ? { title: input.title } : {}),
@@ -122,22 +122,22 @@ export class ModuleManagementService {
       ...(input.estimatedHours !== undefined ? { estimatedHours: input.estimatedHours } : {}),
       ...(input.displayOrder !== undefined ? { displayOrder: input.displayOrder } : {}),
       ...(input.isPremium !== undefined ? { isPremium: input.isPremium } : {}),
-    } as any)
+    })
 
     return { id: updated.id, status: updated.status }
   }
 
   async archiveModule(moduleId: string): Promise<ModuleManagementActionResult> {
-    const module = await moduleRepository.findById(moduleId)
-    if (!module) throw new NotFoundError('Module not found')
+    const existingModule = await moduleRepository.findById(moduleId)
+    if (!existingModule) throw new NotFoundError('Module not found')
 
-    const updated = await moduleRepository.update(moduleId, { status: 'ARCHIVED' } as any)
+    const updated = await moduleRepository.update(moduleId, { status: 'ARCHIVED' })
     return { id: updated.id, status: updated.status }
   }
 
   async unarchiveModule(moduleId: string): Promise<ModuleManagementActionResult> {
-    const module = await moduleRepository.findById(moduleId)
-    if (!module) throw new NotFoundError('Module not found')
+    const existingModule = await moduleRepository.findById(moduleId)
+    if (!existingModule) throw new NotFoundError('Module not found')
 
     const updated = await moduleRepository.setPublishState(moduleId, 'DRAFT')
     return { id: updated.id, status: updated.status }

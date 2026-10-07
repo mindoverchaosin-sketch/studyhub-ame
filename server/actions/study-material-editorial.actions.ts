@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { requirePermission } from '@/auth'
 import { studyMaterialDocumentService } from '@/server/services/study-material-document.service'
 import type { StudyMaterialDocument } from '@/lib/study-material/document-schema'
@@ -14,27 +15,49 @@ export async function saveStudyMaterialDraftAction(resourceId: string, document:
   return studyMaterialDocumentService.saveDraft(resourceId, document)
 }
 
-export async function submitStudyMaterialForReviewAction(resourceId: string) {
+function revalidateStudyMaterialPaths(moduleId?: string) {
+  revalidatePath('/admin/materials')
+  if (moduleId) revalidatePath(`/admin/modules/${moduleId}`)
+}
+
+export async function submitStudyMaterialForReviewAction(resourceId: string, moduleId?: string) {
   await requirePermission('manageResources')
-  return studyMaterialDocumentService.submitForReview(resourceId)
+  const result = await studyMaterialDocumentService.submitForReview(resourceId)
+  revalidateStudyMaterialPaths(moduleId)
+  return result
 }
 
-export async function approveStudyMaterialAction(resourceId: string) {
+export async function approveStudyMaterialAction(resourceId: string, moduleId?: string) {
   await requirePermission('publishContent')
-  return studyMaterialDocumentService.approve(resourceId)
+  const result = await studyMaterialDocumentService.approve(resourceId)
+  revalidateStudyMaterialPaths(moduleId)
+  return result
 }
 
-export async function publishStudyMaterialAction(resourceId: string) {
+export async function rejectStudyMaterialAction(resourceId: string, moduleId?: string, reason?: string) {
   await requirePermission('publishContent')
-  return studyMaterialDocumentService.publish(resourceId)
+  const result = await studyMaterialDocumentService.reject(resourceId, reason)
+  revalidateStudyMaterialPaths(moduleId)
+  return result
 }
 
-export async function archiveStudyMaterialEditorialAction(resourceId: string) {
+export async function publishStudyMaterialAction(resourceId: string, moduleId?: string) {
   await requirePermission('publishContent')
-  return studyMaterialDocumentService.archive(resourceId)
+  const result = await studyMaterialDocumentService.publish(resourceId)
+  revalidateStudyMaterialPaths(moduleId)
+  return result
 }
 
-export async function unpublishStudyMaterialEditorialAction(resourceId: string) {
+export async function archiveStudyMaterialEditorialAction(resourceId: string, moduleId?: string) {
   await requirePermission('publishContent')
-  return studyMaterialDocumentService.unpublish(resourceId)
+  const result = await studyMaterialDocumentService.archive(resourceId)
+  revalidateStudyMaterialPaths(moduleId)
+  return result
+}
+
+export async function unpublishStudyMaterialEditorialAction(resourceId: string, moduleId?: string) {
+  await requirePermission('publishContent')
+  const result = await studyMaterialDocumentService.unpublish(resourceId)
+  revalidateStudyMaterialPaths(moduleId)
+  return result
 }

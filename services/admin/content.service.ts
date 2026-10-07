@@ -58,8 +58,8 @@ export class AdminContentService {
   updateQuestion(id: string, changes: Partial<AdminQuestion>) { return { id, ...changes } as AdminQuestion; }
   deleteQuestion(id: string) { return !!id; }
 
-  async listMockTests() {
-    const response = await listAdminMockTests();
+  async listMockTests(filters: { moduleId?: string | 'UNASSIGNED'; pageSize?: number } = {}) {
+    const response = await listAdminMockTests(filters);
     return response.success ? (response.data.items as AdminMockTest[]) : [];
   }
   async createMockTest(input: Partial<AdminMockTest>) {

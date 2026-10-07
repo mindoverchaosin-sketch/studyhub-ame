@@ -38,7 +38,7 @@ export async function setAdminLessonPublishState(id: string, published: boolean)
   return adminCmsService.setLessonPublishState(id, published, session.user.id);
 }
 
-export async function listAdminMockTests(input: { search?: string; courseId?: string; page?: number; pageSize?: number; sortBy?: 'updated' | 'title' | 'created' } = {}) {
+export async function listAdminMockTests(input: { search?: string; courseId?: string; moduleId?: string | 'UNASSIGNED'; page?: number; pageSize?: number; sortBy?: 'updated' | 'title' | 'created' } = {}) {
   await requirePermission('manageModules');
   return adminCmsService.listMockTests(input);
 }

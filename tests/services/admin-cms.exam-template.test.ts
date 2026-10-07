@@ -47,6 +47,7 @@ function mockAdminCms(template = makeTemplate()) {
     listTemplates: vi.fn(async () => [template]),
     countTemplates: vi.fn(async () => 1),
     getTemplate: vi.fn(async () => template),
+    countAttemptsForTemplate: vi.fn(async () => 0),
     createTemplate: vi.fn(async (data: Partial<TemplateRecord>) => ({ ...template, ...data, id: 'template-created' })),
     updateTemplate: vi.fn(async (id: string, data: Partial<TemplateRecord>) => ({ ...template, ...data, id })),
     deleteTemplate: vi.fn(async () => template),
@@ -63,12 +64,16 @@ function mockAdminCms(template = makeTemplate()) {
     setPublishState: vi.fn(),
   }
   const auditRepository = { recordEvent: vi.fn(async () => undefined) }
+  const moduleRepository = {
+    findById: vi.fn(async (id: string) => ({ id, title: 'Digital Techniques', deletedAt: null })),
+  }
 
   vi.doMock('@/server/repositories/exam-template.repository', () => ({ examTemplateRepository }))
   vi.doMock('@/server/repositories/mock-test.repository', () => ({ mockTestRepository }))
   vi.doMock('@/server/repositories/audit.repository', () => ({ auditRepository }))
+  vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository }))
 
-  return { examTemplateRepository, mockTestRepository, auditRepository }
+  return { examTemplateRepository, mockTestRepository, auditRepository, moduleRepository }
 }
 
 describe('admin CMS exam-template ownership', () => {
@@ -95,6 +100,7 @@ describe('admin CMS exam-template ownership', () => {
 
     const created = await service.createMockTest({
       title: 'New exam',
+      moduleId: 'module-1',
       durationMinutes: 45,
       passingPercentage: 65,
       questionCount: 15,
@@ -111,6 +117,7 @@ describe('admin CMS exam-template ownership', () => {
       shuffleQuestions: false,
       active: true,
       isPremium: true,
+      moduleId: 'module-1',
     }))
 
     const updated = await service.updateMockTest('template-1', {
@@ -135,7 +142,7 @@ describe('admin CMS exam-template ownership', () => {
     expect(mockTestRepository.update).not.toHaveBeenCalled()
   })
 
-  it('duplicates all template configuration and activates or deletes templates', async () => {
+  it('duplicates all template configuration, activates, and deletes unused templates', async () => {
     const { examTemplateRepository, mockTestRepository, auditRepository } = mockAdminCms()
     const service = await import('@/server/services/admin-cms.service')
 
@@ -164,5 +171,33 @@ describe('admin CMS exam-template ownership', () => {
     expect(mockTestRepository.duplicate).not.toHaveBeenCalled()
     expect(mockTestRepository.setPublishState).not.toHaveBeenCalled()
     expect(mockTestRepository.delete).not.toHaveBeenCalled()
+  })
+
+  it('preserves an exam template when student attempts reference it', async () => {
+    const { examTemplateRepository } = mockAdminCms()
+    examTemplateRepository.countAttemptsForTemplate.mockResolvedValue(1)
+    const service = await import('@/server/services/admin-cms.service')
+
+    const result = await service.deleteMockTest('template-1', 'admin-1')
+
+    expect(result).toMatchObject({
+      success: false,
+      error: { code: 'VALIDATION_ERROR' },
+    })
+    expect(examTemplateRepository.deleteTemplate).not.toHaveBeenCalled()
+  })
+
+  it('preserves the module context of templates with student attempts', async () => {
+    const { examTemplateRepository } = mockAdminCms(makeTemplate({ moduleId: 'module-1' }))
+    examTemplateRepository.countAttemptsForTemplate.mockResolvedValue(1)
+    const service = await import('@/server/services/admin-cms.service')
+
+    const result = await service.updateMockTest('template-1', { moduleId: 'module-2' }, 'admin-1')
+
+    expect(result).toMatchObject({
+      success: false,
+      error: { code: 'VALIDATION_ERROR' },
+    })
+    expect(examTemplateRepository.updateTemplate).not.toHaveBeenCalled()
   })
 })
