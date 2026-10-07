@@ -9,7 +9,7 @@ interface ModuleDirectoryPanelProps {
   status: string;
   sortBy: string;
   page: number;
-  basePath?: string;
+  basePath: "/admin/modules" | "/content-editor/modules";
 }
 
 function formatDate(value: string) {
@@ -17,7 +17,7 @@ function formatDate(value: string) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function buildHref(current: string, options: Record<string, string | number | undefined>, basePath = "/admin/modules") {
+function buildHref(current: string, options: Record<string, string | number | undefined>, basePath: ModuleDirectoryPanelProps["basePath"]) {
   const params = new URLSearchParams(current);
 
   Object.entries(options).forEach(([key, value]) => {
@@ -46,7 +46,7 @@ function statusTone(status: string) {
   }
 }
 
-export default function ModuleDirectoryPanel({ directory, query, examType, status, sortBy, page, basePath = "/admin/modules" }: ModuleDirectoryPanelProps) {
+export default function ModuleDirectoryPanel({ directory, query, examType, status, sortBy, page, basePath }: ModuleDirectoryPanelProps) {
   const baseQuery = new URLSearchParams();
   if (query) baseQuery.set("query", query);
   if (examType && examType !== "ALL") baseQuery.set("examType", examType);
