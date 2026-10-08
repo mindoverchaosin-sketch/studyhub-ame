@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   createQuiz: vi.fn(),
   updateQuiz: vi.fn(),
   setStatus: vi.fn(),
+  setCanonicalQuiz: vi.fn(),
   activeRole: { value: 'ADMIN' as AppRole },
 }))
 
@@ -16,6 +17,11 @@ describe('Quiz management action authorization', () => {
     mocks.createQuiz.mockResolvedValue({ id: 'quiz-1', moduleId: 'module-1' })
     mocks.updateQuiz.mockResolvedValue({ id: 'quiz-1', moduleId: 'module-1' })
     mocks.setStatus.mockResolvedValue({ id: 'quiz-1', moduleId: 'module-1' })
+    mocks.setCanonicalQuiz.mockResolvedValue({
+      id: 'module-1',
+      previousCanonicalQuizId: null,
+      canonicalQuizId: 'quiz-1',
+    })
 
     vi.doMock('@/auth', () => ({
       requirePermission: vi.fn(async (permission: string) => {
@@ -33,6 +39,7 @@ describe('Quiz management action authorization', () => {
         create: mocks.createQuiz,
         update: mocks.updateQuiz,
         setStatus: mocks.setStatus,
+        setCanonicalQuiz: mocks.setCanonicalQuiz,
       },
     }))
     vi.doMock('next/cache', () => ({ revalidatePath: vi.fn() }))
@@ -72,4 +79,26 @@ describe('Quiz management action authorization', () => {
     await expect(setAdminQuizStatus('quiz-1', 'PUBLISHED')).rejects.toThrow('Permission denied')
     expect(mocks.setStatus).not.toHaveBeenCalled()
   })
+
+  it('denies Instructor access to the canonical quiz action', async () => {
+    mocks.activeRole.value = 'INSTRUCTOR'
+    const { setCanonicalModuleQuiz } = await import('@/server/actions/quiz-management.actions')
+
+    await expect(setCanonicalModuleQuiz('module-1', 'quiz-1')).rejects.toThrow('Permission denied')
+    expect(mocks.setCanonicalQuiz).not.toHaveBeenCalled()
+  })
+
+  it.each(['SUPER_ADMIN', 'ADMIN', 'CONTENT_EDITOR'] as const)(
+    'allows %s to invoke the canonical quiz action',
+    async (role) => {
+      mocks.activeRole.value = role
+      const { setCanonicalModuleQuiz } = await import('@/server/actions/quiz-management.actions')
+
+      await expect(setCanonicalModuleQuiz('module-1', 'quiz-1')).resolves.toMatchObject({
+        id: 'module-1',
+        canonicalQuizId: 'quiz-1',
+      })
+      expect(mocks.setCanonicalQuiz).toHaveBeenCalledWith('module-1', 'quiz-1')
+    },
+  )
 })

@@ -9,7 +9,7 @@ import { getModuleBySlug, getModuleWithSections } from "@/server/services/module
 import { getCourseById } from "@/server/services/course.service";
 import { getStudentProgress } from "@/server/services/progress.service";
 import { getResourcesByTopic } from "@/server/services/resource.service";
-import { getQuizByTopic } from "@/server/services/quiz.service";
+import { getCanonicalQuizByModule } from "@/server/services/quiz.service";
 import { contentAccessService } from "@/server/services/content-access.service";
 
 export default async function StudentModuleDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -26,10 +26,11 @@ export default async function StudentModuleDetailPage({ params }: { params: Prom
     redirect(`/student/dashboard/billing?reason=module-access&feature=${access.requiredFeature ?? "premiumModules"}`);
   }
 
-  const [moduleWithSections, course, progressRows] = await Promise.all([
+  const [moduleWithSections, course, progressRows, canonicalQuiz] = await Promise.all([
     getModuleWithSections(moduleItem.id),
     getCourseById(moduleItem.courseId),
     getStudentProgress(session.user.id),
+    getCanonicalQuizByModule(moduleItem.id),
   ]);
 
   if (!moduleWithSections || !course) {
@@ -40,7 +41,6 @@ export default async function StudentModuleDetailPage({ params }: { params: Prom
   const lessons = await Promise.all(moduleWithSections.sections.map(async (lesson) => ({
     lesson,
     resources: await getResourcesByTopic(lesson.id),
-    quiz: await getQuizByTopic(lesson.id),
   })));
 
   return (
@@ -59,7 +59,18 @@ export default async function StudentModuleDetailPage({ params }: { params: Prom
           <Card><p className="text-sm text-slate-500">Resources</p><p className="mt-2 text-3xl font-semibold text-slate-950">{lessons.reduce((count, item) => count + item.resources.length, 0)}</p></Card>
           <Card><p className="text-sm text-slate-500">Access</p><p className="mt-2 text-xl font-semibold text-slate-950">{moduleItem.isPremium ? "Premium" : "Free"}</p></Card>
         </section>
-        {lessons.length > 0 ? <section className="space-y-4">{lessons.map(({ lesson, resources, quiz }) => {
+        {canonicalQuiz ? (
+          <Card className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-700">Module quiz</p>
+              <h2 className="mt-1 text-xl font-semibold text-slate-950">{canonicalQuiz.title}</h2>
+            </div>
+            <Link href={`/student/quiz/${canonicalQuiz.id}`} className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white">
+              Start quiz <FiChevronRight className="h-4 w-4" />
+            </Link>
+          </Card>
+        ) : null}
+        {lessons.length > 0 ? <section className="space-y-4">{lessons.map(({ lesson, resources }) => {
           const progress = progressByTopic.get(lesson.id);
           return <Card key={lesson.id} className="p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -67,7 +78,7 @@ export default async function StudentModuleDetailPage({ params }: { params: Prom
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600">Lesson {lesson.order}</p>
                 <h2 className="mt-2 text-xl font-semibold text-slate-950">{lesson.title}</h2>
                 <p className="mt-2 text-sm leading-7 text-slate-600">{lesson.description ?? "Continue this published lesson."}</p>
-                <p className="mt-3 text-sm text-slate-500">{progress?.status ?? "NOT_STARTED"} · {resources.length} resource(s){quiz ? " · Quiz available" : ""}</p>
+                <p className="mt-3 text-sm text-slate-500">{progress?.status ?? "NOT_STARTED"} · {resources.length} resource(s)</p>
               </div>
               <Link href={`/student/modules/${moduleItem.slug}/lessons/${lesson.slug}`} className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white">Open lesson <FiChevronRight className="h-4 w-4" /></Link>
             </div>

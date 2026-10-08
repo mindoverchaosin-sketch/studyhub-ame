@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma'
-import type { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 
 export class QuizRepository {
   async findForAdmin(params: { moduleId?: string; search?: string; status?: string } = {}) {
@@ -14,7 +14,7 @@ export class QuizRepository {
       where,
       orderBy: [{ updatedAt: 'desc' }, { title: 'asc' }],
       include: {
-        module: { select: { id: true, title: true } },
+        module: { select: { id: true, title: true, canonicalQuizId: true } },
         questionBanks: { select: { id: true, title: true, status: true } },
         _count: { select: { attempts: true } },
       },
@@ -35,6 +35,19 @@ export class QuizRepository {
     return prisma.quiz.findFirst({
       where: { moduleId, status: 'PUBLISHED' },
       include: { questionBanks: true },
+    })
+  }
+
+  async findModuleWithCanonicalQuiz(moduleId: string) {
+    return prisma.module.findUnique({
+      where: { id: moduleId },
+      include: { canonicalQuiz: { include: { questionBanks: true } } },
+    })
+  }
+
+  async transaction<T>(callback: (tx: Prisma.TransactionClient) => Promise<T>) {
+    return prisma.$transaction(callback, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     })
   }
 

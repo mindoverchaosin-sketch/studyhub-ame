@@ -1,15 +1,16 @@
 import { redirect } from 'next/navigation'
 import { requirePermission } from '@/auth'
+import ContentEditorLayout from '@/components/content-editor/ContentEditorLayout'
 import { QuizManagementPanel } from '@/components/admin/quizzes/QuizManagementPanel'
 import { moduleRepository } from '@/server/repositories/module.repository'
 import { questionBankRepository } from '@/server/repositories/question-bank.repository'
 import { quizManagementService } from '@/server/services/quiz-management.service'
 
-export default async function AdminQuizzesPage({ searchParams }: { searchParams: Promise<{ moduleId?: string }> }) {
+export default async function ContentEditorQuizzesPage({ searchParams }: { searchParams: Promise<{ moduleId?: string }> }) {
   try {
     await requirePermission('manageModules')
   } catch {
-    redirect('/login')
+    redirect('/unauthorized?reason=access-denied')
   }
 
   const params = await searchParams
@@ -18,7 +19,6 @@ export default async function AdminQuizzesPage({ searchParams }: { searchParams:
     moduleRepository.findModulesForAdmin({ take: 1000, sortBy: 'title' }),
     questionBankRepository.findForAdmin({ status: 'ALL', take: 1000, sortBy: 'title', sortOrder: 'asc' }),
   ])
-
   const modules = moduleRows.filter((module) => !module.deletedAt).map((module) => ({ id: module.id, title: module.title, canonicalQuizId: module.canonicalQuizId }))
   const questionBanks = bankRows.filter((bank) => !bank.deletedAt).map((bank) => ({
     id: bank.id,
@@ -45,11 +45,13 @@ export default async function AdminQuizzesPage({ searchParams }: { searchParams:
   }))
 
   return (
-    <QuizManagementPanel
-      initialQuizzes={quizzes}
-      modules={modules}
-      questionBanks={questionBanks}
-      initialModuleId={modules.some((module) => module.id === params.moduleId) ? params.moduleId : undefined}
-    />
+    <ContentEditorLayout>
+      <QuizManagementPanel
+        initialQuizzes={quizzes}
+        modules={modules}
+        questionBanks={questionBanks}
+        initialModuleId={modules.some((module) => module.id === params.moduleId) ? params.moduleId : undefined}
+      />
+    </ContentEditorLayout>
   )
 }
