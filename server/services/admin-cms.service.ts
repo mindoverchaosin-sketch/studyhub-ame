@@ -56,6 +56,7 @@ function toAdminMockTest(entity: ExamTemplateEntity | ExamTemplateDTO): AdminMoc
   return {
     id: entity.id,
     title: entity.name,
+    moduleId: entity.moduleId ?? null,
     durationMinutes: entity.durationMinutes,
     passingPercentage: entity.passingPercentage,
     questionCount: entity.questionCount,
@@ -218,13 +219,13 @@ export async function setLessonPublishState(id: string, published: boolean, acto
   }
 }
 
-export async function listMockTests(params: { search?: string; courseId?: string; page?: number; pageSize?: number; sortBy?: 'updated' | 'title' | 'created' } = {}) {
+export async function listMockTests(params: { search?: string; courseId?: string; moduleId?: string | 'UNASSIGNED'; page?: number; pageSize?: number; sortBy?: 'updated' | 'title' | 'created' } = {}) {
   try {
     const page = params.page ?? 1;
     const pageSize = params.pageSize ?? 20;
     const [rows, total] = await Promise.all([
-      examTemplateRepository.listTemplates({ search: params.search, courseId: params.courseId, sortBy: params.sortBy, skip: (page - 1) * pageSize, take: pageSize }),
-      examTemplateRepository.countTemplates({ search: params.search, courseId: params.courseId }),
+      examTemplateRepository.listTemplates({ search: params.search, courseId: params.courseId, moduleId: params.moduleId, sortBy: params.sortBy, skip: (page - 1) * pageSize, take: pageSize }),
+      examTemplateRepository.countTemplates({ search: params.search, courseId: params.courseId, moduleId: params.moduleId }),
     ]);
     return buildSuccess({ items: rows.map(toAdminMockTest), total, page, pageSize });
   } catch (error) {
@@ -235,6 +236,9 @@ export async function listMockTests(params: { search?: string; courseId?: string
 export async function createMockTest(input: Partial<AdminMockTest>, actorUserId: string) {
   try {
     if (!input.title?.trim()) throw new ValidationError('Mock test title is required.');
+    if (!input.moduleId?.trim()) throw new ValidationError('Select a module for this mock test.');
+    const selectedModule = await moduleRepository.findById(input.moduleId);
+    if (!selectedModule || selectedModule.deletedAt) throw new ValidationError('Selected module is unavailable.');
     if ((input.durationMinutes ?? 0) <= 0) throw new ValidationError('Duration must be greater than zero.');
     if ((input.passingPercentage ?? 0) < 1 || (input.passingPercentage ?? 0) > 100) throw new ValidationError('Passing percentage must be between 1 and 100.');
 
@@ -247,6 +251,7 @@ export async function createMockTest(input: Partial<AdminMockTest>, actorUserId:
       shuffleQuestions: input.randomized ?? false,
       active: input.status === 'Published',
       isPremium: input.isPremium ?? false,
+      moduleId: input.moduleId,
     });
 
     await auditRepository.recordEvent({ actorUserId, action: 'CREATE', targetType: 'EXAM_TEMPLATE', targetId: created.id, metadata: { title: created.name } });
@@ -263,6 +268,14 @@ export async function updateMockTest(id: string, input: Partial<AdminMockTest>, 
   try {
     const existing = await examTemplateRepository.getTemplate(id);
     if (!existing) throw new NotFoundError('Mock test not found.');
+    if (input.moduleId !== undefined && input.moduleId !== existing.moduleId) {
+      const attemptCount = await examTemplateRepository.countAttemptsForTemplate(id);
+      if (attemptCount > 0) throw new ValidationError('Module assignment cannot be changed after student attempts exist.');
+    }
+    if (input.moduleId) {
+      const selectedModule = await moduleRepository.findById(input.moduleId);
+      if (!selectedModule || selectedModule.deletedAt) throw new ValidationError('Selected module is unavailable.');
+    }
 
     const updated = await examTemplateService.updateTemplate(id, {
       ...(input.title?.trim() ? { name: input.title.trim() } : {}),
@@ -272,6 +285,7 @@ export async function updateMockTest(id: string, input: Partial<AdminMockTest>, 
       ...(typeof input.randomized === 'boolean' ? { shuffleQuestions: input.randomized } : {}),
       ...(input.status ? { active: input.status === 'Published' } : {}),
       ...(typeof input.isPremium === 'boolean' ? { isPremium: input.isPremium } : {}),
+      ...(input.moduleId !== undefined ? { moduleId: input.moduleId } : {}),
     });
 
     await auditRepository.recordEvent({ actorUserId, action: 'UPDATE', targetType: 'EXAM_TEMPLATE', targetId: updated.id, metadata: { title: updated.name } });
@@ -288,6 +302,8 @@ export async function deleteMockTest(id: string, actorUserId: string) {
   try {
     const existing = await examTemplateRepository.getTemplate(id);
     if (!existing) throw new NotFoundError('Mock test not found.');
+    const attemptCount = await examTemplateRepository.countAttemptsForTemplate(id);
+    if (attemptCount > 0) throw new ValidationError('This exam template has student attempts and cannot be deleted. Unpublish it to preserve history.');
     await examTemplateService.deleteTemplate(id);
     await auditRepository.recordEvent({ actorUserId, action: 'DELETE', targetType: 'EXAM_TEMPLATE', targetId: id, metadata: { title: existing.name } });
     return buildSuccess({ deleted: true });

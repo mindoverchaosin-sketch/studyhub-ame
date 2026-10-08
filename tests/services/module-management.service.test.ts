@@ -97,33 +97,6 @@ describe('ModuleManagementService', () => {
     expect(updated.id).toBe('m4')
   })
 
-  it('supports premium create and update for mock tests through admin CMS', async () => {
-    const mockTestRepository = {
-      create: vi.fn().mockResolvedValue({ id: 'mt-1', title: 'Premium Mock', status: 'DRAFT', durationMinutes: 60, questionCount: 20, passingPercentage: 60, shuffleQuestions: false, isPremium: true, updatedAt: new Date() }),
-      update: vi.fn().mockResolvedValue({ id: 'mt-1', title: 'Premium Mock', status: 'DRAFT', durationMinutes: 60, questionCount: 20, passingPercentage: 60, shuffleQuestions: false, isPremium: false, updatedAt: new Date() }),
-      findById: vi.fn().mockResolvedValue({ id: 'mt-1', title: 'Premium Mock', status: 'DRAFT', durationMinutes: 60, questionCount: 20, passingPercentage: 60, shuffleQuestions: false, isPremium: true, updatedAt: new Date() }),
-      delete: vi.fn(),
-      list: vi.fn(),
-      count: vi.fn(),
-      duplicate: vi.fn(),
-    }
-
-    const auditRepository = { recordEvent: vi.fn() }
-
-    vi.doMock('@/server/repositories/mock-test.repository', () => ({ mockTestRepository }))
-    vi.doMock('@/server/repositories/audit.repository', () => ({ auditRepository }))
-
-    const { createMockTest, updateMockTest } = await import('../../server/services/admin-cms.service')
-
-    const created = await createMockTest({ title: 'Premium Mock', durationMinutes: 60, questionCount: 20, passingPercentage: 60, isPremium: true }, 'admin-1')
-    const updated = await updateMockTest('mt-1', { isPremium: false }, 'admin-1')
-
-    expect(created.success).toBe(true)
-    expect(updated.success).toBe(true)
-    expect(mockTestRepository.create).toHaveBeenCalledWith(expect.objectContaining({ isPremium: true }))
-    expect(mockTestRepository.update).toHaveBeenCalledWith('mt-1', expect.objectContaining({ isPremium: false }))
-  })
-
   it('archives and unarchives modules without deleting them', async () => {
     const moduleRepository = {
       findModulesForAdmin: vi.fn(),

@@ -2,7 +2,8 @@ import prisma from '@/lib/prisma'
 import type { Prisma, StudyMaterialType } from '@prisma/client'
 
 export type ResourceAdminFilters = {
-  moduleId?: string
+  moduleId?: string | 'UNASSIGNED'
+  courseId?: string
   search?: string
   type?: StudyMaterialType | 'ALL'
   status?: 'DRAFT' | 'IN_REVIEW' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' | 'ALL'
@@ -25,7 +26,12 @@ export class ResourceRepository {
 
   async findForAdmin(filters: ResourceAdminFilters = {}) {
     const where: Prisma.StudyMaterialWhereInput = {
-      ...(filters.moduleId ? { moduleId: filters.moduleId } : {}),
+      ...(filters.moduleId === 'UNASSIGNED'
+        ? { moduleId: null }
+        : filters.moduleId
+          ? { moduleId: filters.moduleId }
+          : {}),
+      ...(filters.courseId ? { module: { courseId: filters.courseId } } : {}),
       ...(filters.search ? {
         OR: [
           { title: { contains: filters.search, mode: 'insensitive' } },
@@ -39,7 +45,7 @@ export class ResourceRepository {
     return prisma.studyMaterial.findMany({
       where,
       orderBy: { createdAt: 'asc' },
-      include: { module: true },
+      include: { module: { include: { course: { select: { title: true } } } } },
     })
   }
 
@@ -83,11 +89,11 @@ export class ResourceRepository {
     return prisma.studyMaterial.count()
   }
 
-  async create(input: Prisma.StudyMaterialCreateInput) {
+  async create(input: Prisma.StudyMaterialUncheckedCreateInput) {
     return prisma.studyMaterial.create({ data: input })
   }
 
-  async update(id: string, data: Prisma.StudyMaterialUpdateInput) {
+  async update(id: string, data: Prisma.StudyMaterialUncheckedUpdateInput) {
     return prisma.studyMaterial.update({ where: { id }, data })
   }
 

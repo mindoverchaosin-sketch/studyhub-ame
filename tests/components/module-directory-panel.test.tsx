@@ -32,16 +32,16 @@ const directory: ModuleDirectoryDTO = {
 }
 
 describe('ModuleDirectoryPanel', () => {
-  it('produces /admin/modules links when no basePath is provided', () => {
-    render(<ModuleDirectoryPanel directory={directory} query="" examType="ALL" status="ALL" sortBy="updated" page={1} />)
+  it('produces Admin module detail links', () => {
+    render(<ModuleDirectoryPanel directory={directory} query="" examType="ALL" status="ALL" sortBy="updated" page={1} basePath="/admin/modules" />)
     const links = screen.getAllByTestId('module-link')
     const hrefs = links.map((link) => link.getAttribute('href'))
 
-    expect(hrefs.every((href) => href?.startsWith('/admin/modules'))).toBe(true)
-})
+    expect(hrefs).toContain('/admin/modules/m1')
+  })
 
-  it('produces /content-editor/modules links when basePath is provided', () => {
-    render(
+  it('produces Content Editor module detail links without Admin module routes', () => {
+    const { container } = render(
       <ModuleDirectoryPanel
         directory={directory}
         query=""
@@ -52,9 +52,10 @@ describe('ModuleDirectoryPanel', () => {
         basePath="/content-editor/modules"
       />,
     )
-    const links = screen.getAllByTestId('module-link')
-    const hrefs = links.map((link) => link.getAttribute('href'))
+    const links = container.querySelectorAll('[data-testid="module-link"]')
+    const hrefs = Array.from(links, (link) => link.getAttribute('href'))
 
-    expect(hrefs.every((href) => href?.startsWith('/content-editor/modules'))).toBe(true)
+    expect(hrefs).toContain('/content-editor/modules/m1')
+    expect(hrefs.some((href) => href?.startsWith('/admin/modules/'))).toBe(false)
   })
 })

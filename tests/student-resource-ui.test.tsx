@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
   getTopicProgress: vi.fn(),
   getStudentProgress: vi.fn(),
   getQuestionsByTopic: vi.fn(),
-  getQuizByTopic: vi.fn(),
+  getCanonicalQuizByModule: vi.fn(),
   findByLesson: vi.fn(),
   findPublishedById: vi.fn(),
   canAccessPremiumModules: vi.fn(),
@@ -43,7 +43,7 @@ vi.mock('@/server/services/course.service', () => ({ getCourseById: mocks.getCou
 vi.mock('@/server/services/topic.service', () => ({ getTopicBySlug: mocks.getTopicBySlug }))
 vi.mock('@/server/services/progress.service', () => ({ getTopicProgress: mocks.getTopicProgress, getStudentProgress: mocks.getStudentProgress }))
 vi.mock('@/server/services/question.service', () => ({ getQuestionsByTopic: mocks.getQuestionsByTopic }))
-vi.mock('@/server/services/quiz.service', () => ({ getQuizByTopic: mocks.getQuizByTopic }))
+vi.mock('@/server/services/quiz.service', () => ({ getCanonicalQuizByModule: mocks.getCanonicalQuizByModule }))
 
 const studyMaterial = (overrides: Record<string, unknown> = {}) => ({
   id: 'res-1',
@@ -83,7 +83,7 @@ describe('Phase 6A student resource UI consistency', () => {
     mocks.getTopicProgress.mockResolvedValue(null)
     mocks.getStudentProgress.mockResolvedValue([])
     mocks.getQuestionsByTopic.mockResolvedValue([])
-    mocks.getQuizByTopic.mockResolvedValue(null)
+    mocks.getCanonicalQuizByModule.mockResolvedValue(null)
     mocks.getModuleBySlug.mockResolvedValue({ id: 'module-1', courseId: 'course-1', slug: 'systems', title: 'Systems', description: 'M', isPremium: false })
     mocks.getModuleById.mockResolvedValue({ id: 'module-1', courseId: 'course-1', slug: 'systems', title: 'Systems', isPremium: false })
     mocks.getModuleWithSections.mockResolvedValue({ sections: [{ id: 'topic-1', slug: 'hydraulics', title: 'Hydraulics' }] })

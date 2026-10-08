@@ -11,10 +11,14 @@ describe('module management authorization', () => {
 
     vi.doMock('@/auth', () => ({ requirePermission }))
     vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository }))
+    vi.doMock('@/server/services/module-management.service', () => ({
+      ModuleManagementService: vi.fn().mockImplementation(() => ({ createModule: vi.fn() })),
+    }))
+    vi.doMock('next/cache', () => ({ revalidatePath: vi.fn() }))
 
     const { createModuleAction } = await import('../../server/actions/content-management.actions')
 
-    await expect(createModuleAction({ title: 'New Module' } as any)).rejects.toThrow('no')
+    await expect(createModuleAction({ title: 'New Module', slug: 'new-module', moduleNumber: '1', courseId: 'course-1' })).rejects.toThrow('no')
     expect(requirePermission).toHaveBeenCalled()
   })
 })

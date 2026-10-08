@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { useEffect, useRef } from 'react';
 
-export function Modal({ open, title, description, children, onClose }: { open: boolean; title: string; description?: string; children: ReactNode; onClose: () => void }) {
+export function Modal({ open, title, description, children, footer, onClose }: { open: boolean; title: string; description?: string; children?: ReactNode; footer?: ReactNode; onClose: () => void }) {
   const modalRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -52,7 +52,7 @@ export function Modal({ open, title, description, children, onClose }: { open: b
   const descId = description ? `modal-${title.replace(/\s+/g, '-').toLowerCase()}-desc` : undefined;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4" aria-hidden={!open}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 px-4 py-4" aria-hidden={!open}>
       <div
         ref={modalRef}
         role="dialog"
@@ -60,16 +60,17 @@ export function Modal({ open, title, description, children, onClose }: { open: b
         aria-labelledby={titleId}
         aria-describedby={descId}
         tabIndex={-1}
-        className="w-full max-w-xl rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-2xl"
+        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-2xl"
       >
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6">
           <div>
             <h3 id={titleId} className="text-lg font-semibold text-slate-950">{title}</h3>
             {description ? <p id={descId} className="mt-1 text-sm text-slate-600">{description}</p> : null}
           </div>
           <button type="button" onClick={onClose} className="rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600">Close</button>
         </div>
-        <div className="mt-6">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">{children}</div>
+        {footer ? <div className="shrink-0 border-t border-slate-200 px-6 py-4">{footer}</div> : null}
       </div>
     </div>
   );

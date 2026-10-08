@@ -7,7 +7,9 @@ const { quizRepositoryMock, lessonRepositoryMock, progressRepositoryMock, upsert
     findWithQuestions: vi.fn(),
     findPublishedWithQuestions: vi.fn(),
     findById: vi.fn(),
+    findByModule: vi.fn(),
     findByLesson: vi.fn(),
+    findModuleWithCanonicalQuiz: vi.fn(),
     countAll: vi.fn(),
   },
   lessonRepositoryMock: {
@@ -45,6 +47,7 @@ describe('quiz.service', () => {
     quizRepositoryMock.findPublishedWithQuestions.mockResolvedValue(null)
     quizRepositoryMock.findById.mockResolvedValue(null)
     quizRepositoryMock.findByLesson.mockResolvedValue(null)
+    quizRepositoryMock.findModuleWithCanonicalQuiz.mockResolvedValue(null)
     quizRepositoryMock.countAll.mockResolvedValue(0)
     progressRepositoryMock.createQuizAttempt.mockResolvedValue(null)
     progressRepositoryMock.findQuizAttemptsByUser.mockResolvedValue([])
@@ -72,6 +75,148 @@ describe('quiz.service', () => {
     const dto = await quizService.getQuizWithQuestions('q2')
     expect(dto?.questions?.length).toBe(1)
     expect(quizRepositoryMock.findPublishedWithQuestions).toHaveBeenCalledWith('q2')
+  })
+
+  it('returns no learner quiz when the module has no canonical quiz', async () => {
+    quizRepositoryMock.findModuleWithCanonicalQuiz.mockResolvedValue({
+      id: 'module-1',
+      status: 'PUBLISHED',
+      deletedAt: null,
+      canonicalQuizId: null,
+      canonicalQuiz: null,
+    })
+
+    await expect(quizService.getCanonicalQuizByModule('module-1')).resolves.toBeNull()
+    expect(quizRepositoryMock.findModuleWithCanonicalQuiz).toHaveBeenCalledWith('module-1')
+    expect(quizRepositoryMock.findByModule).not.toHaveBeenCalled()
+    expect(quizRepositoryMock.findByLesson).not.toHaveBeenCalled()
+  })
+
+  it('returns the exact published canonical quiz when multiple published quizzes exist', async () => {
+    const canonicalQuiz = {
+      id: 'canonical-quiz',
+      moduleId: 'module-1',
+      title: 'Canonical',
+      description: null,
+      passingScore: 70,
+      timeLimitMinutes: 10,
+      status: 'PUBLISHED',
+      deletedAt: null,
+      publishedAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      questionBanks: [],
+    }
+    quizRepositoryMock.findModuleWithCanonicalQuiz.mockResolvedValue({
+      id: 'module-1',
+      status: 'PUBLISHED',
+      deletedAt: null,
+      canonicalQuizId: canonicalQuiz.id,
+      canonicalQuiz,
+      quizzes: [
+        canonicalQuiz,
+        { ...canonicalQuiz, id: 'other-published-quiz', title: 'Other published quiz' },
+      ],
+    })
+
+    await expect(quizService.getCanonicalQuizByModule('module-1')).resolves.toMatchObject({
+      id: 'canonical-quiz',
+      title: 'Canonical',
+    })
+    expect(quizRepositoryMock.findByModule).not.toHaveBeenCalled()
+    expect(quizRepositoryMock.findByLesson).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['draft', { status: 'DRAFT', deletedAt: null }],
+    ['archived', { status: 'ARCHIVED', deletedAt: null }],
+    ['deleted', { status: 'PUBLISHED', deletedAt: new Date() }],
+    ['from another module', { status: 'PUBLISHED', deletedAt: null, moduleId: 'module-2' }],
+  ])('does not expose a %s canonical quiz to learners', async (_caseName, overrides) => {
+    quizRepositoryMock.findModuleWithCanonicalQuiz.mockResolvedValue({
+      id: 'module-1',
+      status: 'PUBLISHED',
+      deletedAt: null,
+      canonicalQuizId: 'candidate-quiz',
+      canonicalQuiz: Object.assign({
+        id: 'candidate-quiz',
+        moduleId: 'module-1',
+        status: 'PUBLISHED',
+        deletedAt: null,
+        title: 'Candidate',
+        description: null,
+        passingScore: 70,
+        timeLimitMinutes: 0,
+        publishedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        questionBanks: [],
+      }, overrides),
+    })
+
+    await expect(quizService.getCanonicalQuizByModule('module-1')).resolves.toBeNull()
+    expect(quizRepositoryMock.findByModule).not.toHaveBeenCalled()
+    expect(quizRepositoryMock.findByLesson).not.toHaveBeenCalled()
+  })
+
+  it('does not select a replacement after the canonical quiz is cleared or unpublished', async () => {
+    quizRepositoryMock.findModuleWithCanonicalQuiz
+      .mockResolvedValueOnce({
+        id: 'module-1',
+        status: 'PUBLISHED',
+        deletedAt: null,
+        canonicalQuizId: null,
+        canonicalQuiz: null,
+        quizzes: [{ id: 'other-published-quiz', moduleId: 'module-1', status: 'PUBLISHED', deletedAt: null }],
+      })
+      .mockResolvedValueOnce({
+        id: 'module-1',
+        status: 'PUBLISHED',
+        deletedAt: null,
+        canonicalQuizId: null,
+        canonicalQuiz: null,
+        quizzes: [{ id: 'other-published-quiz', moduleId: 'module-1', status: 'PUBLISHED', deletedAt: null }],
+      })
+
+    await expect(quizService.getCanonicalQuizByModule('module-1')).resolves.toBeNull()
+    await expect(quizService.getCanonicalQuizByModule('module-1')).resolves.toBeNull()
+    expect(quizRepositoryMock.findByModule).not.toHaveBeenCalled()
+    expect(quizRepositoryMock.findByLesson).not.toHaveBeenCalled()
+  })
+
+  it('resolves the newly designated canonical quiz without mutating the previous quiz or attempts', async () => {
+    const newCanonicalQuiz = {
+      id: 'new-canonical',
+      moduleId: 'module-1',
+      title: 'New canonical',
+      description: null,
+      passingScore: 70,
+      timeLimitMinutes: 0,
+      status: 'PUBLISHED',
+      deletedAt: null,
+      publishedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      questionBanks: [],
+    }
+    quizRepositoryMock.findModuleWithCanonicalQuiz.mockResolvedValue({
+      id: 'module-1',
+      status: 'PUBLISHED',
+      deletedAt: null,
+      canonicalQuizId: newCanonicalQuiz.id,
+      canonicalQuiz: newCanonicalQuiz,
+      quizzes: [
+        { ...newCanonicalQuiz, id: 'old-canonical', title: 'Old canonical' },
+        newCanonicalQuiz,
+      ],
+    })
+
+    await expect(quizService.getCanonicalQuizByModule('module-1')).resolves.toMatchObject({
+      id: 'new-canonical',
+      title: 'New canonical',
+    })
+    expect(quizRepositoryMock.findById).not.toHaveBeenCalled()
+    expect(progressRepositoryMock.createQuizAttempt).not.toHaveBeenCalled()
   })
 
   it('submitQuizAttempt returns review data and analytics payload', async () => {

@@ -21,6 +21,14 @@ export type CmsBulkOperationResult = {
 
 export class CmsBulkService {
   async applyBulkAction(target: CmsBulkTarget, ids: string[], action: 'publish' | 'archive' | 'delete' | 'assign-module' | 'add-tags' | 'export', payload?: { moduleId?: string; tags?: string[] }) {
+    if (target === 'mock-tests' && action === 'delete') {
+      return {
+        successCount: 0,
+        failureCount: ids.length,
+        errors: ids.map((id) => `Unable to process ${id}: Quiz deletion is not permitted through bulk operations. Archive the quiz to preserve attempt history.`),
+      }
+    }
+
     const errors: string[] = [];
     let successCount = 0;
 
@@ -52,7 +60,7 @@ export class CmsBulkService {
           else if (action === 'delete') await questionRepository.delete(id as any);
         } else if (target === 'mock-tests') {
           if (isTestMode()) {
-            if (action === 'publish' || action === 'archive' || action === 'delete') {
+            if (action === 'publish' || action === 'archive') {
               successCount += 1;
               continue;
             }
@@ -60,7 +68,6 @@ export class CmsBulkService {
 
           if (action === 'publish') await quizRepository.update(id, { status: 'PUBLISHED' } as any);
           else if (action === 'archive') await quizRepository.update(id, { status: 'ARCHIVED' } as any);
-          else if (action === 'delete') await quizRepository.delete(id as any);
         } else if (target === 'media') {
           if (action === 'delete') await mediaLibraryService.deleteAsset(id);
         }

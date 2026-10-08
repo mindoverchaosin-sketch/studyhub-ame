@@ -6,17 +6,13 @@ export function LessonForm({
   modules,
   onChange,
   errors,
-  onSubmit,
-  onCancel,
-  submitting,
+  lockedModule,
 }: {
   value: Partial<AdminLesson>;
   modules: AdminModuleOption[];
   onChange: (changes: Partial<AdminLesson>) => void;
   errors: string[];
-  onSubmit: () => void;
-  onCancel: () => void;
-  submitting: boolean;
+  lockedModule?: AdminModuleOption;
 }) {
   return (
     <div className="space-y-4">
@@ -35,20 +31,24 @@ export function LessonForm({
       </label>
       <label className="block text-sm font-medium text-slate-700">
         Module
-        <select
-          value={value.moduleId || ''}
-          onChange={(event) => {
-            const selectedId = event.target.value;
-            const selected = modules.find((module) => module.id === selectedId);
-            onChange({ moduleId: selectedId || undefined, moduleTitle: selected?.title || undefined, module: selected?.title || '' });
-          }}
-          className="mt-2 w-full rounded-2xl border border-slate-200 px-3 py-2"
-        >
-          <option value="">Select a module</option>
-          {modules.map((module) => (
-            <option key={module.id} value={module.id}>{module.title}</option>
-          ))}
-        </select>
+        {lockedModule ? (
+          <span className="mt-2 block rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">{lockedModule.title}</span>
+        ) : (
+          <select
+            value={value.moduleId || ''}
+            onChange={(event) => {
+              const selectedId = event.target.value;
+              const selected = modules.find((module) => module.id === selectedId);
+              onChange({ moduleId: selectedId || undefined, moduleTitle: selected?.title || undefined, module: selected?.title || '' });
+            }}
+            className="mt-2 w-full rounded-2xl border border-slate-200 px-3 py-2"
+          >
+            <option value="">Select a module</option>
+            {modules.map((module) => (
+              <option key={module.id} value={module.id}>{module.title}</option>
+            ))}
+          </select>
+        )}
       </label>
       <label className="block text-sm font-medium text-slate-700">
         Content
@@ -99,10 +99,6 @@ export function LessonForm({
       <div className="flex items-center gap-3">
         <input id="lesson-published" type="checkbox" checked={value.status === 'Published'} onChange={(event) => onChange({ status: event.target.checked ? 'Published' : 'Draft' })} />
         <label htmlFor="lesson-published" className="text-sm text-slate-700">Published</label>
-      </div>
-      <div className="flex justify-end gap-3">
-        <button type="button" onClick={onCancel} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700">Cancel</button>
-        <button type="button" onClick={onSubmit} disabled={submitting} className="rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">{submitting ? 'Saving...' : 'Save lesson'}</button>
       </div>
     </div>
   );

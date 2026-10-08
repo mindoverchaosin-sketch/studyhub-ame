@@ -16,6 +16,8 @@ export async function createStudyMaterialAction(input: Record<string, unknown>) 
     metadata: { source: 'study-materials' },
     run: async () => {
       const created = await studyMaterialManagementService.createResource(input as unknown as ResourceCreateInput)
+      revalidatePath('/admin/materials')
+      revalidatePath('/content-editor/materials')
       revalidatePath('/admin/modules')
       return created
     },

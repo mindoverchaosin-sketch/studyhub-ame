@@ -92,12 +92,12 @@ export default async function TopicLearningPage({ params }: TopicLearningPagePro
             )}
           </TopicSectionCard>
 
-          <TopicSectionCard title="Topic Quiz" description="A summary of the quiz available for this topic.">
+          <TopicSectionCard title="Module Quiz" description="The canonical quiz selected for this module.">
             {data.quiz ? (
               <div className="flex flex-wrap items-center justify-between gap-4 rounded-[1.25rem] border border-slate-200 bg-slate-50 p-5">
                 <div>
                   <p className="font-semibold text-slate-950">{data.quiz.title}</p>
-                  <p className="mt-2 text-sm leading-7 text-slate-600">{data.quiz.description || "A quick assessment for the key ideas in this topic."}</p>
+                  <p className="mt-2 text-sm leading-7 text-slate-600">{data.quiz.description || "A learner assessment for this module."}</p>
                 </div>
                 <Link href={`/student/quiz/${data.quiz.id}`} className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">
                   Start Quiz

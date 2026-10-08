@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { getQuestionsByTopic } from "@/server/services/question.service";
-import { getQuizByTopic } from "@/server/services/quiz.service";
+import { getCanonicalQuizByModule } from "@/server/services/quiz.service";
 import { getResourcesByTopic } from "@/server/services/resource.service";
 import { getTopicProgress } from "@/server/services/progress.service";
 import { getTopicBySlug } from "@/server/services/topic.service";
@@ -32,7 +32,7 @@ export async function getTopicLearningPageData(topicSlug: string): Promise<Topic
     getTopicProgress(studentId, topic.id),
     getResourcesByTopic(topic.id),
     getQuestionsByTopic(topic.id),
-    getQuizByTopic(topic.id),
+    topic.moduleId ? getCanonicalQuizByModule(topic.moduleId) : Promise.resolve(null),
   ]);
 
   const learningModule = topic.moduleId ? await getModuleById(topic.moduleId) : null;

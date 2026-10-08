@@ -430,7 +430,9 @@ model Module {
   studyMaterials     StudyMaterial[]
   lessonsProgress    ModuleProgress[]
   learningObjectives LearningObjective[]
-  quizzes            Quiz[]
+  quizzes            Quiz[]              @relation("ModuleQuizzes")
+  canonicalQuizId    String?             @unique
+  canonicalQuiz      Quiz?               @relation("ModuleCanonicalQuiz", fields: [canonicalQuizId], references: [id], onDelete: SetNull)
   previousOfficialPapers PreviousOfficialPaper[]
 
   @@index([courseId])
@@ -530,7 +532,8 @@ model Quiz {
   updatedAt        DateTime  @updatedAt
   deletedAt        DateTime?
 
-  module        Module         @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  module        Module         @relation("ModuleQuizzes", fields: [moduleId], references: [id], onDelete: Cascade)
+  canonicalForModule Module?    @relation("ModuleCanonicalQuiz")
   questionBanks QuestionBank[]
   attempts      QuizAttempt[]
 
