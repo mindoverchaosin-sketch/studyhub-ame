@@ -168,4 +168,38 @@ describe('study material document service', () => {
     await service.saveDraft('resource-1', draft)
     expect(resourceRepository.update).toHaveBeenCalledWith('resource-1', expect.objectContaining({ documentContent: draft, documentVersion: 2, status: 'DRAFT' }))
   })
+
+  it('rejects study material through the publishing workflow and records a draft snapshot', async () => {
+    const resource = { id: 'resource-1', documentContent: { title: 'Draft material' } }
+    const resourceRepository = { findById: vi.fn().mockResolvedValue(resource) }
+    const workflowRepository = { update: vi.fn().mockResolvedValue(undefined) }
+    const getWorkflow = vi.fn().mockResolvedValue({ status: 'IN_REVIEW', currentVersion: 1, versions: [], reviewQueue: [] })
+    const createSnapshot = vi.fn().mockResolvedValue({ version: 2 })
+    const reject = vi.fn().mockResolvedValue({ persistedStatus: 'DRAFT' })
+    vi.doMock('@/server/repositories/resource.repository', () => ({ resourceRepository }))
+    vi.doMock('@/server/repositories/editorial-workflow.repository', () => ({ editorialWorkflowRepository: workflowRepository }))
+    vi.doMock('@/server/services/editorial-workflow.service', () => ({
+      getStudyMaterialEditorialWorkflow: getWorkflow,
+      createVersionSnapshotForTarget: createSnapshot,
+    }))
+    vi.doMock('@/server/services/publishing.service', () => ({ publishingService: { reject } }))
+
+    const { StudyMaterialDocumentService } = await import('@/server/services/study-material-document.service')
+    const service = new StudyMaterialDocumentService()
+    const result = await service.reject('resource-1', 'Needs revision')
+
+    expect(result).toEqual({ id: 'resource-1', status: 'DRAFT' })
+    expect(getWorkflow).toHaveBeenCalledWith('resource-1')
+    expect(reject).toHaveBeenCalledWith('STUDY_MATERIAL', 'resource-1', 'Needs revision')
+    expect(workflowRepository.update).toHaveBeenCalledWith('STUDY_MATERIAL', 'resource-1', { status: 'DRAFT' })
+    expect(createSnapshot).toHaveBeenCalledWith(
+      'STUDY_MATERIAL',
+      'resource-1',
+      'Study material rejected: Needs revision',
+      'Reviewer',
+      'DRAFT',
+      null,
+      resource.documentContent,
+    )
+  })
 })

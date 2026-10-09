@@ -6,14 +6,22 @@ export function LessonForm({
   modules,
   onChange,
   errors,
+  onSubmit,
+  onCancel,
+  submitting,
   lockedModule,
 }: {
   value: Partial<AdminLesson>;
   modules: AdminModuleOption[];
   onChange: (changes: Partial<AdminLesson>) => void;
   errors: string[];
+  onSubmit?: () => void;
+  onCancel?: () => void;
+  submitting?: boolean;
   lockedModule?: AdminModuleOption;
 }) {
+  const isSubmitting = submitting ?? false;
+
   return (
     <div className="space-y-4">
       {errors.length > 0 ? (
@@ -100,6 +108,12 @@ export function LessonForm({
         <input id="lesson-published" type="checkbox" checked={value.status === 'Published'} onChange={(event) => onChange({ status: event.target.checked ? 'Published' : 'Draft' })} />
         <label htmlFor="lesson-published" className="text-sm text-slate-700">Published</label>
       </div>
+      {onSubmit && onCancel ? (
+        <div className="flex justify-end gap-3">
+          <button type="button" onClick={onCancel} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700">Cancel</button>
+          <button type="button" onClick={onSubmit} disabled={isSubmitting} className="rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">{isSubmitting ? 'Saving...' : 'Save lesson'}</button>
+        </div>
+      ) : null}
     </div>
   );
 }

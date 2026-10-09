@@ -61,6 +61,16 @@ export class StudyMaterialDocumentService {
     return { id: resourceId, status: result.persistedStatus }
   }
 
+  async reject(resourceId: string, reason?: string, author = 'Reviewer') {
+    await getStudyMaterialEditorialWorkflow(resourceId)
+    const resource = await resourceRepository.findById(resourceId)
+    const result = await publishingService.reject('STUDY_MATERIAL', resourceId, reason)
+    await syncEditorialStatus(resourceId, 'DRAFT')
+    const summary = reason ? `Study material rejected: ${reason}` : 'Study material rejected'
+    await createVersionSnapshotForTarget('STUDY_MATERIAL', resourceId, summary, author, 'DRAFT', null, (resource as any)?.documentContent ?? undefined)
+    return { id: resourceId, status: result.persistedStatus }
+  }
+
   async publish(resourceId: string, author = 'Publisher') {
     const workflow = await getStudyMaterialEditorialWorkflow(resourceId)
     if (workflow.status !== 'APPROVED') {

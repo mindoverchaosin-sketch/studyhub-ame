@@ -71,10 +71,14 @@ describe('admin cms utils', () => {
     expect(errors).toContain('Published mock tests need at least one question.');
   });
 
-  it('filters and sorts lessons', () => {
-    const results = filterLessons(lessons, 'hydraulic', 'Hydraulic Systems', 'title');
-    expect(results).toHaveLength(1);
-    expect(results[0].title).toBe('Hydraulic Review');
+  it('filters lessons by module title or id and sorts them', () => {
+    const byTitle = filterLessons(lessons, 'hydraulic', 'Hydraulic Systems', 'title');
+    expect(byTitle).toHaveLength(1);
+    expect(byTitle[0].title).toBe('Hydraulic Review');
+
+    const byId = filterLessons(lessons, 'hydraulic', 'm2', 'title');
+    expect(byId).toHaveLength(1);
+    expect(byId[0].title).toBe('Hydraulic Review');
   });
 
   it('filters and sorts mock tests', () => {

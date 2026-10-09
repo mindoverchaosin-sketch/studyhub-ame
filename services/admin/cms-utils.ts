@@ -55,7 +55,7 @@ export function filterLessons(items: AdminLesson[], query: string, module: strin
   const normalizedQuery = query.trim().toLowerCase();
   const filtered = items.filter((lesson) => {
     const matchesQuery = !normalizedQuery || `${lesson.title} ${lesson.content}`.toLowerCase().includes(normalizedQuery);
-    const matchesModule = !module || module === 'All modules' || lesson.moduleId === module || (!lesson.moduleId && lesson.module === module);
+    const matchesModule = !module || module === 'All modules' || lesson.moduleId === module || lesson.module === module;
     return matchesQuery && matchesModule;
   });
 
