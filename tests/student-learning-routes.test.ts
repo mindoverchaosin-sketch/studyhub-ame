@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   getStudentProgress: vi.fn(),
   getResourcesByTopic: vi.fn(),
   getQuizByTopic: vi.fn(),
+  getCanonicalQuizByModule: vi.fn(),
   canAccessModule: vi.fn(),
   canAccessStudyMaterial: vi.fn(),
   getTopicBySlug: vi.fn(),
@@ -25,7 +26,10 @@ vi.mock('@/server/services/module.service', () => ({ getModuleBySlug: mocks.getM
 vi.mock('@/server/services/course.service', () => ({ getCourseById: mocks.getCourseById }))
 vi.mock('@/server/services/progress.service', () => ({ getStudentProgress: mocks.getStudentProgress }))
 vi.mock('@/server/services/resource.service', () => ({ getResourcesByTopic: mocks.getResourcesByTopic }))
-vi.mock('@/server/services/quiz.service', () => ({ getQuizByTopic: mocks.getQuizByTopic }))
+vi.mock('@/server/services/quiz.service', () => ({
+  getQuizByTopic: mocks.getQuizByTopic,
+  getCanonicalQuizByModule: mocks.getCanonicalQuizByModule,
+}))
 vi.mock('@/server/services/content-access.service', () => ({ contentAccessService: { canAccessModule: mocks.canAccessModule, canAccessLesson: mocks.canAccessModule, canAccessStudyMaterial: mocks.canAccessStudyMaterial } }))
 vi.mock('@/server/services/topic.service', () => ({ getTopicBySlug: mocks.getTopicBySlug }))
 vi.mock('@/features/topics/actions/topic-learning', () => ({ getTopicLearningPageData: mocks.getTopicLearningPageData }))
@@ -43,6 +47,7 @@ describe('persisted student learning routes', () => {
     mocks.getStudentProgress.mockResolvedValue([])
     mocks.getResourcesByTopic.mockResolvedValue([])
     mocks.getQuizByTopic.mockResolvedValue(null)
+    mocks.getCanonicalQuizByModule.mockResolvedValue(null)
     mocks.getTopicBySlug.mockResolvedValue({ id: 'topic-1', moduleId: 'module-1', slug: 'hydraulics', title: 'Hydraulics' })
     mocks.getTopicLearningPageData.mockResolvedValue({ topic: { title: 'Hydraulics', description: 'Persisted' }, resources: [], questions: [], quiz: null, progress: { status: 'NOT_STARTED' }, navigation: {} })
   })
