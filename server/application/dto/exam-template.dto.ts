@@ -3,7 +3,7 @@ export type ExamTemplateDTO = {
   name: string
   description?: string
   questionBankId?: string
-  moduleId?: string
+  moduleId?: string | null
   courseId?: string
   durationMinutes: number
   questionCount: number

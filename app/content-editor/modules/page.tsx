@@ -83,6 +83,7 @@ export default async function ModulesPage({
           status={status}
           sortBy={sortBy}
           page={page}
+          basePath="/content-editor/modules"
         />
       </div>
     </ContentEditorLayout>

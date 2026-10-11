@@ -102,11 +102,11 @@ export class ModuleRepository {
     })
   }
 
-  async create(input: Prisma.ModuleCreateInput) {
+  async create(input: Prisma.ModuleUncheckedCreateInput) {
     return prisma.module.create({ data: input })
   }
 
-  async update(id: string, data: Prisma.ModuleUpdateInput) {
+  async update(id: string, data: Prisma.ModuleUncheckedUpdateInput) {
     return prisma.module.update({ where: { id }, data })
   }
 

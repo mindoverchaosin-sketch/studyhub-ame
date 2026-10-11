@@ -1,11 +1,53 @@
 import prisma from '@/lib/prisma'
-import type { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 
 export class QuizRepository {
+  async findForAdmin(params: { moduleId?: string; search?: string; status?: string } = {}) {
+    const where: Prisma.QuizWhereInput = {
+      deletedAt: null,
+      ...(params.moduleId ? { moduleId: params.moduleId } : {}),
+      ...(params.status && params.status !== 'ALL' ? { status: params.status as Prisma.EnumStatusFilter } : {}),
+      ...(params.search?.trim() ? { title: { contains: params.search.trim(), mode: 'insensitive' } } : {}),
+    }
+
+    return prisma.quiz.findMany({
+      where,
+      orderBy: [{ updatedAt: 'desc' }, { title: 'asc' }],
+      include: {
+        module: { select: { id: true, title: true, canonicalQuizId: true } },
+        questionBanks: { select: { id: true, title: true, status: true } },
+        _count: { select: { attempts: true } },
+      },
+    })
+  }
+
+  async findForAdminById(id: string) {
+    return prisma.quiz.findFirst({
+      where: { id, deletedAt: null },
+      include: {
+        questionBanks: { select: { id: true } },
+        _count: { select: { attempts: true } },
+      },
+    })
+  }
+
   async findByModule(moduleId: string) {
     return prisma.quiz.findFirst({
       where: { moduleId, status: 'PUBLISHED' },
       include: { questionBanks: true },
+    })
+  }
+
+  async findModuleWithCanonicalQuiz(moduleId: string) {
+    return prisma.module.findUnique({
+      where: { id: moduleId },
+      include: { canonicalQuiz: { include: { questionBanks: true } } },
+    })
+  }
+
+  async transaction<T>(callback: (tx: Prisma.TransactionClient) => Promise<T>) {
+    return prisma.$transaction(callback, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     })
   }
 

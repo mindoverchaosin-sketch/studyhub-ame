@@ -88,6 +88,7 @@ export interface AdminQuestion {
 export interface AdminMockTest {
   id: string;
   title: string;
+  moduleId?: string | null;
   durationMinutes: number;
   passingPercentage: number;
   questionCount: number;
