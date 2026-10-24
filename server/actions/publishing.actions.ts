@@ -9,6 +9,8 @@ type PublishingTargetType = 'MODULE' | 'STUDY_MATERIAL' | 'QUESTION' | 'LESSON'
 
 function revalidatePublishingPaths(targetType: PublishingTargetType, targetId: string, moduleId?: string) {
   revalidatePath('/admin')
+  revalidatePath('/admin/publishing')
+  revalidatePath('/super-admin/publishing')
   if (targetType === 'MODULE') {
     revalidatePath('/admin/modules')
     revalidatePath(`/admin/modules/${targetId}`)

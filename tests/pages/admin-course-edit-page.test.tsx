@@ -4,14 +4,21 @@ import { render, screen, within } from '@testing-library/react'
 const mocks = vi.hoisted(() => ({
   requirePermission: vi.fn(),
   getAdminCourseById: vi.fn(),
+  getAdminCourseCategories: vi.fn(),
   redirect: vi.fn((path: string): never => { throw new Error(`REDIRECT:${path}`) }),
   notFound: vi.fn((): never => { throw new Error('NOT_FOUND') }),
 }))
 
 vi.mock('@/auth', () => ({ requirePermission: mocks.requirePermission }))
 vi.mock('next/navigation', () => ({ redirect: mocks.redirect, notFound: mocks.notFound }))
-vi.mock('@/server/services/course.service', () => ({ getAdminCourseById: mocks.getAdminCourseById }))
-vi.mock('@/server/actions/course-management.actions', () => ({ updateAdminCourseAction: vi.fn() }))
+vi.mock('@/server/services/course.service', () => ({
+  getAdminCourseById: mocks.getAdminCourseById,
+  getAdminCourseCategories: mocks.getAdminCourseCategories,
+}))
+vi.mock('@/server/actions/course-management.actions', () => ({
+  setAdminCoursePublishStateAction: vi.fn(),
+  updateAdminCourseAction: vi.fn(),
+}))
 
 import AdminCourseEditPage from '@/app/(admin)/admin/courses/[courseId]/page'
 
@@ -36,6 +43,7 @@ describe('AdminCourseEditPage', () => {
     vi.clearAllMocks()
     mocks.requirePermission.mockResolvedValue({ user: { id: 'admin-1', role: 'ADMIN' } })
     mocks.getAdminCourseById.mockResolvedValue(existingCourse)
+    mocks.getAdminCourseCategories.mockResolvedValue([{ id: 'category-dgca', title: 'DGCA' }])
   })
 
   it('loads the existing course by database ID and shows its details and modules', async () => {
@@ -47,9 +55,11 @@ describe('AdminCourseEditPage', () => {
     expect(screen.getByRole('textbox', { name: 'Course title' })).toHaveValue('DGCA Airframe')
     expect(screen.getByRole('textbox', { name: 'Slug' })).toHaveValue('dgca-airframe')
     expect(screen.getByRole('textbox', { name: 'Description' })).toHaveValue('Existing course description')
+    expect(screen.getByRole('combobox', { name: 'Category' })).toHaveValue('category-dgca')
     expect(within(screen.getByRole('region', { name: 'Course classification' })).getByText('PUBLISHED')).toBeInTheDocument()
-    expect(screen.getByText('DGCA')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Course classification' })).getByText('DGCA')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Airframe Structures' })).toHaveAttribute('href', '/admin/modules/module-db-id')
+    expect(screen.getByRole('button', { name: 'Unpublish course' })).toHaveAttribute('formaction')
     expect(screen.getByRole('link', { name: 'Back to courses' })).toHaveAttribute('href', '/admin/courses')
   })
 

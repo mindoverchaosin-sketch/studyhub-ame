@@ -25,6 +25,7 @@ const navGroups: AdminNavGroup[] = [
       { href: "/admin/modules", label: "Modules", icon: <FiBookOpen className="h-5 w-5" /> },
       { href: "/admin/lessons", label: "Lessons", icon: <FiFileText className="h-5 w-5" /> },
       { href: "/admin/materials", label: "Study Materials", icon: <FiFileText className="h-5 w-5" /> },
+      { href: "/admin/publishing", label: "Publishing", icon: <FiPackage className="h-5 w-5" /> },
     ],
   },
   {

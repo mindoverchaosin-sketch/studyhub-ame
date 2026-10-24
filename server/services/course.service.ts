@@ -11,8 +11,15 @@ export async function getAllCourses(): Promise<CourseDTO[]> {
   return (await courseRepository.findAllPublished()).map(mapCourseEntityToDTO)
 }
 
-export async function getAdminCourses(): Promise<CourseDTO[]> {
-  return (await courseRepository.findAll()).map(mapCourseEntityToDTO)
+export async function getAdminCourses(): Promise<Array<CourseDTO & { categoryTitle: string | null }>> {
+  return (await courseRepository.findAll()).map((course) => ({
+    ...mapCourseEntityToDTO(course),
+    categoryTitle: course.category?.title ?? null,
+  }))
+}
+
+export async function getAdminCourseCategories() {
+  return courseRepository.findCategories()
 }
 
 export async function getCourseBySlug(slug: string): Promise<CourseDTO | null> {
@@ -36,7 +43,21 @@ export async function getAdminCourseById(id: string) {
   }
 }
 
-export async function updateAdminCourseById(id: string, input: Pick<CourseDTO, 'title' | 'slug' | 'description'>): Promise<CourseDTO | null> {
+export async function createAdminCourse(input: Pick<CourseDTO, 'title' | 'slug' | 'description' | 'categoryId'>): Promise<CourseDTO> {
+  const created = await courseRepository.create({
+    title: input.title,
+    slug: input.slug,
+    description: input.description,
+    categoryId: input.categoryId,
+  })
+
+  return mapCourseEntityToDTO(created)
+}
+
+export async function updateAdminCourseById(
+  id: string,
+  input: Pick<CourseDTO, 'title' | 'slug' | 'description'> & { categoryId?: string | null },
+): Promise<CourseDTO | null> {
   const existing = await courseRepository.findById(id)
   if (!existing || existing.deletedAt) return null
 
@@ -44,6 +65,19 @@ export async function updateAdminCourseById(id: string, input: Pick<CourseDTO, '
     title: input.title,
     slug: input.slug,
     description: input.description,
+    ...(input.categoryId !== undefined ? { categoryId: input.categoryId } : {}),
+  })
+
+  return mapCourseEntityToDTO(updated)
+}
+
+export async function setAdminCoursePublishState(id: string, status: 'DRAFT' | 'PUBLISHED'): Promise<CourseDTO | null> {
+  const existing = await courseRepository.findById(id)
+  if (!existing || existing.deletedAt) return null
+
+  const updated = await courseRepository.update(id, {
+    status,
+    publishedAt: status === 'PUBLISHED' ? new Date() : null,
   })
 
   return mapCourseEntityToDTO(updated)
