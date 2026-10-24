@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { FiActivity, FiBarChart2, FiBookOpen, FiCheckSquare, FiFileText, FiGrid, FiLayers, FiLock, FiPackage, FiUsers } from "react-icons/fi"
+import { FiActivity, FiBarChart2, FiBookOpen, FiCheckSquare, FiFileText, FiGrid, FiLayers, FiLock, FiPackage, FiTag, FiUsers } from "react-icons/fi"
 
 const groups = [
   {
@@ -25,6 +25,7 @@ const groups = [
       { href: "/admin/materials", label: "Study Materials", icon: FiFileText },
       { href: "/admin/questions", label: "Questions", icon: FiActivity },
       { href: "/admin/exams", label: "Exam Templates", icon: FiBookOpen },
+      { href: "/super-admin/categories", label: "Course Categories", icon: FiTag },
       { href: "/super-admin/publishing", label: "Publishing", icon: FiPackage },
     ],
   },
