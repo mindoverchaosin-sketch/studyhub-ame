@@ -2,15 +2,17 @@ import type { ResourceDTO } from '@/server/application/dto/resource.dto'
 import { resourceRepository } from '@/server/repositories/resource.repository'
 import { lessonRepository } from '@/server/repositories/lesson.repository'
 import { moduleRepository } from '@/server/repositories/module.repository'
+import { editorialWorkflowRepository } from '@/server/repositories/editorial-workflow.repository'
 import { NotFoundError } from '@/auth'
+import { StudyMaterialType } from '@prisma/client'
 
 export type ResourceCreateInput = {
   moduleId: string
-  lessonId: string
+  lessonId?: string
   title: string
   description?: string | null
-  type: string
-  url: string
+  type: StudyMaterialType
+  url?: string
   isPremium?: boolean
   status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' | 'IN_REVIEW'
   displayOrder?: number
@@ -19,12 +21,12 @@ export type ResourceCreateInput = {
 export type ResourceUpdateInput = {
   title?: string
   description?: string | null
-  type?: string
+  type?: StudyMaterialType
   url?: string
   isPremium?: boolean
   status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' | 'IN_REVIEW'
   displayOrder?: number
-  lessonId?: string
+  lessonId?: string | null
 }
 
 export function validateStudyMaterialUrl(value: string): string {
@@ -43,6 +45,14 @@ export function validateStudyMaterialUrl(value: string): string {
   return url
 }
 
+async function resolveModuleForBinding(moduleId: string) {
+  const selectedModule = await moduleRepository.findById(moduleId)
+  if (!selectedModule || selectedModule.deletedAt) {
+    throw new Error('Module for binding not found')
+  }
+  return selectedModule
+}
+
 async function resolveLessonForBinding(lessonId: string, expectedModuleId?: string) {
   const lesson = await lessonRepository.findById(lessonId)
 
@@ -54,19 +64,14 @@ async function resolveLessonForBinding(lessonId: string, expectedModuleId?: stri
     throw new Error('Lesson does not belong to the requested module')
   }
 
-  if (expectedModuleId !== undefined) {
-    const module = await moduleRepository.findById(expectedModuleId)
-    if (!module || module.status !== 'PUBLISHED' || module.deletedAt) {
-      throw new Error('Published module for binding not found')
-    }
-  }
-
   return lesson
 }
 
 export class StudyMaterialManagementService {
   async listResources(moduleId: string): Promise<ResourceDTO[]> {
     const resources = await resourceRepository.findByModule(moduleId)
+    const editorialWorkflows = await editorialWorkflowRepository.findByTargets('STUDY_MATERIAL', resources.map((resource) => resource.id))
+    const editorialStatuses = new Map(editorialWorkflows.map((workflow) => [workflow.entityId, workflow.status]))
 
     return resources.map((resource) => ({
       id: resource.id,
@@ -78,6 +83,7 @@ export class StudyMaterialManagementService {
       url: resource.url ?? '',
       isPremium: resource.isPremium,
       status: resource.status,
+      editorialStatus: editorialStatuses.get(resource.id) ?? (resource.status === 'SCHEDULED' ? 'DRAFT' : resource.status),
       publishedAt: resource.publishedAt,
       createdAt: resource.createdAt,
       updatedAt: resource.updatedAt,
@@ -85,39 +91,47 @@ export class StudyMaterialManagementService {
   }
 
   async createResource(input: ResourceCreateInput): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' | 'IN_REVIEW' }> {
-    if (!input.lessonId) {
-      throw new Error('lessonId is required to bind a study material to a lesson')
+    const title = input.title?.trim()
+    if (!title) {
+      throw new Error('Study material title is required')
     }
-    const resourceUrl = validateStudyMaterialUrl(input.url)
-    const lesson = await resolveLessonForBinding(input.lessonId, input.moduleId)
+    if (!Object.values(StudyMaterialType).includes(input.type)) {
+      throw new Error('Study material type is invalid')
+    }
+    if (!input.moduleId?.trim()) {
+      throw new Error('Module is required')
+    }
+    const selectedModule = await resolveModuleForBinding(input.moduleId)
+    const lesson = input.lessonId ? await resolveLessonForBinding(input.lessonId, input.moduleId) : null
+    const resourceUrl = input.url?.trim() ? validateStudyMaterialUrl(input.url) : undefined
 
     let displayOrder: number
     if (input.displayOrder !== undefined) {
       displayOrder = input.displayOrder
     } else {
-      const existing = await resourceRepository.findByModule(lesson.moduleId)
-      const maxOrder = existing.reduce((max, r) => Math.max(max, (r as any).displayOrder ?? 0), 0)
+      const existing = await resourceRepository.findByModule(selectedModule.id)
+      const maxOrder = existing.reduce((max, resource) => Math.max(max, resource.displayOrder ?? 0), 0)
       displayOrder = maxOrder + 1
     }
 
     const created = await resourceRepository.create({
-      moduleId: lesson.moduleId,
-      lessonId: lesson.id,
-      title: input.title,
-      materialType: input.type as any,
-      url: resourceUrl,
-      sourceType: 'LEGACY_RESOURCE',
+      moduleId: selectedModule.id,
+      lessonId: lesson?.id ?? null,
+      title,
+      materialType: input.type,
+      ...(resourceUrl ? { url: resourceUrl } : {}),
+      sourceType: 'AEROPREP_DOC',
       isPremium: input.isPremium ?? false,
       status: input.status ?? 'DRAFT',
       displayOrder,
-    } as any)
+    })
 
     return { id: created.id, status: created.status }
   }
 
   async updateResource(resourceId: string, input: ResourceUpdateInput): Promise<{ id: string; status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' | 'IN_REVIEW' }> {
     const resourceUrl = input.url === undefined ? undefined : validateStudyMaterialUrl(input.url)
-    let bindingUpdate: { lessonId: string; moduleId: string } | undefined
+    let bindingUpdate: { lessonId: string | null; moduleId: string | null } | undefined
     let displayOrderUpdate: { displayOrder: number } | undefined
 
     if (input.lessonId !== undefined) {
@@ -125,15 +139,28 @@ export class StudyMaterialManagementService {
       if (!resource) {
         throw new Error(`Study material not found: ${resourceId}`)
       }
-      const lesson = await resolveLessonForBinding(input.lessonId)
-      if (lesson.moduleId !== resource.moduleId) {
-        throw new Error('Target lesson belongs to a different module than the study material')
+      if (input.lessonId !== null && typeof input.lessonId !== 'string') {
+        throw new Error('Lesson binding is invalid')
       }
-      bindingUpdate = { lessonId: lesson.id, moduleId: resource.moduleId }
+      if (input.lessonId === null) {
+        bindingUpdate = { lessonId: null, moduleId: resource.moduleId }
+      } else {
+        if (!resource.moduleId) {
+          throw new Error('A lesson cannot be bound until the study material has a module.')
+        }
+        const lesson = await resolveLessonForBinding(input.lessonId)
+        if (lesson.moduleId !== resource.moduleId) {
+          throw new Error('Target lesson belongs to a different module than the study material')
+        }
+        bindingUpdate = { lessonId: lesson.id, moduleId: resource.moduleId }
+      }
 
-      if (input.displayOrder === undefined && lesson.id !== resource.lessonId) {
+      if (input.displayOrder === undefined && input.lessonId !== null && input.lessonId !== resource.lessonId) {
+        if (!resource.moduleId) {
+          throw new Error('A lesson cannot be bound until the study material has a module.')
+        }
         const existing = await resourceRepository.findByModule(resource.moduleId)
-        const maxOrder = existing.reduce((max, r) => Math.max(max, (r as any).displayOrder ?? 0), 0)
+        const maxOrder = existing.reduce((max, resource) => Math.max(max, resource.displayOrder ?? 0), 0)
         displayOrderUpdate = { displayOrder: maxOrder + 1 }
       }
     }
@@ -144,13 +171,13 @@ export class StudyMaterialManagementService {
 
     const updated = await resourceRepository.update(resourceId, {
       ...(input.title ? { title: input.title } : {}),
-      ...(input.type ? { materialType: input.type as any } : {}),
+      ...(input.type ? { materialType: input.type } : {}),
       ...(resourceUrl ? { url: resourceUrl } : {}),
       ...(input.isPremium !== undefined ? { isPremium: input.isPremium } : {}),
       ...(input.status ? { status: input.status } : {}),
       ...bindingUpdate,
       ...displayOrderUpdate,
-    } as any)
+    })
 
     return { id: updated.id, status: updated.status }
   }
@@ -159,7 +186,7 @@ export class StudyMaterialManagementService {
     const resource = await resourceRepository.findById(resourceId)
     if (!resource) throw new NotFoundError('Study material not found')
 
-    const updated = await resourceRepository.update(resourceId, { status: 'ARCHIVED' } as any)
+    const updated = await resourceRepository.update(resourceId, { status: 'ARCHIVED' })
     return { id: updated.id, status: updated.status }
   }
 
@@ -167,7 +194,7 @@ export class StudyMaterialManagementService {
     const resource = await resourceRepository.findById(resourceId)
     if (!resource) throw new NotFoundError('Study material not found')
 
-    const updated = await resourceRepository.update(resourceId, { status: 'PUBLISHED' } as any)
+    const updated = await resourceRepository.update(resourceId, { status: 'PUBLISHED' })
     return { id: updated.id, status: updated.status }
   }
 
@@ -175,7 +202,7 @@ export class StudyMaterialManagementService {
     const resource = await resourceRepository.findById(resourceId)
     if (!resource) throw new NotFoundError('Study material not found')
 
-    const updated = await resourceRepository.update(resourceId, { status: 'DRAFT' } as any)
+    const updated = await resourceRepository.update(resourceId, { status: 'DRAFT' })
     return { id: updated.id, status: updated.status }
   }
 
@@ -183,7 +210,7 @@ export class StudyMaterialManagementService {
     const resource = await resourceRepository.findById(resourceId)
     if (!resource) throw new NotFoundError('Study material not found')
 
-    const updated = await resourceRepository.update(resourceId, { status: 'DRAFT' } as any)
+    const updated = await resourceRepository.update(resourceId, { status: 'DRAFT' })
     return { id: updated.id, status: updated.status }
   }
 

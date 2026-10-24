@@ -2,10 +2,11 @@ import prisma from '@/lib/prisma'
 import type { Prisma } from '@prisma/client'
 
 export class ExamTemplateRepository {
-  async listTemplates(params: { search?: string; courseId?: string; active?: boolean; skip?: number; take?: number; sortBy?: 'updated' | 'title' | 'created' } = {}) {
+  async listTemplates(params: { search?: string; courseId?: string; moduleId?: string | 'UNASSIGNED'; active?: boolean; skip?: number; take?: number; sortBy?: 'updated' | 'title' | 'created' } = {}) {
     const where: Prisma.ExamTemplateWhereInput = {
       ...(params.search ? { name: { contains: params.search, mode: 'insensitive' } } : {}),
       ...(params.courseId ? { courseId: params.courseId } : {}),
+      ...(params.moduleId === 'UNASSIGNED' ? { moduleId: null } : params.moduleId ? { moduleId: params.moduleId } : {}),
       ...(typeof params.active === 'boolean' ? { active: params.active } : {}),
     }
     const orderBy = params.sortBy === 'title'
@@ -17,10 +18,11 @@ export class ExamTemplateRepository {
     return prisma.examTemplate.findMany({ where, orderBy, skip: params.skip ?? 0, take: params.take ?? 20 })
   }
 
-  async countTemplates(params: { search?: string; courseId?: string; active?: boolean } = {}) {
+  async countTemplates(params: { search?: string; courseId?: string; moduleId?: string | 'UNASSIGNED'; active?: boolean } = {}) {
     const where: Prisma.ExamTemplateWhereInput = {
       ...(params.search ? { name: { contains: params.search, mode: 'insensitive' } } : {}),
       ...(params.courseId ? { courseId: params.courseId } : {}),
+      ...(params.moduleId === 'UNASSIGNED' ? { moduleId: null } : params.moduleId ? { moduleId: params.moduleId } : {}),
       ...(typeof params.active === 'boolean' ? { active: params.active } : {}),
     }
     return prisma.examTemplate.count({ where })
@@ -28,6 +30,10 @@ export class ExamTemplateRepository {
 
   async getTemplate(id: string) {
     return prisma.examTemplate.findUnique({ where: { id } })
+  }
+
+  async countAttemptsForTemplate(id: string) {
+    return prisma.examAttempt.count({ where: { templateId: id } })
   }
 
   async createTemplate(data: Prisma.ExamTemplateCreateInput) {

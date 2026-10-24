@@ -14,6 +14,15 @@ export type EditorialWorkflowRow = {
 }
 
 export class EditorialWorkflowRepository {
+  async findByTargets(targetType: string, entityIds: string[]) {
+    if (entityIds.length === 0) return []
+
+    return prisma.editorialWorkflow.findMany({
+      where: { targetType, entityId: { in: entityIds } },
+      select: { entityId: true, status: true },
+    })
+  }
+
   async findByTarget(targetType: string, entityId: string): Promise<EditorialWorkflowRow | null> {
     const row = await prisma.editorialWorkflow.findUnique({
       where: { targetType_entityId: { targetType, entityId } },

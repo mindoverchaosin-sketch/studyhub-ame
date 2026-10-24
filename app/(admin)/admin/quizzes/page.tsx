@@ -1,17 +1,55 @@
-import { redirect } from "next/navigation";
-import { requireAdmin } from "@/auth";import EmptyAdminState from "@/components/admin/EmptyAdminState";
-import PageHeader from "@/components/admin/PageHeader";
+import { redirect } from 'next/navigation'
+import { requirePermission } from '@/auth'
+import { QuizManagementPanel } from '@/components/admin/quizzes/QuizManagementPanel'
+import { moduleRepository } from '@/server/repositories/module.repository'
+import { questionBankRepository } from '@/server/repositories/question-bank.repository'
+import { quizManagementService } from '@/server/services/quiz-management.service'
 
-export default async function QuizzesPage() {
+export default async function AdminQuizzesPage({ searchParams }: { searchParams: Promise<{ moduleId?: string }> }) {
   try {
-    await requireAdmin();
+    await requirePermission('manageModules')
   } catch {
-    redirect("/login");
+    redirect('/login')
   }
+
+  const params = await searchParams
+  const [quizRows, moduleRows, bankRows] = await Promise.all([
+    quizManagementService.list(),
+    moduleRepository.findModulesForAdmin({ take: 1000, sortBy: 'title' }),
+    questionBankRepository.findForAdmin({ status: 'ALL', take: 1000, sortBy: 'title', sortOrder: 'asc' }),
+  ])
+
+  const modules = moduleRows.filter((module) => !module.deletedAt).map((module) => ({ id: module.id, title: module.title, canonicalQuizId: module.canonicalQuizId }))
+  const questionBanks = bankRows.filter((bank) => !bank.deletedAt).map((bank) => ({
+    id: bank.id,
+    title: bank.title,
+    status: bank.status,
+    questionCount: bank.questionCount,
+  }))
+  const moduleMap = new Map(modules.map((module) => [module.id, module.title]))
+  const canonicalQuizMap = new Map(modules.map((module) => [module.id, module.canonicalQuizId]))
+  const quizzes = quizRows.map((quiz) => ({
+    id: quiz.id,
+    moduleId: quiz.moduleId,
+    moduleTitle: moduleMap.get(quiz.moduleId) ?? 'Unknown module',
+    canonicalQuizId: canonicalQuizMap.get(quiz.moduleId) ?? null,
+    title: quiz.title,
+    description: quiz.description,
+    status: quiz.status,
+    passingScore: quiz.passingScore,
+    timeLimitMinutes: quiz.timeLimitMinutes,
+    questionBankIds: quiz.questionBanks.map((bank) => bank.id),
+    questionBankTitles: quiz.questionBanks.map((bank) => bank.title),
+    attemptCount: quiz._count.attempts,
+    updatedAt: quiz.updatedAt.toISOString(),
+  }))
+
   return (
-    <div className="space-y-6">
-        <PageHeader title="Quizzes" description="Placeholder content for quiz authoring and publishing." />
-        <EmptyAdminState title="Quiz workspace" description="Quiz creation and moderation flows will be added here in a future milestone." />
-      </div>
-  );
+    <QuizManagementPanel
+      initialQuizzes={quizzes}
+      modules={modules}
+      questionBanks={questionBanks}
+      initialModuleId={modules.some((module) => module.id === params.moduleId) ? params.moduleId : undefined}
+    />
+  )
 }

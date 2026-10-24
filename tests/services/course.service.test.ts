@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mockFindAll, mockFindById, mockFindAdminById, mockUpdate, mockRequirePermission, mockRevalidatePath } = vi.hoisted(() => ({
+const { mockFindAll, mockFindById, mockFindAdminById, mockFindCategories, mockCreate, mockUpdate, mockRequirePermission, mockRevalidatePath } = vi.hoisted(() => ({
   mockFindAll: vi.fn(),
   mockFindById: vi.fn(),
   mockFindAdminById: vi.fn(),
+  mockFindCategories: vi.fn(),
+  mockCreate: vi.fn(),
   mockUpdate: vi.fn(),
   mockRequirePermission: vi.fn(),
   mockRevalidatePath: vi.fn(),
@@ -13,9 +15,11 @@ vi.mock('@/server/repositories/course.repository', () => ({
   courseRepository: {
     findAllPublished: vi.fn(),
     findAll: mockFindAll,
+    findCategories: mockFindCategories,
     findBySlug: vi.fn(),
     findById: mockFindById,
     findAdminById: mockFindAdminById,
+    create: mockCreate,
     update: mockUpdate,
   },
 }))
@@ -32,7 +36,13 @@ vi.mock('next/navigation', () => ({
   notFound: (): never => { throw new Error('NOT_FOUND') },
 }))
 
-import { getAdminCourseById, updateAdminCourseById } from '@/server/services/course.service'
+import {
+  createAdminCourse,
+  getAdminCourseById,
+  getAdminCourseCategories,
+  setAdminCoursePublishState,
+  updateAdminCourseById,
+} from '@/server/services/course.service'
 
 const publishedAt = new Date('2026-02-01T00:00:00.000Z')
 let storedCourse: Record<string, unknown>
@@ -61,6 +71,14 @@ describe('admin course service', () => {
     vi.clearAllMocks()
     storedCourse = courseRow()
     mockFindAll.mockImplementation(async () => [{ ...storedCourse }])
+    mockFindCategories.mockResolvedValue([{ id: 'category-dgca', title: 'DGCA' }])
+    mockCreate.mockImplementation(async (input: Record<string, unknown>) => ({
+      ...courseRow(),
+      ...input,
+      id: 'new-course-id',
+      status: 'DRAFT',
+      publishedAt: null,
+    }))
     mockFindById.mockImplementation(async (id: string) => id === storedCourse.id ? { ...storedCourse } : null)
     mockFindAdminById.mockImplementation(async (id: string) => id === storedCourse.id ? { ...storedCourse } : null)
     mockUpdate.mockImplementation(async (id: string, changes: Record<string, unknown>) => {
@@ -82,6 +100,27 @@ describe('admin course service', () => {
       modules: [{ id: 'module-1', title: 'Existing module' }],
     })
     expect(mockFindAdminById).toHaveBeenCalledWith('course-db-id')
+  })
+
+  it('loads active course categories for assignment', async () => {
+    await expect(getAdminCourseCategories()).resolves.toEqual([{ id: 'category-dgca', title: 'DGCA' }])
+    expect(mockFindCategories).toHaveBeenCalled()
+  })
+
+  it('creates a draft course with its selected category', async () => {
+    await expect(createAdminCourse({
+      title: 'New course',
+      slug: 'new-course',
+      description: 'A new draft',
+      categoryId: 'category-dgca',
+    })).resolves.toMatchObject({ id: 'new-course-id', status: 'DRAFT', categoryId: 'category-dgca' })
+
+    expect(mockCreate).toHaveBeenCalledWith({
+      title: 'New course',
+      slug: 'new-course',
+      description: 'A new draft',
+      categoryId: 'category-dgca',
+    })
   })
 
   it('updates a safe field and reloads it without changing category, publication state, premium access, or modules', async () => {
@@ -158,5 +197,20 @@ describe('admin course service', () => {
       description: null,
     })).resolves.toBeNull()
     expect(mockUpdate).not.toHaveBeenCalled()
+  })
+
+  it('sets publication state and publishedAt without affecting category or module assignment', async () => {
+    await expect(setAdminCoursePublishState('course-db-id', 'PUBLISHED')).resolves.toMatchObject({ status: 'PUBLISHED' })
+    expect(mockUpdate).toHaveBeenCalledWith('course-db-id', {
+      status: 'PUBLISHED',
+      publishedAt: expect.any(Date),
+    })
+
+    await expect(setAdminCoursePublishState('course-db-id', 'DRAFT')).resolves.toMatchObject({ status: 'DRAFT' })
+    expect(mockUpdate).toHaveBeenLastCalledWith('course-db-id', {
+      status: 'DRAFT',
+      publishedAt: null,
+    })
+    expect(storedCourse).toMatchObject({ categoryId: 'category-dgca' })
   })
 })

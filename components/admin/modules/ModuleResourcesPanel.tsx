@@ -1,23 +1,38 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import Card from "@/components/ui/Card";
-import { approvePublishingAction, archiveContentAction, publishContentAction, rejectPublishingAction, submitForReviewAction, unpublishContentAction } from "@/server/actions/publishing.actions";
+import { hasPermission } from "@/server/services/authorization.service";
+import {
+  approveStudyMaterialAction,
+  archiveStudyMaterialEditorialAction,
+  publishStudyMaterialAction,
+  rejectStudyMaterialAction,
+  submitStudyMaterialForReviewAction,
+  unpublishStudyMaterialEditorialAction,
+} from "@/server/actions/study-material-editorial.actions";
 import type { ResourceDTO } from "@/server/application/dto/resource.dto";
 
 interface ModuleResourcesPanelProps {
+  moduleId: string;
   resources: ResourceDTO[];
 }
 
-export default function ModuleResourcesPanel({ resources }: ModuleResourcesPanelProps) {
+type EditorialStatus = NonNullable<ResourceDTO["editorialStatus"]>;
+
+export default function ModuleResourcesPanel({ moduleId, resources }: ModuleResourcesPanelProps) {
   const [search, setSearch] = useState("");
   const [type, setType] = useState("ALL");
   const [status, setStatus] = useState("ALL");
+  const [pendingResourceId, setPendingResourceId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [editorialStatuses, setEditorialStatuses] = useState<Record<string, EditorialStatus>>({});
+  const actionInProgress = useRef(false);
   const { data: session } = useSession();
-  const role = (session?.user?.role as string | undefined) ?? 'STUDENT';
-  const canManageResources = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'CONTENT_MANAGER';
-  const canPublish = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'CONTENT_MANAGER' || role === 'QUESTION_REVIEWER';
+  const role = session?.user?.role;
+  const canManageResources = hasPermission(role, "manageResources");
+  const canPublish = hasPermission(role, "publishContent");
 
   const visibleResources = useMemo(() => {
     const lowerSearch = search.trim().toLowerCase();
@@ -28,6 +43,33 @@ export default function ModuleResourcesPanel({ resources }: ModuleResourcesPanel
       return matchesSearch && matchesType && matchesStatus;
     });
   }, [resources, search, type, status]);
+
+  async function runAction(
+    resource: ResourceDTO,
+    label: string,
+    nextStatus: EditorialStatus,
+    action: () => Promise<unknown>,
+  ) {
+    if (actionInProgress.current) return;
+    actionInProgress.current = true;
+    setPendingResourceId(resource.id);
+    setFeedback(null);
+    try {
+      await action();
+      setEditorialStatuses((current) => ({ ...current, [resource.id]: nextStatus }));
+      setFeedback({ type: "success", message: `${label} completed for "${resource.title}".` });
+    } catch (error) {
+      setFeedback({
+        type: "error",
+        message: error instanceof Error ? error.message : `Unable to ${label.toLowerCase()}. Please try again.`,
+      });
+    } finally {
+      actionInProgress.current = false;
+      setPendingResourceId(null);
+    }
+  }
+
+  const buttonClass = "rounded-full border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
     <Card variant="elevated" className="p-0">
@@ -49,11 +91,18 @@ export default function ModuleResourcesPanel({ resources }: ModuleResourcesPanel
               <option value="ALL">All status</option>
               <option value="PUBLISHED">Published</option>
               <option value="DRAFT">Draft</option>
+              <option value="IN_REVIEW">In review</option>
               <option value="ARCHIVED">Archived</option>
             </select>
           </div>
         </div>
       </div>
+
+      {feedback ? (
+        <p role={feedback.type === "error" ? "alert" : "status"} className={`mx-6 mt-4 rounded-xl border px-3 py-2 text-sm ${feedback.type === "error" ? "border-rose-200 bg-rose-50 text-rose-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>
+          {feedback.message}
+        </p>
+      ) : null}
 
       <div className="overflow-x-auto">
         <table className="min-w-full border-collapse text-left text-sm">
@@ -67,43 +116,69 @@ export default function ModuleResourcesPanel({ resources }: ModuleResourcesPanel
             </tr>
           </thead>
           <tbody>
-            {visibleResources.map((resource) => (
-              <tr key={resource.id} className="border-t border-slate-200 bg-white/80">
-                <td className="px-4 py-4">
-                  <div>
-                    <p className="font-semibold text-slate-900">{resource.title}</p>
-                    <p className="mt-1 text-xs text-slate-500">{resource.url}</p>
-                  </div>
-                </td>
-                <td className="px-4 py-4 text-slate-700">{resource.type}</td>
-                <td className="px-4 py-4">
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${resource.status === "PUBLISHED" ? "bg-emerald-100 text-emerald-700" : resource.status === "ARCHIVED" ? "bg-slate-200 text-slate-700" : "bg-amber-100 text-amber-700"}`}>
-                    {resource.status}
-                  </span>
-                </td>
-                <td className="px-4 py-4 text-slate-700">{new Date(resource.updatedAt).toLocaleDateString()}</td>
-                <td className="px-4 py-4 text-slate-700">
-                  {canManageResources || canPublish ? (
-                    <div className="flex flex-wrap gap-2">
-                      {canPublish ? (
-                        <>
-                          <button type="button" onClick={() => void submitForReviewAction('STUDY_MATERIAL', resource.id)} className="rounded-full border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-700">Review</button>
-                          <button type="button" onClick={() => void approvePublishingAction('STUDY_MATERIAL', resource.id)} className="rounded-full border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-700">Approve</button>
-                          <button type="button" onClick={() => void rejectPublishingAction('STUDY_MATERIAL', resource.id, 'Needs revision')} className="rounded-full border border-amber-300 px-2.5 py-1 text-xs font-semibold text-amber-700">Reject</button>
-                          <button type="button" onClick={() => void publishContentAction('STUDY_MATERIAL', resource.id)} className="rounded-full border border-emerald-300 px-2.5 py-1 text-xs font-semibold text-emerald-700">Publish</button>
-                          <button type="button" onClick={() => void unpublishContentAction('STUDY_MATERIAL', resource.id)} className="rounded-full border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-700">Unpublish</button>
-                        </>
-                      ) : null}
-                      {canManageResources ? (
-                        <button type="button" onClick={() => void archiveContentAction('STUDY_MATERIAL', resource.id)} className="rounded-full border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-700">Archive</button>
-                      ) : null}
+            {visibleResources.map((resource) => {
+              const editorialStatus = editorialStatuses[resource.id] ?? resource.editorialStatus ?? resource.status;
+              const busy = pendingResourceId !== null;
+
+              return (
+                <tr key={resource.id} className="border-t border-slate-200 bg-white/80">
+                  <td className="px-4 py-4">
+                    <div>
+                      <p className="font-semibold text-slate-900">{resource.title}</p>
+                      <p className="mt-1 text-xs text-slate-500">{resource.url}</p>
                     </div>
-                  ) : (
-                    <span className="text-xs text-slate-500">No actions available</span>
-                  )}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-4 py-4 text-slate-700">{resource.type}</td>
+                  <td className="px-4 py-4">
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${resource.status === "PUBLISHED" ? "bg-emerald-100 text-emerald-700" : resource.status === "ARCHIVED" ? "bg-slate-200 text-slate-700" : "bg-amber-100 text-amber-700"}`}>
+                      {resource.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-4 text-slate-700">{new Date(resource.updatedAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-4 text-slate-700">
+                    {canManageResources || canPublish ? (
+                      <div className="flex flex-wrap gap-2">
+                        {canManageResources && editorialStatus === "DRAFT" ? (
+                          <button type="button" disabled={busy} onClick={() => runAction(resource, "Submit for review", "IN_REVIEW", () => submitStudyMaterialForReviewAction(resource.id, moduleId))} className={buttonClass}>
+                            {pendingResourceId === resource.id ? "Submitting..." : "Review"}
+                          </button>
+                        ) : null}
+                        {canPublish && editorialStatus === "IN_REVIEW" ? (
+                          <>
+                            <button type="button" disabled={busy} onClick={() => runAction(resource, "Approve", "APPROVED", () => approveStudyMaterialAction(resource.id, moduleId))} className={buttonClass}>
+                              {pendingResourceId === resource.id ? "Approving..." : "Approve"}
+                            </button>
+                            <button type="button" disabled={busy} onClick={() => runAction(resource, "Reject", "DRAFT", () => rejectStudyMaterialAction(resource.id, moduleId, "Needs revision"))} className="rounded-full border border-amber-300 px-2.5 py-1 text-xs font-semibold text-amber-700 disabled:cursor-not-allowed disabled:opacity-50">
+                              {pendingResourceId === resource.id ? "Rejecting..." : "Reject"}
+                            </button>
+                          </>
+                        ) : null}
+                        {canPublish && editorialStatus === "APPROVED" ? (
+                          <button type="button" disabled={busy} onClick={() => runAction(resource, "Publish", "PUBLISHED", () => publishStudyMaterialAction(resource.id, moduleId))} className="rounded-full border border-emerald-300 px-2.5 py-1 text-xs font-semibold text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
+                            {pendingResourceId === resource.id ? "Publishing..." : "Publish"}
+                          </button>
+                        ) : null}
+                        {canPublish && editorialStatus === "PUBLISHED" ? (
+                          <button type="button" disabled={busy} onClick={() => runAction(resource, "Unpublish", "DRAFT", () => unpublishStudyMaterialEditorialAction(resource.id, moduleId))} className={buttonClass}>
+                            {pendingResourceId === resource.id ? "Unpublishing..." : "Unpublish"}
+                          </button>
+                        ) : null}
+                        {canPublish && editorialStatus !== "ARCHIVED" ? (
+                          <button type="button" disabled={busy} onClick={() => runAction(resource, "Archive", "ARCHIVED", () => archiveStudyMaterialEditorialAction(resource.id, moduleId))} className={buttonClass}>
+                            {pendingResourceId === resource.id ? "Archiving..." : "Archive"}
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-500">No actions available</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            {visibleResources.length === 0 ? (
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-500">No resources match your filters.</td></tr>
+            ) : null}
           </tbody>
         </table>
       </div>

@@ -52,9 +52,22 @@ function resolveCorrectAnswer(question: any): string | null {
  * Handles quiz-related database operations
  */
 
-export async function getQuizByTopic(topicId: string): Promise<QuizDTO | null> {
-  const quiz = await quizRepository.findByLesson(topicId)
-  return quiz ? mapQuizEntityToDTO(quiz, topicId) : null
+export async function getCanonicalQuizByModule(moduleId: string): Promise<QuizDTO | null> {
+  const moduleRecord = await quizRepository.findModuleWithCanonicalQuiz(moduleId)
+  const quiz = moduleRecord?.canonicalQuiz
+  if (
+    !moduleRecord
+    || moduleRecord.status !== 'PUBLISHED'
+    || moduleRecord.deletedAt !== null
+    || !quiz
+    || quiz.moduleId !== moduleRecord.id
+    || quiz.status !== 'PUBLISHED'
+    || quiz.deletedAt !== null
+  ) {
+    return null
+  }
+
+  return mapQuizEntityToDTO(quiz, moduleRecord.id)
 }
 
 export async function getQuizById(id: string): Promise<QuizDTO | null> {

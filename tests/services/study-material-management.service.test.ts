@@ -50,7 +50,7 @@ describe('StudyMaterialManagementService', () => {
       title: 'Notes',
       materialType: 'NOTES',
       url: '/media/notes.txt',
-      sourceType: 'LEGACY_RESOURCE',
+      sourceType: 'AEROPREP_DOC',
       status: 'DRAFT',
       displayOrder: 3,
     }))
@@ -101,12 +101,17 @@ describe('StudyMaterialManagementService', () => {
     expect(resourceRepository.create).not.toHaveBeenCalled()
   })
 
-  it('rejects binding to an unavailable module', async () => {
+  it('allows module-level draft materials on available draft modules', async () => {
     const { resourceRepository } = setupRepositoryMocks({ module: { id: 'm1', status: 'DRAFT', deletedAt: null } })
     const service = await importService()
 
-    await expect(service.createResource({ moduleId: 'm1', lessonId: 'l1', title: 'Notes', type: 'NOTES', url: '/media/notes.txt' })).rejects.toThrow('Published module for binding not found')
-    expect(resourceRepository.create).not.toHaveBeenCalled()
+    await service.createResource({ moduleId: 'm1', title: 'Module notes', type: 'NOTES' })
+    expect(resourceRepository.create).toHaveBeenCalledWith(expect.objectContaining({
+      moduleId: 'm1',
+      lessonId: null,
+      title: 'Module notes',
+      sourceType: 'AEROPREP_DOC',
+    }))
   })
 
   it('rejects a nonexistent lesson without creating the material', async () => {
@@ -125,12 +130,34 @@ describe('StudyMaterialManagementService', () => {
     expect(resourceRepository.create).not.toHaveBeenCalled()
   })
 
-  it('requires lessonId for newly authored materials', async () => {
+  it('requires a module for newly authored materials', async () => {
     const { resourceRepository } = setupRepositoryMocks()
     const service = await importService()
 
-    await expect(service.createResource({ moduleId: 'm1', title: 'Notes', type: 'NOTES', url: '/media/notes.txt' } as never)).rejects.toThrow('lessonId is required')
+    await expect(service.createResource({ moduleId: '', title: 'Notes', type: 'NOTES' })).rejects.toThrow('Module is required')
     expect(resourceRepository.create).not.toHaveBeenCalled()
+  })
+
+  it('rejects invalid material types and URLs before persisting', async () => {
+    const { resourceRepository } = setupRepositoryMocks()
+    const service = await importService()
+
+    await expect(service.createResource({ moduleId: 'm1', title: 'Notes', type: 'INVALID' as never })).rejects.toThrow('Study material type is invalid')
+    await expect(service.createResource({ moduleId: 'm1', title: 'Notes', type: 'NOTES', url: 'https://example.invalid/file' })).rejects.toThrow('relative /media/ path')
+    expect(resourceRepository.create).not.toHaveBeenCalled()
+  })
+
+  it('allows unlinking a lesson while preserving its module binding', async () => {
+    const { resourceRepository } = setupRepositoryMocks({
+      resourceRow: { id: 'r1', moduleId: 'm1', lessonId: 'l1', displayOrder: 2 },
+    })
+    const service = await importService()
+
+    await service.updateResource('r1', { lessonId: null })
+    expect(resourceRepository.update).toHaveBeenCalledWith('r1', {
+      lessonId: null,
+      moduleId: 'm1',
+    })
   })
 
   describe('displayOrder persistence', () => {

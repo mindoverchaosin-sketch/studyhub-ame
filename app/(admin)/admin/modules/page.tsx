@@ -95,7 +95,15 @@ export default async function ModulesPage({ searchParams }: { searchParams?: Pro
           </div>
         </form>
 
-        <ModuleDirectoryPanel directory={directory} query={query} examType={examType} status={status} sortBy={sortBy} page={page} />
+        <ModuleDirectoryPanel
+          directory={directory}
+          query={query}
+          examType={examType}
+          status={status}
+          sortBy={sortBy}
+          page={page}
+          basePath="/admin/modules"
+        />
       </div>
   );
 }
