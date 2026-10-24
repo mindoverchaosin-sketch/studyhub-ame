@@ -111,6 +111,28 @@ describe('EditorialWorkflowRepository', () => {
     expect(result?.id).toBe('wf-1')
   })
 
+  it('finds workflows for a set of targets', async () => {
+    const repository = new EditorialWorkflowRepository()
+    prismaEditorialWorkflowFindManyMock.mockResolvedValue([
+      { entityId: 'material-1', status: 'APPROVED' },
+    ])
+
+    const result = await repository.findByTargets('STUDY_MATERIAL', ['material-1'])
+
+    expect(prismaEditorialWorkflowFindManyMock).toHaveBeenCalledWith({
+      where: { targetType: 'STUDY_MATERIAL', entityId: { in: ['material-1'] } },
+      select: { entityId: true, status: true },
+    })
+    expect(result).toEqual([{ entityId: 'material-1', status: 'APPROVED' }])
+  })
+
+  it('does not query when the target set is empty', async () => {
+    const repository = new EditorialWorkflowRepository()
+
+    await expect(repository.findByTargets('STUDY_MATERIAL', [])).resolves.toEqual([])
+    expect(prismaEditorialWorkflowFindManyMock).not.toHaveBeenCalled()
+  })
+
   it('finds a workflow by id', async () => {
     const repository = new EditorialWorkflowRepository()
     const now = new Date('2026-01-01T00:00:00.000Z')

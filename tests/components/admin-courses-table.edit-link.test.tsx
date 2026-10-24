@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import AdminCoursesTable from '@/features/admin/components/AdminCoursesTable'
+
+vi.mock('@/server/actions/course-management.actions', () => ({
+  setAdminCoursePublishStateAction: vi.fn(),
+}))
 
 describe('AdminCoursesTable Edit navigation', () => {
   it('uses the canonical Admin course route and database ID', () => {
@@ -15,5 +19,6 @@ describe('AdminCoursesTable Edit navigation', () => {
     }]} />)
 
     expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/admin/courses/course-db-id')
+    expect(screen.getByRole('button', { name: 'Unpublish' })).toHaveAttribute('type', 'submit')
   })
 })

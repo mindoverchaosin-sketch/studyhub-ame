@@ -2,8 +2,8 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { requirePermission } from '@/auth'
 import PageHeader from '@/features/admin/components/PageHeader'
-import { updateAdminCourseAction } from '@/server/actions/course-management.actions'
-import { getAdminCourseById } from '@/server/services/course.service'
+import { setAdminCoursePublishStateAction, updateAdminCourseAction } from '@/server/actions/course-management.actions'
+import { getAdminCourseById, getAdminCourseCategories } from '@/server/services/course.service'
 
 export default async function AdminCourseEditPage({
   params,
@@ -22,7 +22,10 @@ export default async function AdminCourseEditPage({
     params,
     searchParams ?? Promise.resolve({} as Record<string, string | string[] | undefined>),
   ])
-  const course = await getAdminCourseById(courseId)
+  const [course, categories] = await Promise.all([
+    getAdminCourseById(courseId),
+    getAdminCourseCategories(),
+  ])
   if (!course) notFound()
 
   const error = typeof query.error === 'string' ? query.error : null
@@ -41,8 +44,10 @@ export default async function AdminCourseEditPage({
       />
 
       {saved ? <p role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">Course changes saved.</p> : null}
+      {query.created === '1' ? <p role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">Course created.</p> : null}
       {error === 'invalid' ? <p role="alert" className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">Enter a valid title, slug, and description.</p> : null}
       {error === 'slug' ? <p role="alert" className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">That slug is already in use. Choose a unique slug.</p> : null}
+      {error === 'category' ? <p role="alert" className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">Choose an available category.</p> : null}
 
       <form action={updateAdminCourseAction.bind(null, course.id)} className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.8fr)]">
         <section className="space-y-5 rounded-md border border-slate-200 bg-white p-5 sm:p-6" aria-label="Course details">
@@ -58,6 +63,13 @@ export default async function AdminCourseEditPage({
             Description
             <textarea name="description" rows={5} maxLength={10000} defaultValue={course.description ?? ''} className="w-full rounded-md border border-slate-300 px-3 py-2 text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600" />
           </label>
+          <label className="grid gap-1.5 text-sm font-medium text-slate-800">
+            Category
+            <select name="categoryId" defaultValue={course.categoryId ?? ''} className="min-h-11 rounded-md border border-slate-300 bg-white px-3 text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+              <option value="">No category</option>
+              {categories.map((category) => <option key={category.id} value={category.id}>{category.title}</option>)}
+            </select>
+          </label>
           <div className="flex flex-wrap gap-3 border-t border-slate-100 pt-5">
             <button type="submit" className="min-h-10 rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2">Save changes</button>
             <Link href="/admin/courses" className="inline-flex min-h-10 items-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Back to courses</Link>
@@ -68,11 +80,23 @@ export default async function AdminCourseEditPage({
           <section className="rounded-md border border-slate-200 bg-white p-5" aria-label="Course classification">
             <h2 className="font-semibold text-slate-950">Course classification</h2>
             <dl className="mt-4 space-y-4 text-sm">
-              <div><dt className="text-slate-500">Exam type</dt><dd className="mt-1 font-medium text-slate-900">{course.categoryTitle ?? course.categoryId ?? 'General'}</dd></div>
+              <div><dt className="text-slate-500">Category</dt><dd className="mt-1 font-medium text-slate-900">{course.categoryTitle ?? 'None'}</dd></div>
               <div><dt className="text-slate-500">Publication state</dt><dd className="mt-1 font-medium text-slate-900">{course.status.replaceAll('_', ' ')}</dd></div>
               <div><dt className="text-slate-500">Premium access</dt><dd className="mt-1 font-medium text-slate-900">{course.isPremium ? 'Premium' : 'Standard'}</dd></div>
               <div><dt className="text-slate-500">Published at</dt><dd className="mt-1 font-medium text-slate-900">{course.publishedAt ? new Date(course.publishedAt).toLocaleString() : 'Not published'}</dd></div>
             </dl>
+          </section>
+
+          <section className="rounded-md border border-slate-200 bg-white p-5" aria-label="Course publishing">
+            <h2 className="font-semibold text-slate-950">Course publishing</h2>
+            <p className="mt-2 text-sm text-slate-600">Current state: {course.status.replaceAll('_', ' ')}</p>
+            <button
+              type="submit"
+              formAction={setAdminCoursePublishStateAction.bind(null, course.id, course.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED')}
+              className="mt-4 min-h-10 rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+            >
+              {course.status === 'PUBLISHED' ? 'Unpublish course' : 'Publish course'}
+            </button>
           </section>
 
           <section className="overflow-hidden rounded-md border border-slate-200 bg-white" aria-label="Attached modules">
