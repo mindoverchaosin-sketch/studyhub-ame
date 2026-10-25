@@ -63,7 +63,9 @@ export default function PublishingControls({ targetType, targetId, moduleId, sta
   } else if (status === 'APPROVED') {
     transitions.push({
       label: 'Publish',
-      run: () => publishStudyMaterialAction(targetId, moduleId),
+      run: () => isStudyMaterial
+        ? publishStudyMaterialAction(targetId, moduleId)
+        : publishContentAction(targetType, targetId, moduleId),
     })
   } else if (status === 'PUBLISHED') {
     transitions.push(
