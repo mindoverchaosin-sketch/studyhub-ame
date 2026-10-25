@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
-import { auth, requirePermission } from '@/auth'
+import { ForbiddenError, requirePermission, requireStudent, UnauthorizedError, type AuthSession } from '@/auth'
 import { resourceRepository } from '@/server/repositories/resource.repository'
 import { moduleRepository } from '@/server/repositories/module.repository'
+import { contentAccessService } from '@/server/services/content-access.service'
 import { sanitizeStudyMaterialDocument } from '@/lib/study-material/document-schema'
 import { renderStudyMaterialPdf } from '@/lib/study-material/pdf-renderer'
 
@@ -9,23 +10,38 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth()
-  if (!session?.user?.id) {
+  const preview = new URL(_request.url).searchParams.get('preview') === '1'
+  let session: AuthSession
+  try {
+    session = preview
+      ? await requirePermission('manageResources')
+      : await requireStudent()
+  } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+    if (error instanceof ForbiddenError) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    throw error
+  }
+
+  const userId = session.user.id
+  if (!userId) {
     return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
   }
 
   const { id } = await params
-  const preview = new URL(_request.url).searchParams.get('preview') === '1'
-  if (preview) {
-    try {
-      await requirePermission('manageResources')
-    } catch {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-  }
   const resource = preview ? await resourceRepository.findById(id) : await resourceRepository.findPublishedById(id)
   if (!resource || !resource.documentContent) {
     return NextResponse.json({ error: 'Study material not found' }, { status: 404 })
+  }
+
+  if (!preview) {
+    const access = await contentAccessService.canAccessStudyMaterial(userId, resource.isPremium)
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.reason ?? 'Premium access required' }, { status: 403 })
+    }
   }
 
   const document = sanitizeStudyMaterialDocument(resource.documentContent)
