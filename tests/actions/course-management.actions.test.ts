@@ -3,6 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   requirePermission: vi.fn(),
   withAuditLogging: vi.fn(),
+  createAdminCourse: vi.fn(),
+  getAdminCourseCategories: vi.fn(),
+  setAdminCoursePublishState: vi.fn(),
   updateAdminCourseById: vi.fn(),
   revalidatePath: vi.fn(),
   redirect: vi.fn((path: string): never => { throw new Error(`REDIRECT:${path}`) }),
@@ -16,7 +19,12 @@ vi.mock('@/auth', () => ({
 vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }))
 vi.mock('next/navigation', () => ({ redirect: mocks.redirect, notFound: mocks.notFound }))
 vi.mock('@/server/actions/audit-helpers', () => ({ withAuditLogging: mocks.withAuditLogging }))
-vi.mock('@/server/services/course.service', () => ({ updateAdminCourseById: mocks.updateAdminCourseById }))
+vi.mock('@/server/services/course.service', () => ({
+  createAdminCourse: mocks.createAdminCourse,
+  getAdminCourseCategories: mocks.getAdminCourseCategories,
+  setAdminCoursePublishState: mocks.setAdminCoursePublishState,
+  updateAdminCourseById: mocks.updateAdminCourseById,
+}))
 
 import { updateAdminCourseAction } from '@/server/actions/course-management.actions'
 
@@ -36,6 +44,9 @@ describe('updateAdminCourseAction', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.requirePermission.mockResolvedValue({ user: { id: 'admin-1', role: 'ADMIN' } })
+    mocks.getAdminCourseCategories.mockResolvedValue([{ id: 'category-dgca', title: 'DGCA' }])
+    mocks.createAdminCourse.mockResolvedValue({ id: 'created-course-id' })
+    mocks.setAdminCoursePublishState.mockResolvedValue({ id: 'course-db-id' })
     mocks.updateAdminCourseById.mockResolvedValue({ id: 'course-db-id', title: 'Updated DGCA Airframe' })
     mocks.withAuditLogging.mockImplementation(async (input: { run: () => Promise<unknown> }) => input.run())
   })
@@ -83,5 +94,57 @@ describe('updateAdminCourseAction', () => {
     mocks.withAuditLogging.mockImplementationOnce(async () => { throw { code: 'P2002' } })
 
     await expect(updateAdminCourseAction('course-db-id', validForm())).rejects.toThrow('REDIRECT:/admin/courses/course-db-id?error=slug')
+  })
+
+  it('creates an audited draft course with the selected category', async () => {
+    const { createAdminCourseAction } = await import('@/server/actions/course-management.actions')
+    const formData = makeForm({
+      title: 'DGCA Airframe',
+      slug: 'dgca-airframe',
+      description: 'Airframe course',
+      categoryId: 'category-dgca',
+    })
+
+    await expect(createAdminCourseAction(formData)).rejects.toThrow('REDIRECT:/admin/courses/created-course-id?created=1')
+
+    expect(mocks.createAdminCourse).toHaveBeenCalledWith({
+      title: 'DGCA Airframe',
+      slug: 'dgca-airframe',
+      description: 'Airframe course',
+      categoryId: 'category-dgca',
+    })
+    expect(mocks.withAuditLogging).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'course.create',
+      entityType: 'COURSE',
+    }))
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/student/courses')
+  })
+
+  it('rejects category IDs that are not active categories', async () => {
+    const { createAdminCourseAction } = await import('@/server/actions/course-management.actions')
+
+    await expect(createAdminCourseAction(makeForm({
+      title: 'DGCA Airframe',
+      slug: 'dgca-airframe',
+      description: '',
+      categoryId: 'missing-category',
+    }))).rejects.toThrow('REDIRECT:/admin/courses/new?error=category')
+
+    expect(mocks.createAdminCourse).not.toHaveBeenCalled()
+  })
+
+  it('audits and revalidates course publication state changes', async () => {
+    const { setAdminCoursePublishStateAction } = await import('@/server/actions/course-management.actions')
+
+    await setAdminCoursePublishStateAction('course-db-id', 'PUBLISHED')
+
+    expect(mocks.setAdminCoursePublishState).toHaveBeenCalledWith('course-db-id', 'PUBLISHED')
+    expect(mocks.withAuditLogging).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'course.publish',
+      entityType: 'COURSE',
+      entityId: 'course-db-id',
+    }))
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/admin/courses')
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/student/courses')
   })
 })

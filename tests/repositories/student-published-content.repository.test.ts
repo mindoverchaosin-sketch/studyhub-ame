@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
+  courseFindMany: vi.fn(),
   moduleFindMany: vi.fn(),
   moduleFindFirst: vi.fn(),
   topicFindMany: vi.fn(),
@@ -11,6 +12,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/prisma', () => ({
   default: {
+    course: { findMany: mocks.courseFindMany },
     module: { findMany: mocks.moduleFindMany, findFirst: mocks.moduleFindFirst },
     lesson: { findMany: mocks.topicFindMany, findFirst: mocks.topicFindFirst },
     quiz: { findFirst: mocks.quizFindFirst },
@@ -20,6 +22,16 @@ vi.mock('@/lib/prisma', () => ({
 
 describe('student published-content repository boundaries', () => {
   beforeEach(() => { vi.clearAllMocks() })
+
+  it('limits course selectors to published, non-deleted courses', async () => {
+    const { courseRepository } = await import('@/server/repositories/course.repository')
+    await courseRepository.findAllPublished()
+
+    expect(mocks.courseFindMany).toHaveBeenCalledWith({
+      where: { status: 'PUBLISHED', deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+    })
+  })
 
   it('limits module catalog queries to published, non-deleted modules', async () => {
     const { moduleRepository } = await import('@/server/repositories/module.repository')
@@ -37,6 +49,15 @@ describe('student published-content repository boundaries', () => {
     expect(mocks.moduleFindFirst).toHaveBeenCalledWith(expect.objectContaining({
       where: { id: 'module-1', status: 'PUBLISHED', deletedAt: null },
       include: { lessons: { where: { status: 'PUBLISHED', deletedAt: null }, orderBy: { displayOrder: 'asc' } } },
+    }))
+  })
+
+  it('limits the publishing lesson inventory to non-deleted lessons', async () => {
+    const { lessonRepository } = await import('@/server/repositories/lesson.repository')
+    await lessonRepository.findAll()
+
+    expect(mocks.topicFindMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { deletedAt: null },
     }))
   })
 

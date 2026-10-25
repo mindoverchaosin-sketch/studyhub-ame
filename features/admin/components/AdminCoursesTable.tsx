@@ -5,6 +5,7 @@ import Link from "next/link"
 import SearchToolbar from "@/features/admin/components/SearchToolbar"
 import Pagination from "@/features/admin/components/Pagination"
 import StatusBadge from "@/features/admin/components/StatusBadge"
+import { setAdminCoursePublishStateAction } from "@/server/actions/course-management.actions"
 
 export type AdminCourseRow = {
   id: string
@@ -79,9 +80,11 @@ export default function AdminCoursesTable({ courses }: AdminCoursesTableProps) {
                     <Link href={`/admin/courses/${course.id}`} className="rounded-2xl border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200">
                       Edit
                     </Link>
-                    <button type="button" className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-                      {course.isPublished ? "Unpublish" : "Publish"}
-                    </button>
+                    <form action={setAdminCoursePublishStateAction.bind(null, course.id, course.isPublished ? "DRAFT" : "PUBLISHED")}>
+                      <button type="submit" className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                        {course.isPublished ? "Unpublish" : "Publish"}
+                      </button>
+                    </form>
                     <button type="button" disabled className="rounded-2xl border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-400 transition cursor-not-allowed">
                       Delete
                     </button>

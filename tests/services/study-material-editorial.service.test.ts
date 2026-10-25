@@ -10,6 +10,7 @@ const getWorkflow = vi.fn().mockImplementation(async () => ({ status: state.work
 const snapshot = vi.fn().mockResolvedValue({ version: 2 })
 const publishingService = {
   approve: vi.fn().mockImplementation(async () => ({ persistedStatus: 'IN_REVIEW', publishedAt: null })),
+  reject: vi.fn().mockImplementation(async () => { state.resourceStatus = 'DRAFT'; return { persistedStatus: 'DRAFT' } }),
   publish: vi.fn().mockImplementation(async () => { state.resourceStatus = 'PUBLISHED'; return { persistedStatus: 'PUBLISHED', publishedAt: new Date().toISOString() } }),
   submitForReview: vi.fn(),
   archive: vi.fn(),
@@ -48,5 +49,25 @@ describe('StudyMaterialDocumentService publication gates', () => {
     await expect(service.publish('material-1')).rejects.toThrow('approved study material')
     state.workflow = 'DRAFT'
     await expect(service.publish('material-1')).rejects.toThrow('approved study material')
+  })
+
+  it('returns rejected study material to draft and records a version snapshot', async () => {
+    const { StudyMaterialDocumentService } = await import('@/server/services/study-material-document.service')
+    const service = new StudyMaterialDocumentService()
+
+    const result = await service.reject('material-1', 'Needs revisions', 'Reviewer')
+
+    expect(publishingService.reject).toHaveBeenCalledWith('STUDY_MATERIAL', 'material-1', 'Needs revisions')
+    expect(workflowRepository.update).toHaveBeenCalledWith('STUDY_MATERIAL', 'material-1', { status: 'DRAFT' })
+    expect(snapshot).toHaveBeenCalledWith(
+      'STUDY_MATERIAL',
+      'material-1',
+      'Study material rejected: Needs revisions',
+      'Reviewer',
+      'DRAFT',
+      null,
+      expect.objectContaining({ title: 'Material' }),
+    )
+    expect(result).toEqual({ id: 'material-1', status: 'DRAFT' })
   })
 })

@@ -10,6 +10,12 @@ async function syncEditorialStatus(resourceId: string, status: 'DRAFT' | 'IN_REV
   await editorialWorkflowRepository.update('STUDY_MATERIAL', resourceId, { status })
 }
 
+function getDocumentSnapshotData(resource: Awaited<ReturnType<typeof resourceRepository.findById>>): Record<string, unknown> | undefined {
+  const documentContent = resource?.documentContent
+  if (!documentContent || typeof documentContent !== 'object' || Array.isArray(documentContent)) return undefined
+  return Object.fromEntries(Object.entries(documentContent))
+}
+
 export class StudyMaterialDocumentService {
   async createDraftDocument(input: { title: string; moduleId?: string; lessonId?: string; authorId?: string }) {
     const doc = defaultAeroPrepStudyDocument(input.title)
@@ -58,6 +64,16 @@ export class StudyMaterialDocumentService {
     await syncEditorialStatus(resourceId, 'APPROVED')
     await resourceRepository.update(resourceId, { lastReviewedAt: new Date() } as any)
     await createVersionSnapshotForTarget('STUDY_MATERIAL', resourceId, 'Approved for publication', author, 'APPROVED', null, (resource as any)?.documentContent ?? undefined)
+    return { id: resourceId, status: result.persistedStatus }
+  }
+
+  async reject(resourceId: string, reason?: string, author = 'Reviewer') {
+    await getStudyMaterialEditorialWorkflow(resourceId)
+    const resource = await resourceRepository.findById(resourceId)
+    const result = await publishingService.reject('STUDY_MATERIAL', resourceId, reason)
+    await syncEditorialStatus(resourceId, 'DRAFT')
+    const summary = reason ? `Study material rejected: ${reason}` : 'Study material rejected'
+    await createVersionSnapshotForTarget('STUDY_MATERIAL', resourceId, summary, author, 'DRAFT', null, getDocumentSnapshotData(resource))
     return { id: resourceId, status: result.persistedStatus }
   }
 

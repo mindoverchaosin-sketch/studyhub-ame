@@ -5,12 +5,14 @@ export class CourseRepository {
   async findAll() {
     return prisma.course.findMany({
       orderBy: { createdAt: 'desc' },
+      where: { deletedAt: null },
       select: {
         id: true,
         slug: true,
         title: true,
         description: true,
         categoryId: true,
+        category: { select: { title: true } },
         isPremium: true,
         status: true,
         publishedAt: true,
@@ -24,9 +26,24 @@ export class CourseRepository {
     })
   }
 
+  async findCategories() {
+    return prisma.category.findMany({
+      where: { deletedAt: null },
+      select: { id: true, title: true },
+      orderBy: { title: 'asc' },
+    })
+  }
+
+  async findCategoryById(id: string) {
+    return prisma.category.findFirst({
+      where: { id, deletedAt: null },
+      select: { id: true },
+    })
+  }
+
   async findAllPublished() {
     return prisma.course.findMany({
-      where: { status: 'PUBLISHED' },
+      where: { status: 'PUBLISHED', deletedAt: null },
       orderBy: { createdAt: 'desc' },
     })
   }
@@ -53,7 +70,7 @@ export class CourseRepository {
     })
   }
 
-  async create(input: Prisma.CourseCreateInput) {
+  async create(input: Prisma.CourseUncheckedCreateInput) {
     return prisma.course.create({ data: input })
   }
 

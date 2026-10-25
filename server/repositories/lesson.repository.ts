@@ -15,6 +15,14 @@ export class LessonRepository {
     return prisma.lesson.findUnique({ where: { id } });
   }
 
+  async findAll() {
+    return prisma.lesson.findMany({
+      where: { deletedAt: null },
+      include: { module: { select: { id: true, title: true } } },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
   async list(params: LessonAdminQueryParams = {}) {
     const where: Prisma.LessonWhereInput = {
       deletedAt: null,
