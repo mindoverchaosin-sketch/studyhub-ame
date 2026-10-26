@@ -7,8 +7,40 @@ import { contentAccessService } from '@/server/services/content-access.service'
 export type StudentResourceAccess = {
   resource: ResourceDTO
   allowed: boolean
+  premiumRequired: boolean
   reason?: string
   requiredFeature?: 'premiumModules'
+}
+
+function resolveStudentResourceAccess(studentId: string, resource: Awaited<ReturnType<typeof resourceRepository.findPublishedById>>) {
+  if (!resource) return null
+
+  const module = resource.module ?? resource.lesson?.module ?? null
+  const lesson = resource.lesson
+  if (
+    !module
+    || module.status !== 'PUBLISHED'
+    || module.deletedAt
+    || !module.course
+    || module.course.status !== 'PUBLISHED'
+    || module.course.deletedAt
+    || (resource.moduleId && resource.moduleId !== module.id)
+    || (lesson && (lesson.status !== 'PUBLISHED' || lesson.deletedAt || lesson.moduleId !== module.id))
+  ) {
+    return null
+  }
+
+  const premiumRequired = resource.isPremium || module.isPremium || module.course.isPremium
+  return contentAccessService.canAccessStudyMaterial(
+    studentId,
+    premiumRequired,
+  ).then((access) => ({
+    resource: mapResourceEntityToDTO(resource),
+    allowed: access.allowed,
+    premiumRequired,
+    reason: access.reason,
+    requiredFeature: access.requiredFeature === 'premiumModules' ? access.requiredFeature : undefined,
+  }))
 }
 
 /**
@@ -33,18 +65,24 @@ export async function getStudentResourceAccess(
 ): Promise<StudentResourceAccess | null> {
   const resource = await resourceRepository.findPublishedById(resourceId)
 
-  if (!resource || resource.lessonId !== lessonId || resource.moduleId !== moduleId) {
+  if (
+    !resource
+    || resource.lessonId !== lessonId
+    || (resource.moduleId && resource.moduleId !== moduleId)
+    || (!resource.moduleId && resource.lesson?.moduleId !== moduleId)
+  ) {
     return null
   }
 
-  const access = await contentAccessService.canAccessStudyMaterial(studentId, resource.isPremium)
+  return resolveStudentResourceAccess(studentId, resource)
+}
 
-  return {
-    resource: mapResourceEntityToDTO(resource),
-    allowed: access.allowed,
-    reason: access.reason,
-    requiredFeature: access.requiredFeature === 'premiumModules' ? access.requiredFeature : undefined,
-  }
+export async function getStudentStudyMaterialAccess(
+  studentId: string,
+  resourceId: string,
+): Promise<StudentResourceAccess | null> {
+  const resource = await resourceRepository.findPublishedById(resourceId)
+  return resolveStudentResourceAccess(studentId, resource)
 }
 
 export async function getResourcesByType(topicId: string, type: string): Promise<ResourceDTO[]> {

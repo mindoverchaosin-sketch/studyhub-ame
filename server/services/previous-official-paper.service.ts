@@ -135,7 +135,23 @@ export class PreviousOfficialPaperService {
   async getStudentAccess(studentId: string, id: string) {
     const paper = await previousOfficialPaperRepository.findPublishedById(id)
     if (!paper) return null
-    const access = await contentAccessService.canAccessStudyMaterial(studentId, paper.isPremium)
+
+    if (
+      paper.moduleId !== paper.module.id
+      || paper.courseId !== paper.course.id
+      || paper.module.courseId !== paper.course.id
+      || paper.module.status !== 'PUBLISHED'
+      || paper.module.deletedAt
+      || paper.course.status !== 'PUBLISHED'
+      || paper.course.deletedAt
+    ) {
+      return null
+    }
+
+    const access = await contentAccessService.canAccessStudyMaterial(
+      studentId,
+      paper.isPremium || paper.module.isPremium || paper.course.isPremium,
+    )
     return { paper: mapPaper(paper), ...access }
   }
 }

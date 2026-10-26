@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/auth'
+import { ForbiddenError, requireStudent, UnauthorizedError } from '@/auth'
 import { previousOfficialPaperService } from '@/server/services/previous-official-paper.service'
 import { mediaProvider } from '@/services/media/provider'
 
@@ -25,13 +25,24 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth()
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  let studentId: string
+  try {
+    const session = await requireStudent()
+    studentId = session.user.id
+  } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+    if (error instanceof ForbiddenError) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    throw error
   }
 
+  if (!studentId) return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+
   const { id } = await params
-  const access = await previousOfficialPaperService.getStudentAccess(session.user.id, id)
+  const access = await previousOfficialPaperService.getStudentAccess(studentId, id)
   if (!access) {
     return NextResponse.json({ error: 'Paper not found' }, { status: 404 })
   }

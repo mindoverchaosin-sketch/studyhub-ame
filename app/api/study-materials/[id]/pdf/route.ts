@@ -38,7 +38,23 @@ export async function GET(
   }
 
   if (!preview) {
-    const access = await contentAccessService.canAccessStudyMaterial(userId, resource.isPremium)
+    const module = resource.module ?? resource.lesson?.module
+    const lesson = resource.lesson
+    if (
+      !module
+      || module.status !== 'PUBLISHED'
+      || module.deletedAt
+      || !module.course
+      || module.course.status !== 'PUBLISHED'
+      || module.course.deletedAt
+      || (resource.moduleId && resource.moduleId !== module.id)
+      || (lesson && (lesson.status !== 'PUBLISHED' || lesson.deletedAt || lesson.moduleId !== module.id))
+    ) {
+      return NextResponse.json({ error: 'Study material not found' }, { status: 404 })
+    }
+
+    const premiumRequired = resource.isPremium || module.isPremium || module.course.isPremium
+    const access = await contentAccessService.canAccessStudyMaterial(userId, premiumRequired)
     if (!access.allowed) {
       return NextResponse.json({ error: access.reason ?? 'Premium access required' }, { status: 403 })
     }

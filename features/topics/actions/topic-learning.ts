@@ -1,43 +1,44 @@
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
-import { getQuestionsByTopic } from "@/server/services/question.service";
+import { requireStudent } from "@/auth";
+import { getStudentQuestionsByBank } from "@/server/services/student-question-bank.service";
 import { getQuizByTopic } from "@/server/services/quiz.service";
 import { getResourcesByTopic } from "@/server/services/resource.service";
 import { getTopicProgress } from "@/server/services/progress.service";
 import { getTopicBySlug } from "@/server/services/topic.service";
-import { getModuleById, getModuleWithSections } from '@/server/services/module.service'
+import { getModuleById, getModuleWithSections, getPublishedModuleAccessContextById } from '@/server/services/module.service'
 import { getCourseById } from '@/server/services/course.service'
+import { contentAccessService } from '@/server/services/content-access.service'
 import { getProgressStatusLabel } from "@/features/topics/utils/topic-learning";
 import type { TopicLearningPageData } from "@/features/topics/types";
 
-async function requireStudentId() {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    redirect("/login");
-  }
-
-  return session.user.id;
-}
-
 export async function getTopicLearningPageData(topicSlug: string): Promise<TopicLearningPageData | null> {
-  const studentId = await requireStudentId();
+  const session = await requireStudent()
+  const studentId = session.user.id
+  if (!studentId) return null
   const topic = await getTopicBySlug(topicSlug);
 
-  if (!topic) {
+  if (!topic || !topic.moduleId) {
     return null;
   }
 
-  const [topicProgress, resources, questions, quiz] = await Promise.all([
+  const accessContext = await getPublishedModuleAccessContextById(topic.moduleId)
+  if (!accessContext) return null
+
+  const [courseAccess, moduleAccess] = await Promise.all([
+    contentAccessService.canAccessCourse(studentId, accessContext.courseIsPremium),
+    contentAccessService.canAccessModule(studentId, accessContext.moduleIsPremium),
+  ])
+  if (!courseAccess.allowed || !moduleAccess.allowed) return null
+
+  const [topicProgress, resources, questions, quiz, learningModule, course, moduleWithSections] = await Promise.all([
     getTopicProgress(studentId, topic.id),
     getResourcesByTopic(topic.id),
-    getQuestionsByTopic(topic.id),
+    getStudentQuestionsByBank(studentId, topic.id),
     getQuizByTopic(topic.id),
+    getModuleById(topic.moduleId),
+    getCourseById(accessContext.courseId),
+    getModuleWithSections(topic.moduleId),
   ]);
 
-  const learningModule = topic.moduleId ? await getModuleById(topic.moduleId) : null;
-  const course = learningModule ? await getCourseById(learningModule.courseId) : null;
-  const moduleWithSections = learningModule ? await getModuleWithSections(learningModule.id) : null;
   const allTopicsInSection = moduleWithSections ? moduleWithSections.sections.map((s) => ({ id: s.id, slug: s.slug, title: s.title })) : [];
   const topicIndex = allTopicsInSection.findIndex((item) => item.id === topic.id);
 

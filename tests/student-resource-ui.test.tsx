@@ -9,15 +9,20 @@ const mocks = vi.hoisted(() => ({
   getModuleBySlug: vi.fn(),
   getModuleById: vi.fn(),
   getModuleWithSections: vi.fn(),
+  getPublishedModuleAccessContextById: vi.fn(),
   getCourseById: vi.fn(),
   getTopicBySlug: vi.fn(),
   getTopicProgress: vi.fn(),
   getStudentProgress: vi.fn(),
   getQuestionsByTopic: vi.fn(),
+  getStudentQuestionsByBank: vi.fn(),
+  canAccessLesson: vi.fn(),
   getQuizByTopic: vi.fn(),
   findByLesson: vi.fn(),
   findPublishedById: vi.fn(),
   canAccessPremiumModules: vi.fn(),
+  canAccessCourse: vi.fn(),
+  canAccessModule: vi.fn(),
 }))
 
 vi.mock('next/link', () => ({
@@ -38,12 +43,38 @@ vi.mock('@/server/services/module.service', () => ({
   getModuleBySlug: mocks.getModuleBySlug,
   getModuleById: mocks.getModuleById,
   getModuleWithSections: mocks.getModuleWithSections,
+  getPublishedModuleAccessContextById: mocks.getPublishedModuleAccessContextById,
 }))
 vi.mock('@/server/services/course.service', () => ({ getCourseById: mocks.getCourseById }))
 vi.mock('@/server/services/topic.service', () => ({ getTopicBySlug: mocks.getTopicBySlug }))
 vi.mock('@/server/services/progress.service', () => ({ getTopicProgress: mocks.getTopicProgress, getStudentProgress: mocks.getStudentProgress }))
 vi.mock('@/server/services/question.service', () => ({ getQuestionsByTopic: mocks.getQuestionsByTopic }))
+vi.mock('@/server/services/student-question-bank.service', () => ({ getStudentQuestionsByBank: mocks.getStudentQuestionsByBank }))
 vi.mock('@/server/services/quiz.service', () => ({ getQuizByTopic: mocks.getQuizByTopic }))
+vi.mock('@/server/services/content-access.service', () => ({
+  contentAccessService: {
+    canAccessStudyMaterial: async (studentId: string, isPremium: boolean) => {
+      if (!isPremium) return { allowed: true }
+      const allowed = await mocks.canAccessPremiumModules(studentId)
+      return { allowed, requiredFeature: allowed ? undefined : 'premiumModules', reason: allowed ? undefined : 'Premium access required' }
+    },
+    canAccessCourse: async (_studentId: string, isPremium: boolean) => {
+      if (!isPremium) return { allowed: true }
+      const allowed = await mocks.canAccessPremiumModules('student-1')
+      return { allowed, requiredFeature: allowed ? undefined : 'premiumModules' }
+    },
+    canAccessModule: async (_studentId: string, isPremium: boolean) => {
+      if (!isPremium) return { allowed: true }
+      const allowed = await mocks.canAccessPremiumModules('student-1')
+      return { allowed, requiredFeature: allowed ? undefined : 'premiumModules' }
+    },
+    canAccessLesson: async (_studentId: string, isPremium: boolean) => {
+      if (!isPremium) return { allowed: true }
+      const allowed = await mocks.canAccessPremiumModules('student-1')
+      return { allowed, requiredFeature: allowed ? undefined : 'premiumModules' }
+    },
+  },
+}))
 
 const studyMaterial = (overrides: Record<string, unknown> = {}) => ({
   id: 'res-1',
@@ -55,6 +86,28 @@ const studyMaterial = (overrides: Record<string, unknown> = {}) => ({
   url: '/media/media/res-1-secret.pdf',
   isPremium: false,
   status: 'PUBLISHED',
+  module: {
+    id: 'module-1',
+    courseId: 'course-1',
+    isPremium: false,
+    status: 'PUBLISHED',
+    deletedAt: null,
+    course: { isPremium: false, status: 'PUBLISHED', deletedAt: null },
+  },
+  lesson: {
+    id: 'topic-1',
+    moduleId: 'module-1',
+    status: 'PUBLISHED',
+    deletedAt: null,
+    module: {
+      id: 'module-1',
+      courseId: 'course-1',
+      isPremium: false,
+      status: 'PUBLISHED',
+      deletedAt: null,
+      course: { isPremium: false, status: 'PUBLISHED', deletedAt: null },
+    },
+  },
   publishedAt: null,
   createdAt: new Date('2026-01-01T00:00:00Z'),
   updatedAt: new Date('2026-01-02T00:00:00Z'),
@@ -88,6 +141,12 @@ describe('Phase 6A student resource UI consistency', () => {
     mocks.getModuleById.mockResolvedValue({ id: 'module-1', courseId: 'course-1', slug: 'systems', title: 'Systems', isPremium: false })
     mocks.getModuleWithSections.mockResolvedValue({ sections: [{ id: 'topic-1', slug: 'hydraulics', title: 'Hydraulics' }] })
     mocks.getCourseById.mockResolvedValue({ id: 'course-1', slug: 'course', title: 'Course' })
+    mocks.getPublishedModuleAccessContextById.mockResolvedValue({
+      courseId: 'course-1', courseIsPremium: false, moduleIsPremium: false,
+    })
+    mocks.canAccessCourse.mockResolvedValue({ allowed: true })
+    mocks.canAccessModule.mockResolvedValue({ allowed: true })
+    mocks.getStudentQuestionsByBank.mockResolvedValue([])
     mocks.findByLesson.mockResolvedValue(bothMaterials)
   })
 
@@ -141,6 +200,42 @@ describe('Phase 6A student resource UI consistency', () => {
       expect(access?.allowed).toBe(false)
       expect(access?.requiredFeature).toBe('premiumModules')
       expect(access?.reason).toBeTruthy()
+    })
+
+    it('inherits premium access from the persisted module and course', async () => {
+      const { getStudentResourceAccess } = await import('@/server/services/resource.service')
+      mocks.findPublishedById.mockResolvedValueOnce(studyMaterial({
+        isPremium: false,
+        module: {
+          id: 'module-1',
+          isPremium: true,
+          status: 'PUBLISHED',
+          deletedAt: null,
+          course: { isPremium: false, status: 'PUBLISHED', deletedAt: null },
+        },
+      }))
+      mocks.canAccessPremiumModules.mockResolvedValueOnce(false)
+
+      const access = await getStudentResourceAccess('student-1', 'res-1', 'topic-1', 'module-1')
+      expect(access?.allowed).toBe(false)
+      expect(access?.premiumRequired).toBe(true)
+      expect(mocks.canAccessPremiumModules).toHaveBeenCalledWith('student-1')
+    })
+
+    it('rejects resources attached to unpublished parents', async () => {
+      const { getStudentResourceAccess } = await import('@/server/services/resource.service')
+      mocks.findPublishedById.mockResolvedValueOnce(studyMaterial({
+        module: {
+          id: 'module-1',
+          isPremium: false,
+          status: 'DRAFT',
+          deletedAt: null,
+          course: { isPremium: false, status: 'PUBLISHED', deletedAt: null },
+        },
+      }))
+
+      await expect(getStudentResourceAccess('student-1', 'res-1', 'topic-1', 'module-1')).resolves.toBeNull()
+      expect(mocks.canAccessPremiumModules).not.toHaveBeenCalled()
     })
   })
 

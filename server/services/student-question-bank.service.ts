@@ -52,13 +52,24 @@ export async function getStudentQuestionBanks(userId: string, search?: string): 
 
 export async function getStudentQuestion(userId: string, questionId: string): Promise<QuestionDTO | null> {
   const question = await questionRepository.findById(questionId)
-  if (!question) return null
+  if (!question || question.status !== 'PUBLISHED' || question.deletedAt) return null
 
   const questionBank = await questionBankRepository.findById(question.questionBankId)
-  if (question.status !== 'PUBLISHED' || !questionBank || questionBank.status !== 'PUBLISHED' || questionBank.deletedAt) return null
+  if (!questionBank || questionBank.status !== 'PUBLISHED' || questionBank.deletedAt) return null
 
   const access = await contentAccessService.canAccessQuestion(userId, questionBank.isPremium)
   return access.allowed ? mapQuestionEntityToDTO(question) : null
+}
+
+export async function getStudentQuestionsByBank(userId: string, questionBankId: string): Promise<QuestionDTO[]> {
+  const questionBank = await questionBankRepository.findById(questionBankId)
+  if (!questionBank || questionBank.status !== 'PUBLISHED' || questionBank.deletedAt) return []
+
+  const access = await contentAccessService.canAccessQuestionBank(userId, questionBank.isPremium)
+  if (!access.allowed) return []
+
+  const questions = await questionRepository.findPublishedByBank(questionBankId)
+  return questions.map(mapQuestionEntityToDTO)
 }
 
 export type StudentQuestionPracticeDTO = QuestionDTO & {

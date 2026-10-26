@@ -44,7 +44,14 @@ const createResource = (overrides: Record<string, unknown> = {}) => ({
   title: 'Study Material',
   isPremium: false,
   moduleId: 'module-1',
-  module: { moduleNumber: '1' },
+  module: {
+    id: 'module-1',
+    moduleNumber: '1',
+    isPremium: false,
+    status: 'PUBLISHED',
+    deletedAt: null,
+    course: { isPremium: false, status: 'PUBLISHED', deletedAt: null },
+  },
   documentContent: { metadata: {} },
   ...overrides,
 })
@@ -126,6 +133,60 @@ describe('/api/study-materials/[id]/pdf', () => {
 
     expect(response.status).toBe(200)
     expect(mocks.canAccessStudyMaterial).toHaveBeenCalledWith('student-1', true)
+  })
+
+  it.each([
+    ['module', {
+      module: {
+        id: 'module-1',
+        moduleNumber: '1',
+        isPremium: true,
+        status: 'PUBLISHED',
+        deletedAt: null,
+        course: { isPremium: false, status: 'PUBLISHED', deletedAt: null },
+      },
+    }],
+    ['course', {
+      module: {
+        id: 'module-1',
+        moduleNumber: '1',
+        isPremium: false,
+        status: 'PUBLISHED',
+        deletedAt: null,
+        course: { isPremium: true, status: 'PUBLISHED', deletedAt: null },
+      },
+    }],
+  ])('denies free material inherited from a premium %s without entitlement', async (_parent, overrides) => {
+    mocks.findPublishedById.mockResolvedValue(createResource(overrides))
+    mocks.canAccessStudyMaterial.mockResolvedValue({
+      allowed: false,
+      reason: 'Premium module access required',
+    })
+
+    const response = await requestPdf()
+
+    expect(response.status).toBe(403)
+    expect(mocks.canAccessStudyMaterial).toHaveBeenCalledWith('student-1', true)
+    expect(mocks.renderPdf).not.toHaveBeenCalled()
+  })
+
+  it('rejects unpublished parent content before checking access or rendering', async () => {
+    mocks.findPublishedById.mockResolvedValue(createResource({
+      module: {
+        id: 'module-1',
+        moduleNumber: '1',
+        isPremium: false,
+        status: 'DRAFT',
+        deletedAt: null,
+        course: { isPremium: false, status: 'PUBLISHED', deletedAt: null },
+      },
+    }))
+
+    const response = await requestPdf()
+
+    expect(response.status).toBe(404)
+    expect(mocks.canAccessStudyMaterial).not.toHaveBeenCalled()
+    expect(mocks.renderPdf).not.toHaveBeenCalled()
   })
 
   it('preserves the privileged unpublished-material preview path', async () => {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/auth'
+import { ForbiddenError, requireStudent, UnauthorizedError } from '@/auth'
 import { getStudentResourceAccess } from '@/server/services/resource.service'
 import { mediaProvider } from '@/services/media/provider'
 
@@ -29,10 +29,21 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth()
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  let studentId: string
+  try {
+    const session = await requireStudent()
+    studentId = session.user.id
+  } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+    if (error instanceof ForbiddenError) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    throw error
   }
+
+  if (!studentId) return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
 
   const { id } = await params
   const url = new URL(request.url)
@@ -43,7 +54,7 @@ export async function GET(
     return NextResponse.json({ error: 'Resource relationship is required' }, { status: 404 })
   }
 
-  const access = await getStudentResourceAccess(session.user.id, id, lessonId, moduleId)
+  const access = await getStudentResourceAccess(studentId, id, lessonId, moduleId)
   if (!access) {
     return NextResponse.json({ error: 'Resource not found' }, { status: 404 })
   }
