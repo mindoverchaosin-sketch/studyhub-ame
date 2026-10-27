@@ -23,6 +23,16 @@ export async function getModuleById(id: string): Promise<ModuleDTO | null> {
   return moduleRecord ? mapModuleEntityToDTO(moduleRecord) : null
 }
 
+export async function getPublishedModuleAccessContextById(id: string) {
+  const moduleRecord = await moduleRepository.findPublishedAccessContextById(id)
+  if (!moduleRecord) return null
+  return {
+    courseId: moduleRecord.courseId,
+    moduleIsPremium: moduleRecord.isPremium,
+    courseIsPremium: moduleRecord.course.isPremium,
+  }
+}
+
 export async function getModuleWithSections(id: string): Promise<ModuleWithSectionsDTO | null> {
   const moduleRecord = await moduleRepository.findWithSections(id)
 

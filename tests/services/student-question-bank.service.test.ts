@@ -3,10 +3,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   findPublishedWithQuestions: vi.fn(),
   findById: vi.fn(),
+  findPublishedByBank: vi.fn(),
   findStudentQuestionStates: vi.fn(),
   questionFindById: vi.fn(),
+  bookmarkFindMany: vi.fn(),
   canAccessQuestionBank: vi.fn(),
   canAccessQuestion: vi.fn(),
+}))
+
+vi.mock('@/lib/prisma', () => ({
+  default: {
+    bookmark: { findMany: mocks.bookmarkFindMany },
+  },
 }))
 
 vi.mock('@/server/repositories/question-bank.repository', () => ({
@@ -18,7 +26,10 @@ vi.mock('@/server/repositories/question-bank.repository', () => ({
 }))
 
 vi.mock('@/server/repositories/question.repository', () => ({
-  questionRepository: { findById: mocks.questionFindById },
+  questionRepository: {
+    findById: mocks.questionFindById,
+    findPublishedByBank: mocks.findPublishedByBank,
+  },
 }))
 
 vi.mock('@/server/services/content-access.service', () => ({
@@ -33,6 +44,8 @@ describe('student question bank service', () => {
     vi.clearAllMocks()
     mocks.findPublishedWithQuestions.mockResolvedValue([])
     mocks.findStudentQuestionStates.mockResolvedValue([])
+    mocks.findPublishedByBank.mockResolvedValue([])
+    mocks.bookmarkFindMany.mockResolvedValue([])
     mocks.canAccessQuestionBank.mockResolvedValue({ allowed: true })
     mocks.canAccessQuestion.mockResolvedValue({ allowed: true })
   })
@@ -117,5 +130,48 @@ describe('student question bank service', () => {
 
     const { getStudentQuestion } = await import('@/server/services/student-question-bank.service')
     await expect(getStudentQuestion('student-1', 'q1')).resolves.toMatchObject({ id: 'q1', questionBankId: 'free-bank' })
+  })
+
+  it('does not expose a deleted question through direct access', async () => {
+    mocks.questionFindById.mockResolvedValue({
+      id: 'q1', questionBankId: 'free-bank', prompt: 'Deleted', options: [],
+      correctOptionIndex: 1, explanation: 'Protected', difficulty: 'BEGINNER',
+      status: 'PUBLISHED', deletedAt: new Date(),
+    })
+
+    const { getStudentQuestion } = await import('@/server/services/student-question-bank.service')
+    await expect(getStudentQuestion('student-1', 'q1')).resolves.toBeNull()
+    expect(mocks.findById).not.toHaveBeenCalled()
+  })
+
+  it('checks bank publication and entitlement before loading questions for a topic', async () => {
+    mocks.findById.mockResolvedValue({
+      id: 'bank-1', status: 'PUBLISHED', deletedAt: null, isPremium: true,
+    })
+    mocks.canAccessQuestionBank.mockResolvedValue({ allowed: false })
+
+    const { getStudentQuestionsByBank } = await import('@/server/services/student-question-bank.service')
+    await expect(getStudentQuestionsByBank('student-1', 'bank-1')).resolves.toEqual([])
+    expect(mocks.canAccessQuestionBank).toHaveBeenCalledWith('student-1', true)
+    expect(mocks.findPublishedByBank).not.toHaveBeenCalled()
+  })
+
+  it('returns only published, non-deleted questions after bank access succeeds', async () => {
+    const question = {
+      id: 'q1', questionBankId: 'bank-1', prompt: 'Visible', options: ['A', 'B'],
+      correctOptionIndex: 0, explanation: 'Answer', difficulty: 'BEGINNER',
+      status: 'PUBLISHED', deletedAt: null,
+    }
+    mocks.findById.mockResolvedValue({
+      id: 'bank-1', status: 'PUBLISHED', deletedAt: null, isPremium: false,
+    })
+    mocks.findPublishedByBank.mockResolvedValue([question])
+
+    const { getStudentQuestionsByBank } = await import('@/server/services/student-question-bank.service')
+    const result = await getStudentQuestionsByBank('student-1', 'bank-1')
+
+    expect(mocks.findPublishedByBank).toHaveBeenCalledWith('bank-1')
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({ id: 'q1', correctAnswer: 'A', explanation: 'Answer' })
   })
 })

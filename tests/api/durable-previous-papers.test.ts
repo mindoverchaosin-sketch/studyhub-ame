@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Session } from 'next-auth'
-import { auth } from '@/auth'
+import { requireStudent, UnauthorizedError } from '@/auth'
 import { mediaProvider } from '@/services/media/provider'
 import { previousOfficialPaperService } from '@/server/services/previous-official-paper.service'
 import type { PreviousOfficialPaperDTO } from '@/server/application/dto/previous-official-paper.dto'
 
-vi.mock('@/auth')
+vi.mock('@/auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/auth')>()
+  return { ...actual, requireStudent: vi.fn() }
+})
 vi.mock('@/services/media/provider')
 vi.mock('@/server/services/previous-official-paper.service')
 
@@ -38,7 +41,7 @@ describe('/api/student/previous-papers/[id]', () => {
   })
 
   it('should return 401 if not authenticated', async () => {
-    vi.mocked(auth).mockResolvedValueOnce(null)
+    vi.mocked(requireStudent).mockRejectedValueOnce(new UnauthorizedError())
 
     const request = new Request('http://localhost:3000/api/student/previous-papers/paper-1', {
       method: 'GET',
@@ -53,7 +56,7 @@ describe('/api/student/previous-papers/[id]', () => {
   })
 
   it('should return 404 if paper does not exist', async () => {
-    vi.mocked(auth).mockResolvedValueOnce(studentSession)
+    vi.mocked(requireStudent).mockResolvedValueOnce(studentSession)
     vi.mocked(previousOfficialPaperService.getStudentAccess).mockResolvedValueOnce(null)
 
     const request = new Request('http://localhost:3000/api/student/previous-papers/paper-1', {
@@ -69,7 +72,7 @@ describe('/api/student/previous-papers/[id]', () => {
   })
 
   it('should return 403 if premium access is denied', async () => {
-    vi.mocked(auth).mockResolvedValueOnce(studentSession)
+    vi.mocked(requireStudent).mockResolvedValueOnce(studentSession)
     vi.mocked(previousOfficialPaperService.getStudentAccess).mockResolvedValueOnce({
       paper: createPaper(),
       allowed: false,
@@ -89,7 +92,7 @@ describe('/api/student/previous-papers/[id]', () => {
   })
 
   it('should return 200 with PDF content if premium access allowed', async () => {
-    vi.mocked(auth).mockResolvedValueOnce(studentSession)
+    vi.mocked(requireStudent).mockResolvedValueOnce(studentSession)
     vi.mocked(previousOfficialPaperService.getStudentAccess).mockResolvedValueOnce({
       paper: createPaper(),
       allowed: true,
@@ -113,7 +116,7 @@ describe('/api/student/previous-papers/[id]', () => {
   })
 
   it('should validate media path against SSRF', async () => {
-    vi.mocked(auth).mockResolvedValueOnce(studentSession)
+    vi.mocked(requireStudent).mockResolvedValueOnce(studentSession)
     vi.mocked(previousOfficialPaperService.getStudentAccess).mockResolvedValueOnce({
       paper: createPaper({ mediaPath: 'https://evil.com/paper.pdf' }),
       allowed: true,
@@ -132,7 +135,7 @@ describe('/api/student/previous-papers/[id]', () => {
   })
 
   it('should reject non-PDF content type', async () => {
-    vi.mocked(auth).mockResolvedValueOnce(studentSession)
+    vi.mocked(requireStudent).mockResolvedValueOnce(studentSession)
     vi.mocked(previousOfficialPaperService.getStudentAccess).mockResolvedValueOnce({
       paper: createPaper(),
       allowed: true,
@@ -156,7 +159,7 @@ describe('/api/student/previous-papers/[id]', () => {
   })
 
   it('should support same-origin redirects', async () => {
-    vi.mocked(auth).mockResolvedValueOnce(studentSession)
+    vi.mocked(requireStudent).mockResolvedValueOnce(studentSession)
     vi.mocked(previousOfficialPaperService.getStudentAccess).mockResolvedValueOnce({
       paper: createPaper(),
       allowed: true,
@@ -186,7 +189,7 @@ describe('/api/student/previous-papers/[id]', () => {
   })
 
   it('should reject external redirects', async () => {
-    vi.mocked(auth).mockResolvedValueOnce(studentSession)
+    vi.mocked(requireStudent).mockResolvedValueOnce(studentSession)
     vi.mocked(previousOfficialPaperService.getStudentAccess).mockResolvedValueOnce({
       paper: createPaper(),
       allowed: true,

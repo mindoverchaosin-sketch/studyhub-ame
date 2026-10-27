@@ -102,8 +102,10 @@ describe('Phase 6C.2 premium enforcement execution paths', () => {
 
   it('loads question-bank and question premium state from the database', async () => {
     const { canAccessQuestionBankAction, canAccessQuestionAction } = await import('@/server/actions/student-content-access.actions')
-    mocks.questionBankFindById.mockResolvedValue({ id: 'qb-1', isPremium: true })
-    mocks.questionFindById.mockResolvedValue({ id: 'question-1', questionBankId: 'qb-1' })
+    mocks.questionBankFindById.mockResolvedValue({ id: 'qb-1', isPremium: true, status: 'PUBLISHED', deletedAt: null })
+    mocks.questionFindById.mockResolvedValue({
+      id: 'question-1', questionBankId: 'qb-1', status: 'PUBLISHED', deletedAt: null,
+    })
 
     await expect(canAccessQuestionBankAction('qb-1', false)).resolves.toEqual({ allowed: true })
     expect(mocks.canAccessQuestionBank).toHaveBeenCalledWith('student-1', true)

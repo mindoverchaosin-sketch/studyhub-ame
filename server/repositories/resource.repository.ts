@@ -56,12 +56,42 @@ export class ResourceRepository {
             id: true,
             moduleNumber: true,
             title: true,
+            courseId: true,
+            isPremium: true,
+            status: true,
+            deletedAt: true,
+            course: {
+              select: {
+                isPremium: true,
+                status: true,
+                deletedAt: true,
+              },
+            },
           },
         },
         lesson: {
           select: {
             id: true,
             title: true,
+            moduleId: true,
+            status: true,
+            deletedAt: true,
+            module: {
+              select: {
+                id: true,
+                courseId: true,
+                isPremium: true,
+                status: true,
+                deletedAt: true,
+                course: {
+                  select: {
+                    isPremium: true,
+                    status: true,
+                    deletedAt: true,
+                  },
+                },
+              },
+            },
           },
         },
       },

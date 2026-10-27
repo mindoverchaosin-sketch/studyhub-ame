@@ -26,6 +26,27 @@ export class ModuleRepository {
     return prisma.module.findUnique({ where: { id } })
   }
 
+  async findPublishedAccessContextById(id: string) {
+    return prisma.module.findFirst({
+      where: {
+        id,
+        status: 'PUBLISHED',
+        deletedAt: null,
+        course: { status: 'PUBLISHED', deletedAt: null },
+      },
+      include: {
+        course: {
+          select: {
+            id: true,
+            isPremium: true,
+            status: true,
+            deletedAt: true,
+          },
+        },
+      },
+    })
+  }
+
   async findManyByIds(ids: string[]) {
     if (!ids.length) return []
     return prisma.module.findMany({ where: { id: { in: ids } } })

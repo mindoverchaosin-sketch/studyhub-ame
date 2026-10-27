@@ -1,9 +1,15 @@
 import { beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
+import { UnauthorizedError } from '@/auth'
 import { mediaProvider } from '@/services/media/provider'
 
-const authMock = vi.fn()
-const accessMock = vi.fn()
-vi.mock('@/auth', () => ({ auth: authMock }))
+const { requireStudentMock, accessMock } = vi.hoisted(() => ({
+  requireStudentMock: vi.fn(),
+  accessMock: vi.fn(),
+}))
+vi.mock('@/auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/auth')>()
+  return { ...actual, requireStudent: requireStudentMock }
+})
 vi.mock('@/server/services/previous-official-paper.service', () => ({ previousOfficialPaperService: { getStudentAccess: accessMock } }))
 
 const paper = { id: 'paper-1', courseId: 'course-1', moduleId: 'module-1', year: 2025, title: 'Official Paper', paperType: 'Official PDF', mediaPath: '/media/paper.pdf', isPremium: false, status: 'PUBLISHED' as const, courseTitle: 'DGCA', moduleTitle: 'Air Navigation', publishedAt: new Date(), createdAt: new Date(), updatedAt: new Date() }
@@ -24,7 +30,7 @@ describe('previous official paper view route', () => {
   }
 
   it('denies unauthenticated requests', async () => {
-    authMock.mockResolvedValue(null)
+    requireStudentMock.mockRejectedValue(new UnauthorizedError())
     const { GET } = await getRoute()
     const response = await GET(new Request('https://app.test/api/student/previous-papers/paper-1'), { params: Promise.resolve({ id: 'paper-1' }) })
     expect(response.status).toBe(401)
@@ -32,7 +38,7 @@ describe('previous official paper view route', () => {
   })
 
   it('denies missing, draft, archived, or deleted papers', async () => {
-    authMock.mockResolvedValue({ user: { id: 'student-1' } })
+    requireStudentMock.mockResolvedValue({ user: { id: 'student-1', role: 'STUDENT' } })
     accessMock.mockResolvedValue(null)
     const { GET } = await getRoute()
     const response = await GET(new Request('https://app.test/api/student/previous-papers/paper-1'), { params: Promise.resolve({ id: 'paper-1' }) })
@@ -42,7 +48,7 @@ describe('previous official paper view route', () => {
   })
 
   it('denies premium papers without premiumModules', async () => {
-    authMock.mockResolvedValue({ user: { id: 'student-1' } })
+    requireStudentMock.mockResolvedValue({ user: { id: 'student-1', role: 'STUDENT' } })
     accessMock.mockResolvedValue({ paper: { ...paper, isPremium: true }, allowed: false, requiredFeature: 'premiumModules' })
     const { GET } = await getRoute()
     const response = await GET(new Request('https://app.test/api/student/previous-papers/paper-1'), { params: Promise.resolve({ id: 'paper-1' }) })
@@ -52,7 +58,7 @@ describe('previous official paper view route', () => {
   })
 
   it('allows a free or entitled paper through the protected boundary', async () => {
-    authMock.mockResolvedValue({ user: { id: 'student-1' } })
+    requireStudentMock.mockResolvedValue({ user: { id: 'student-1', role: 'STUDENT' } })
     accessMock.mockResolvedValue({ paper, allowed: true })
     const { GET } = await getRoute()
     const response = await GET(new Request('https://app.test/api/student/previous-papers/paper-1'), { params: Promise.resolve({ id: 'paper-1' }) })
@@ -61,7 +67,7 @@ describe('previous official paper view route', () => {
   })
 
   it.each(['https://example.com/paper.pdf', 'http://127.0.0.1/paper.pdf', 'http://169.254.169.254/latest/meta-data', 'file:///etc/passwd'])('rejects unsafe media path %s', async (mediaPath) => {
-    authMock.mockResolvedValue({ user: { id: 'student-1' } })
+    requireStudentMock.mockResolvedValue({ user: { id: 'student-1', role: 'STUDENT' } })
     accessMock.mockResolvedValue({ paper: { ...paper, mediaPath }, allowed: true })
     const { GET } = await getRoute()
     const response = await GET(new Request('https://app.test/api/student/previous-papers/paper-1'), { params: Promise.resolve({ id: 'paper-1' }) })
@@ -71,7 +77,7 @@ describe('previous official paper view route', () => {
   })
 
   it('rejects unsafe redirects and mismatched MIME types', async () => {
-    authMock.mockResolvedValue({ user: { id: 'student-1' } })
+    requireStudentMock.mockResolvedValue({ user: { id: 'student-1', role: 'STUDENT' } })
     accessMock.mockResolvedValue({ paper, allowed: true })
     vi.spyOn(mediaProvider, 'getObject').mockResolvedValueOnce({ body: new Uint8Array(), mimeType: 'application/pdf', redirectPath: 'http://127.0.0.1/admin' })
     const { GET } = await getRoute()

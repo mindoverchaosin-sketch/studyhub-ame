@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Session } from 'next-auth'
-import { auth } from '@/auth'
+import { ForbiddenError, requireStudent, UnauthorizedError } from '@/auth'
 import { mediaProvider } from '@/services/media/provider'
 import { getStudentResourceAccess } from '@/server/services/resource.service'
 import type { ResourceDTO } from '@/server/application/dto/resource.dto'
 
-vi.mock('@/auth')
+vi.mock('@/auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/auth')>()
+  return { ...actual, requireStudent: vi.fn() }
+})
 vi.mock('@/services/media/provider')
 vi.mock('@/server/services/resource.service')
 
@@ -36,7 +39,7 @@ describe('/api/student/resources/[id]', () => {
   })
 
   it('should return 401 if not authenticated', async () => {
-    vi.mocked(auth).mockResolvedValueOnce(null)
+    vi.mocked(requireStudent).mockRejectedValueOnce(new UnauthorizedError())
 
     const request = new Request('http://localhost:3000/api/student/resources/resource-1?lessonId=lesson-1&moduleId=module-1', {
       method: 'GET',
@@ -50,8 +53,20 @@ describe('/api/student/resources/[id]', () => {
     expect(json.error).toContain('Authentication')
   })
 
+  it('should return 403 for an authenticated non-student', async () => {
+    vi.mocked(requireStudent).mockRejectedValueOnce(new ForbiddenError('Student access required.'))
+
+    const request = new Request('http://localhost:3000/api/student/resources/resource-1?lessonId=lesson-1&moduleId=module-1')
+    const { GET } = await import('@/app/api/student/resources/[id]/route')
+    const response = await GET(request, { params: Promise.resolve({ id: 'resource-1' }) })
+
+    expect(response.status).toBe(403)
+    expect(getStudentResourceAccess).not.toHaveBeenCalled()
+    expect(mediaProvider.getObject).not.toHaveBeenCalled()
+  })
+
   it('should return 404 if resource parameters missing', async () => {
-    vi.mocked(auth).mockResolvedValueOnce(studentSession)
+    vi.mocked(requireStudent).mockResolvedValueOnce(studentSession)
 
     const request = new Request('http://localhost:3000/api/student/resources/resource-1', {
       method: 'GET',
@@ -65,7 +80,7 @@ describe('/api/student/resources/[id]', () => {
   })
 
   it('should return 404 if resource not found', async () => {
-    vi.mocked(auth).mockResolvedValueOnce(studentSession)
+    vi.mocked(requireStudent).mockResolvedValueOnce(studentSession)
     vi.mocked(getStudentResourceAccess).mockResolvedValueOnce(null)
 
     const request = new Request('http://localhost:3000/api/student/resources/resource-1?lessonId=lesson-1&moduleId=module-1', {
@@ -81,10 +96,11 @@ describe('/api/student/resources/[id]', () => {
   })
 
   it('should return 403 if premium access denied', async () => {
-    vi.mocked(auth).mockResolvedValueOnce(studentSession)
+    vi.mocked(requireStudent).mockResolvedValueOnce(studentSession)
     vi.mocked(getStudentResourceAccess).mockResolvedValueOnce({
       resource: createResource({ url: '/media/media/abc123-notes.txt', type: 'NOTES' }),
       allowed: false,
+      premiumRequired: true,
       reason: 'Premium access required',
     })
 
@@ -101,10 +117,11 @@ describe('/api/student/resources/[id]', () => {
   })
 
   it('should return 200 with PDF content', async () => {
-    vi.mocked(auth).mockResolvedValueOnce(studentSession)
+    vi.mocked(requireStudent).mockResolvedValueOnce(studentSession)
     vi.mocked(getStudentResourceAccess).mockResolvedValueOnce({
       resource: createResource(),
       allowed: true,
+      premiumRequired: false,
     })
 
     const testPdfBytes = new Uint8Array([0x25, 0x50, 0x44, 0x46])
@@ -125,10 +142,11 @@ describe('/api/student/resources/[id]', () => {
   })
 
   it('should return video content when allowed', async () => {
-    vi.mocked(auth).mockResolvedValueOnce(studentSession)
+    vi.mocked(requireStudent).mockResolvedValueOnce(studentSession)
     vi.mocked(getStudentResourceAccess).mockResolvedValueOnce({
       resource: createResource({ url: '/media/media/abc123-lesson.mp4', type: 'VIDEO' }),
       allowed: true,
+      premiumRequired: false,
     })
 
     const testVideoBytes = new Uint8Array([0x00, 0x00, 0x00, 0x20])
@@ -149,10 +167,11 @@ describe('/api/student/resources/[id]', () => {
   })
 
   it('should validate media URL against SSRF', async () => {
-    vi.mocked(auth).mockResolvedValueOnce(studentSession)
+    vi.mocked(requireStudent).mockResolvedValueOnce(studentSession)
     vi.mocked(getStudentResourceAccess).mockResolvedValueOnce({
       resource: createResource({ url: 'https://evil.com/resource.pdf' }),
       allowed: true,
+      premiumRequired: false,
     })
 
     const request = new Request('http://localhost:3000/api/student/resources/resource-1?lessonId=lesson-1&moduleId=module-1', {
@@ -168,10 +187,11 @@ describe('/api/student/resources/[id]', () => {
   })
 
   it('should reject mismatched content type', async () => {
-    vi.mocked(auth).mockResolvedValueOnce(studentSession)
+    vi.mocked(requireStudent).mockResolvedValueOnce(studentSession)
     vi.mocked(getStudentResourceAccess).mockResolvedValueOnce({
       resource: createResource(),
       allowed: true,
+      premiumRequired: false,
     })
 
     vi.mocked(mediaProvider.getObject).mockResolvedValueOnce({
@@ -192,10 +212,11 @@ describe('/api/student/resources/[id]', () => {
   })
 
   it('should support same-origin redirects', async () => {
-    vi.mocked(auth).mockResolvedValueOnce(studentSession)
+    vi.mocked(requireStudent).mockResolvedValueOnce(studentSession)
     vi.mocked(getStudentResourceAccess).mockResolvedValueOnce({
       resource: createResource(),
       allowed: true,
+      premiumRequired: false,
     })
 
     const testBytes = new Uint8Array([0x25, 0x50, 0x44, 0x46])
@@ -222,10 +243,11 @@ describe('/api/student/resources/[id]', () => {
   })
 
   it('should reject external redirects', async () => {
-    vi.mocked(auth).mockResolvedValueOnce(studentSession)
+    vi.mocked(requireStudent).mockResolvedValueOnce(studentSession)
     vi.mocked(getStudentResourceAccess).mockResolvedValueOnce({
       resource: createResource(),
       allowed: true,
+      premiumRequired: false,
     })
 
     vi.mocked(mediaProvider.getObject).mockResolvedValueOnce({
@@ -248,7 +270,7 @@ describe('/api/student/resources/[id]', () => {
 
   // Ported from the retired fetch-proxy suite: lesson/module binding.
   it('should return 404 when the lesson or module does not match the resource', async () => {
-    vi.mocked(auth).mockResolvedValueOnce(studentSession)
+    vi.mocked(requireStudent).mockResolvedValueOnce(studentSession)
     vi.mocked(getStudentResourceAccess).mockResolvedValueOnce(null)
 
     const request = new Request('http://localhost:3000/api/student/resources/resource-1?lessonId=lesson-9&moduleId=module-9', {
@@ -267,7 +289,7 @@ describe('/api/student/resources/[id]', () => {
     ['unpublished', null],
     ['archived/deleted', null],
   ])('excludes %s resources from student delivery', async (_label, access) => {
-    vi.mocked(auth).mockResolvedValueOnce(studentSession)
+    vi.mocked(requireStudent).mockResolvedValueOnce(studentSession)
     vi.mocked(getStudentResourceAccess).mockResolvedValueOnce(access as never)
 
     const request = new Request('http://localhost:3000/api/student/resources/resource-1?lessonId=lesson-1&moduleId=module-1', {
@@ -292,10 +314,11 @@ describe('/api/student/resources/[id]', () => {
     'file:///etc/passwd',
     'ftp://example.com/resource.pdf',
   ])('rejects unsafe stored URL %s', async (unsafeUrl) => {
-    vi.mocked(auth).mockResolvedValueOnce(studentSession)
+    vi.mocked(requireStudent).mockResolvedValueOnce(studentSession)
     vi.mocked(getStudentResourceAccess).mockResolvedValueOnce({
       resource: createResource({ url: unsafeUrl }),
       allowed: true,
+      premiumRequired: false,
     })
 
     const request = new Request('http://localhost:3000/api/student/resources/resource-1?lessonId=lesson-1&moduleId=module-1', {

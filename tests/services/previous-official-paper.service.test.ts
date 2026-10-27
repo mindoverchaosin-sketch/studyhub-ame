@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 function paper(overrides: Record<string, unknown> = {}) {
   return {
-    id: 'paper-1', courseId: 'course-1', moduleId: 'module-1', year: 2025, title: 'Air Navigation', paperType: 'Official PDF', mediaPath: '/media/air-navigation.pdf', isPremium: false, status: 'DRAFT', publishedAt: null, createdAt: new Date(), updatedAt: new Date(), course: { title: 'DGCA' }, module: { title: 'Air Navigation' }, ...overrides,
+    id: 'paper-1', courseId: 'course-1', moduleId: 'module-1', year: 2025, title: 'Air Navigation', paperType: 'Official PDF', mediaPath: '/media/air-navigation.pdf', isPremium: false, status: 'DRAFT', publishedAt: null, createdAt: new Date(), updatedAt: new Date(), course: { id: 'course-1', title: 'DGCA', isPremium: false, status: 'PUBLISHED', deletedAt: null }, module: { id: 'module-1', courseId: 'course-1', title: 'Air Navigation', isPremium: false, status: 'PUBLISHED', deletedAt: null }, ...overrides,
   }
 }
 
@@ -111,5 +111,89 @@ describe('PreviousOfficialPaperService', () => {
     expect(result?.allowed).toBe(false)
     expect(result?.paper.mediaPath).toBe('/media/air-navigation.pdf')
     expect(access).toHaveBeenCalledWith('student-1', true)
+  })
+
+  it('allows free papers through the server-side access policy', async () => {
+    const repository = {
+      findForAdmin: vi.fn(), findPublished: vi.fn(), findById: vi.fn(),
+      findPublishedById: vi.fn().mockResolvedValue(paper()),
+      create: vi.fn(), update: vi.fn(),
+    }
+    const access = vi.fn().mockResolvedValue({ allowed: true })
+    vi.doMock('@/server/repositories/previous-official-paper.repository', () => ({ previousOfficialPaperRepository: repository }))
+    vi.doMock('@/server/repositories/course.repository', () => ({ courseRepository: { findById: vi.fn() } }))
+    vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository: { findById: vi.fn() } }))
+    vi.doMock('@/server/services/content-access.service', () => ({ contentAccessService: { canAccessStudyMaterial: access } }))
+    vi.doMock('@/server/services/study-material-management.service', () => ({ validateStudyMaterialUrl: (value: string) => value }))
+
+    const { previousOfficialPaperService } = await import('@/server/services/previous-official-paper.service')
+    const result = await previousOfficialPaperService.getStudentAccess('student-1', 'paper-1')
+
+    expect(result?.allowed).toBe(true)
+    expect(access).toHaveBeenCalledWith('student-1', false)
+  })
+
+  it('allows premium papers only when the server-side access policy grants them', async () => {
+    const repository = {
+      findForAdmin: vi.fn(), findPublished: vi.fn(), findById: vi.fn(),
+      findPublishedById: vi.fn().mockResolvedValue(paper({ isPremium: true })),
+      create: vi.fn(), update: vi.fn(),
+    }
+    const access = vi.fn().mockResolvedValue({ allowed: true })
+    vi.doMock('@/server/repositories/previous-official-paper.repository', () => ({ previousOfficialPaperRepository: repository }))
+    vi.doMock('@/server/repositories/course.repository', () => ({ courseRepository: { findById: vi.fn() } }))
+    vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository: { findById: vi.fn() } }))
+    vi.doMock('@/server/services/content-access.service', () => ({ contentAccessService: { canAccessStudyMaterial: access } }))
+    vi.doMock('@/server/services/study-material-management.service', () => ({ validateStudyMaterialUrl: (value: string) => value }))
+
+    const { previousOfficialPaperService } = await import('@/server/services/previous-official-paper.service')
+    const result = await previousOfficialPaperService.getStudentAccess('student-1', 'paper-1')
+
+    expect(result?.allowed).toBe(true)
+    expect(access).toHaveBeenCalledWith('student-1', true)
+  })
+
+  it('inherits premium access from its persisted parent course or module', async () => {
+    const repository = {
+      findForAdmin: vi.fn(), findPublished: vi.fn(), findById: vi.fn(),
+      findPublishedById: vi.fn().mockResolvedValue(paper({
+        module: { id: 'module-1', courseId: 'course-1', title: 'Air Navigation', isPremium: true, status: 'PUBLISHED', deletedAt: null },
+      })),
+      create: vi.fn(), update: vi.fn(),
+    }
+    const access = vi.fn().mockResolvedValue({ allowed: false, requiredFeature: 'premiumModules' })
+    vi.doMock('@/server/repositories/previous-official-paper.repository', () => ({ previousOfficialPaperRepository: repository }))
+    vi.doMock('@/server/repositories/course.repository', () => ({ courseRepository: { findById: vi.fn() } }))
+    vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository: { findById: vi.fn() } }))
+    vi.doMock('@/server/services/content-access.service', () => ({ contentAccessService: { canAccessStudyMaterial: access } }))
+    vi.doMock('@/server/services/study-material-management.service', () => ({ validateStudyMaterialUrl: (value: string) => value }))
+
+    const { previousOfficialPaperService } = await import('@/server/services/previous-official-paper.service')
+    const result = await previousOfficialPaperService.getStudentAccess('student-1', 'paper-1')
+
+    expect(result?.allowed).toBe(false)
+    expect(access).toHaveBeenCalledWith('student-1', true)
+  })
+
+  it.each([
+    ['unpublished module', { module: { id: 'module-1', courseId: 'course-1', title: 'Air Navigation', isPremium: false, status: 'DRAFT', deletedAt: null } }],
+    ['deleted course', { course: { id: 'course-1', title: 'DGCA', isPremium: false, status: 'PUBLISHED', deletedAt: new Date() } }],
+    ['mismatched module course', { module: { id: 'module-1', courseId: 'other-course', title: 'Air Navigation', isPremium: false, status: 'PUBLISHED', deletedAt: null } }],
+  ])('rejects a paper with %s', async (_label, overrides) => {
+    const repository = {
+      findForAdmin: vi.fn(), findPublished: vi.fn(), findById: vi.fn(),
+      findPublishedById: vi.fn().mockResolvedValue(paper(overrides)),
+      create: vi.fn(), update: vi.fn(),
+    }
+    const access = vi.fn()
+    vi.doMock('@/server/repositories/previous-official-paper.repository', () => ({ previousOfficialPaperRepository: repository }))
+    vi.doMock('@/server/repositories/course.repository', () => ({ courseRepository: { findById: vi.fn() } }))
+    vi.doMock('@/server/repositories/module.repository', () => ({ moduleRepository: { findById: vi.fn() } }))
+    vi.doMock('@/server/services/content-access.service', () => ({ contentAccessService: { canAccessStudyMaterial: access } }))
+    vi.doMock('@/server/services/study-material-management.service', () => ({ validateStudyMaterialUrl: (value: string) => value }))
+
+    const { previousOfficialPaperService } = await import('@/server/services/previous-official-paper.service')
+    await expect(previousOfficialPaperService.getStudentAccess('student-1', 'paper-1')).resolves.toBeNull()
+    expect(access).not.toHaveBeenCalled()
   })
 })
