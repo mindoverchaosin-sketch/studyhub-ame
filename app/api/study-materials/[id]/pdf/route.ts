@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { ForbiddenError, requirePermission, requireStudent, UnauthorizedError, type AuthSession } from '@/auth'
+import { ForbiddenError, requirePermission, requireStudent, UnauthorizedError } from '@/auth'
+import type { AuthSession } from '@/lib/auth/index'
 import { resourceRepository } from '@/server/repositories/resource.repository'
 import { moduleRepository } from '@/server/repositories/module.repository'
 import { contentAccessService } from '@/server/services/content-access.service'
@@ -32,12 +33,26 @@ export async function GET(
   }
 
   const { id } = await params
-  const resource = preview ? await resourceRepository.findById(id) : await resourceRepository.findPublishedById(id)
-  if (!resource || !resource.documentContent) {
-    return NextResponse.json({ error: 'Study material not found' }, { status: 404 })
-  }
+  let title: string
+  let documentContent: unknown
+  let relatedModuleNumber: string | null | undefined
 
-  if (!preview) {
+  if (preview) {
+    const resource = await resourceRepository.findById(id)
+    if (!resource || !resource.documentContent) {
+      return NextResponse.json({ error: 'Study material not found' }, { status: 404 })
+    }
+
+    title = resource.title
+    documentContent = resource.documentContent
+    const relatedModule = resource.moduleId ? await moduleRepository.findById(resource.moduleId) : null
+    relatedModuleNumber = relatedModule?.moduleNumber
+  } else {
+    const resource = await resourceRepository.findPublishedById(id)
+    if (!resource || !resource.documentContent) {
+      return NextResponse.json({ error: 'Study material not found' }, { status: 404 })
+    }
+
     const module = resource.module ?? resource.lesson?.module
     const lesson = resource.lesson
     if (
@@ -58,21 +73,25 @@ export async function GET(
     if (!access.allowed) {
       return NextResponse.json({ error: access.reason ?? 'Premium access required' }, { status: 403 })
     }
+
+    title = resource.title
+    documentContent = resource.documentContent
+    const relatedModule = resource.module
+      ?? (resource.moduleId ? await moduleRepository.findById(resource.moduleId) : null)
+    relatedModuleNumber = relatedModule?.moduleNumber
   }
 
-  const document = sanitizeStudyMaterialDocument(resource.documentContent)
-  const relatedModule = (resource as { module?: { moduleNumber?: string | null } }).module
-    ?? (resource.moduleId ? await moduleRepository.findById(resource.moduleId) : null)
-  const metadata = (document.metadata ?? {}) as Record<string, unknown>
+  const document = sanitizeStudyMaterialDocument(documentContent)
+  const metadata = document.metadata
   const moduleNumber = typeof metadata.moduleNumber === 'string' && metadata.moduleNumber.trim()
     ? metadata.moduleNumber.trim()
-    : relatedModule?.moduleNumber?.trim() || undefined
+    : relatedModuleNumber?.trim() || undefined
   const submoduleNumber = typeof metadata.submoduleNumber === 'string' && metadata.submoduleNumber.trim()
     ? metadata.submoduleNumber.trim()
     : undefined
 
   const pdfBytes = await renderStudyMaterialPdf(document, {
-    title: resource.title,
+    title,
     author: 'AeroPrep',
     context: {
       moduleNumber,
@@ -84,7 +103,7 @@ export async function GET(
     status: 200,
     headers: {
       'content-type': 'application/pdf',
-      'content-disposition': `attachment; filename="${(resource.title || 'study-material').replace(/[^a-z0-9-_]+/gi, '-').toLowerCase()}.pdf"`,
+      'content-disposition': `attachment; filename="${(title || 'study-material').replace(/[^a-z0-9-_]+/gi, '-').toLowerCase()}.pdf"`,
       'cache-control': 'private, no-store',
     },
   })
